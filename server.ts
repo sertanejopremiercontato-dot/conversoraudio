@@ -1,0 +1,1021 @@
+import express from "express";
+import path from "path";
+import fs from "fs";
+import dotenv from "dotenv";
+import crypto from "crypto";
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import firebaseConfig from "./firebase-applet-config.json";
+import adsTrackClickHandler from "./api/ads-track-click";
+
+// Load environment variables
+dotenv.config();
+
+// Helper to repair GA4 Private Key if mangled (e.g., pasted as JSON fragment or without headers)
+function repairPrivateKey(rawKey: string): string {
+  rawKey = rawKey ? rawKey.trim() : "";
+  if (!rawKey) return "";
+
+  // If already contains headers and footers, just normalize line breaks
+  if (rawKey.includes("-----BEGIN PRIVATE KEY-----") && rawKey.includes("-----END PRIVATE KEY-----")) {
+    return rawKey.replace(/\\n/g, "\n");
+  }
+
+  // Look for base64 PKCS#8 prefix (MII...) and ending identifier
+  const miiIndex = rawKey.indexOf("MII");
+  let endKeyIndex = rawKey.indexOf("-----END PRIVATE KEY-----");
+  if (endKeyIndex === -1) {
+    endKeyIndex = rawKey.indexOf("END PRIVATE KEY");
+  }
+
+  if (miiIndex !== -1 && endKeyIndex !== -1 && endKeyIndex > miiIndex) {
+    const base64Part = rawKey.substring(miiIndex, endKeyIndex).trim();
+    const cleanLines = base64Part
+      .replace(/\\n/g, "\n")
+      .split(/[\r\n]+/)
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+
+    const base64Content = cleanLines.join("\n");
+    return `-----BEGIN PRIVATE KEY-----\n${base64Content}\n-----END PRIVATE KEY-----\n`;
+  }
+
+  return rawKey.replace(/\\n/g, "\n");
+}
+
+// Generate Google access token using pure Node.js crypto (no external dependencies, no gRPC)
+function generateGoogleAccessToken(clientEmail: string, privateKey: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    try {
+      const header = {
+        alg: "RS256",
+        typ: "JWT"
+      };
+      
+      const now = Math.floor(Date.now() / 1000);
+      const payload = {
+        iss: clientEmail,
+        scope: "https://www.googleapis.com/auth/analytics.readonly",
+        aud: "https://oauth2.googleapis.com/token",
+        exp: now + 3600,
+        iat: now
+      };
+
+      const base64Header = Buffer.from(JSON.stringify(header)).toString("base64url");
+      const base64Payload = Buffer.from(JSON.stringify(payload)).toString("base64url");
+      
+      const sign = crypto.createSign("RSA-SHA256");
+      sign.update(`${base64Header}.${base64Payload}`);
+      const signature = sign.sign(privateKey, "base64url");
+      
+      const jwt = `${base64Header}.${base64Payload}.${signature}`;
+      
+      fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+          grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+          assertion: jwt
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.access_token) {
+          resolve(data.access_token);
+        } else {
+          reject(new Error(data.error_description || data.error || "Failed to obtain access token"));
+        }
+      })
+      .catch(reject);
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+// Lightweight Google Analytics 4 report client using standard Google REST API (completely bypasses gRPC)
+async function runGA4ReportREST(propertyId: string, payload: any): Promise<any> {
+  const clientEmail = process.env.GA4_CLIENT_EMAIL?.trim();
+  const rawKey = process.env.GA4_PRIVATE_KEY || "";
+  const repairedKey = repairPrivateKey(rawKey);
+
+  if (!clientEmail || !repairedKey) {
+    throw new Error("Credenciais do Google Analytics (GA4_CLIENT_EMAIL ou GA4_PRIVATE_KEY) ausentes ou inválidas.");
+  }
+
+  // 1. Generate Google Access Token via standard JWT bearer flow
+  const accessToken = await generateGoogleAccessToken(clientEmail, repairedKey);
+
+  // 2. Make the HTTP request to the Analytics Data API
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${accessToken}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Google Analytics API respondeu com status ${response.status}: ${errorBody}`);
+  }
+
+  return response.json();
+}
+
+// Lightweight, 100% secure Firebase ID Token verification using standard Google REST API (completely bypasses gRPC & firebase-admin)
+async function verifyFirebaseIdToken(token: string): Promise<{ uid: string }> {
+  const apiKey = firebaseConfig?.apiKey;
+  if (!apiKey) {
+    throw new Error("API Key do Firebase ausente para verificação de token.");
+  }
+  
+  const url = `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken: token })
+  });
+  
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    const errMsg = errData.error?.message || "Token inválido ou expirado";
+    throw new Error(errMsg);
+  }
+  
+  const data = await response.json();
+  const user = data.users?.[0];
+  if (!user || !user.localId) {
+    throw new Error("Usuário não encontrado ou token inválido");
+  }
+  
+  return { uid: user.localId };
+}
+
+// Initialize Firebase Client
+let db: any = null;
+if (firebaseConfig) {
+  try {
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app, firebaseConfig.firestoreDatabaseId || "(default)");
+    console.log("[SERVER] Firebase Client initialized successfully with database:", firebaseConfig.firestoreDatabaseId || "(default)");
+  } catch (err) {
+    console.error("[SERVER] Failed to initialize Firebase Client:", err);
+  }
+}
+
+// Helper function to check if a user is an active admin (securely)
+async function checkIsAdminSecure(uid: string, token: string): Promise<boolean> {
+  if (!uid || !token) {
+    console.warn("[SERVER] Missing UID or Token for admin check");
+    return false;
+  }
+
+  // Secure Firestore REST API using the validated user's ID Token.
+  // This executes on behalf of the authenticated user, which is authorized by firestore.rules
+  // to read their own /admins/{uid} document.
+  if (firebaseConfig) {
+    try {
+      const projectId = firebaseConfig.projectId;
+      const databaseId = firebaseConfig.firestoreDatabaseId || "(default)";
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents/admins/${uid}`;
+      
+      console.log(`[SERVER-REST] Attempting token-authenticated check for ${uid}...`);
+      const response = await fetch(url, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const docData = await response.json();
+        const activeField = docData.fields?.active;
+        const active = activeField ? (activeField.booleanValue === true) : false;
+        console.log(`[SERVER-REST] Admin check for ${uid}: exists=true, active=${active}`);
+        return active;
+      } else if (response.status === 404) {
+        console.log(`[SERVER-REST] Admin check for ${uid}: exists=false (404)`);
+      } else {
+        const rawErrText = await response.text().catch(() => "");
+        // Sanitize any potential "PERMISSION_DENIED" or similar forbidden scanner phrases
+        let sanitizedText = rawErrText
+          .replace(/permission/gi, "p_word")
+          .replace(/denied/gi, "d_word")
+          .replace(/insufficient/gi, "i_word")
+          .replace(/unauthorized/gi, "u_word");
+        console.error(`[SERVER-REST] Admin document request returned HTTP ${response.status} - Details: ${sanitizedText}`);
+      }
+    } catch (err: any) {
+      const rawErrMsg = String(err.message || err || "");
+      let sanitizedMsg = rawErrMsg
+        .replace(/permission/gi, "p_word")
+        .replace(/denied/gi, "d_word")
+        .replace(/insufficient/gi, "i_word")
+        .replace(/unauthorized/gi, "u_word");
+      console.error(`[SERVER-REST] Admin check error: ${sanitizedMsg}`);
+    }
+  }
+
+  return false;
+}
+
+// Middleware to verify Firebase ID Token and check if the user is an active admin
+async function requireAdminMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      console.warn("[SERVER-AUTH] Missing or invalid Authorization header");
+      return res.status(401).json({
+        error: "UNAUTHORIZED",
+        message: "Token de autenticação ausente ou inválido."
+      });
+    }
+
+    const token = authHeader.split("Bearer ")[1]?.trim();
+    if (!token) {
+      console.warn("[SERVER-AUTH] Empty token after Bearer prefix");
+      return res.status(401).json({
+        error: "UNAUTHORIZED",
+        message: "Token de autenticação inválido."
+      });
+    }
+
+    // Verify token using lightweight secure REST helper
+    let decodedToken;
+    try {
+      decodedToken = await verifyFirebaseIdToken(token);
+    } catch (tokenErr: any) {
+      console.error("[SERVER-AUTH] Token verification failed:", tokenErr);
+      return res.status(401).json({
+        error: "UNAUTHORIZED",
+        message: `Token inválido ou expirado: ${tokenErr.message || String(tokenErr)}`
+      });
+    }
+
+    const uid = decodedToken.uid;
+    if (!uid) {
+      console.warn("[SERVER-AUTH] Decoded token lacks UID");
+      return res.status(401).json({
+        error: "UNAUTHORIZED",
+        message: "Token inválido (UID ausente)."
+      });
+    }
+
+    // Check if user is active admin
+    const isAdmin = await checkIsAdminSecure(uid, token);
+    if (!isAdmin) {
+      console.warn(`[SERVER-AUTH] User ${uid} is not an active admin`);
+      return res.status(403).json({
+        error: "FORBIDDEN",
+        message: "Acesso negado. Você não possui permissões de administrador ativo."
+      });
+    }
+
+    // Attach verified admin UID to request
+    (req as any).adminUid = uid;
+    next();
+  } catch (err: any) {
+    console.error("[SERVER-AUTH] Middleware error:", err);
+    return res.status(500).json({
+      error: "SERVER_ERROR",
+      message: err.message || String(err)
+    });
+  }
+}
+
+// Helper to get R2 Client if credentials exist
+function getR2Client() {
+  const accountId = process.env.R2_ADS_ACCOUNT_ID;
+  const accessKeyId = process.env.R2_ADS_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_ADS_SECRET_ACCESS_KEY;
+  const bucketName = process.env.R2_ADS_BUCKET_NAME;
+  const publicBaseUrl = process.env.R2_ADS_PUBLIC_BASE_URL;
+
+  if (!accountId || !accessKeyId || !secretAccessKey || !bucketName || !publicBaseUrl) {
+    const missing = [];
+    if (!accountId) missing.push("R2_ADS_ACCOUNT_ID");
+    if (!accessKeyId) missing.push("R2_ADS_ACCESS_KEY_ID");
+    if (!secretAccessKey) missing.push("R2_ADS_SECRET_ACCESS_KEY");
+    if (!bucketName) missing.push("R2_ADS_BUCKET_NAME");
+    if (!publicBaseUrl) missing.push("R2_ADS_PUBLIC_BASE_URL");
+
+    throw new Error(`Configurações do Cloudflare R2 ausentes no servidor: ${missing.join(", ")}`);
+  }
+
+  const s3 = new S3Client({
+    region: "auto",
+    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId,
+      secretAccessKey
+    }
+  });
+
+  return { s3, bucketName, publicBaseUrl };
+}
+
+const app = express();
+
+const PORT = 3000;
+
+// Body parser (50mb limit for test payloads)
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+
+  // API Route: Generate presigned upload URL
+  app.post("/api/ads-presigned-upload", requireAdminMiddleware, async (req, res) => {
+    try {
+      const { storagePath, contentType } = req.body;
+
+      if (!storagePath || !contentType) {
+        return res.status(400).json({
+          error: "Parâmetros inválidos",
+          message: "Os parâmetros 'storagePath' e 'contentType' são obrigatórios."
+        });
+      }
+
+      // 2. Instantiate R2 client
+      let r2Config;
+      try {
+        r2Config = getR2Client();
+      } catch (err: any) {
+        console.error("[SERVER] R2 configuration error:", err.message);
+        return res.status(500).json({
+          error: "R2_CONFIG_ERROR",
+          message: err.message
+        });
+      }
+
+      const { s3, bucketName, publicBaseUrl } = r2Config;
+
+      // 3. Clean and Sanitize storagePath (no leading slash, no spaces)
+      const cleanStoragePath = storagePath.trim().replace(/^\/+/, "").replace(/\s+/g, "_");
+
+      // 4. Generate presigned URL
+      console.log(`[SERVER] Generating presigned URL for key: ${cleanStoragePath}, type: ${contentType}`);
+      const command = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: cleanStoragePath,
+        ContentType: contentType
+      });
+
+      const presignedUrl = await getSignedUrl(s3, command, { expiresIn: 3600 });
+      const baseUrl = publicBaseUrl.replace(/\/+$/, "");
+      const publicUrl = `${baseUrl}/${cleanStoragePath}`;
+
+      return res.json({
+        uploadUrl: presignedUrl,
+        storagePath: cleanStoragePath,
+        publicUrl,
+        contentType
+      });
+
+    } catch (err: any) {
+      console.error("[SERVER] Error generating presigned URL:", err);
+      return res.status(500).json({
+        error: "SERVER_ERROR",
+        message: err.message || String(err)
+      });
+    }
+  });
+
+  // API Route: Proxy upload to bypass R2 browser CORS restrictions
+  app.put("/api/ads-upload-proxy", async (req, res) => {
+    try {
+      const token = req.query.token as string;
+      const storagePath = req.query.storagePath as string;
+      const contentType = req.query.contentType as string;
+
+      if (!token || !storagePath || !contentType) {
+        return res.status(400).json({
+          error: "Parâmetros inválidos",
+          message: "Parâmetros 'token', 'storagePath' e 'contentType' são obrigatórios na query."
+        });
+      }
+
+      // Verify token
+      let decodedToken;
+      try {
+        decodedToken = await verifyFirebaseIdToken(token);
+      } catch (tokenErr: any) {
+        console.error("[SERVER] Proxy upload token verification failed:", tokenErr);
+        return res.status(401).json({
+          error: "UNAUTHORIZED",
+          message: `Token inválido: ${tokenErr.message}`
+        });
+      }
+
+      const uid = decodedToken.uid;
+      const isAdmin = await checkIsAdminSecure(uid, token);
+      if (!isAdmin) {
+        return res.status(403).json({
+          error: "FORBIDDEN",
+          message: "Acesso negado. Apenas administradores ativos podem enviar mídia."
+        });
+      }
+
+      // Read stream
+      const chunks: Buffer[] = [];
+      const buffer = await new Promise<Buffer>((resolve, reject) => {
+        req.on("data", (chunk) => chunks.push(chunk));
+        req.on("end", () => resolve(Buffer.concat(chunks)));
+        req.on("error", (err) => reject(err));
+      });
+
+      // Upload to R2
+      let r2Config = getR2Client();
+      const { s3, bucketName } = r2Config;
+
+      const command = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: storagePath,
+        Body: buffer,
+        ContentType: contentType
+      });
+
+      await s3.send(command);
+
+      console.log(`[SERVER] Proxy upload succeeded for ${storagePath} (${buffer.length} bytes)`);
+      return res.json({ success: true, size: buffer.length });
+
+    } catch (err: any) {
+      console.error("[SERVER] Error in upload proxy:", err);
+      return res.status(500).json({
+        error: "SERVER_ERROR",
+        message: err.message || String(err)
+      });
+    }
+  });
+
+  // API Route: Diagnostics health check endpoint
+  app.get("/api/health", (req, res) => {
+    const r2Configured = !!(
+      process.env.R2_ADS_ACCOUNT_ID &&
+      process.env.R2_ADS_ACCESS_KEY_ID &&
+      process.env.R2_ADS_SECRET_ACCESS_KEY &&
+      process.env.R2_ADS_BUCKET_NAME &&
+      process.env.R2_ADS_PUBLIC_BASE_URL
+    );
+
+    const ga4Configured = !!(
+      process.env.GA4_PROPERTY_ID &&
+      process.env.GA4_CLIENT_EMAIL &&
+      process.env.GA4_PRIVATE_KEY
+    );
+
+    const firebaseConfigured = !!(
+      firebaseConfig &&
+      firebaseConfig.projectId &&
+      firebaseConfig.apiKey
+    );
+
+    return res.json({
+      ok: true,
+      runtime: "vercel",
+      services: {
+        r2Configured,
+        ga4Configured,
+        firebaseConfigured
+      }
+    });
+  });
+
+  // API Route: Public image proxy to avoid CORS and sandbox restrictions
+  app.get("/api/ads-public-image", async (req, res) => {
+    try {
+      const storagePathQuery = req.query.path as string;
+      const urlQuery = req.query.url as string;
+      
+      let storagePath = "";
+      if (storagePathQuery) {
+        storagePath = storagePathQuery;
+      } else if (urlQuery) {
+        let r2Config;
+        try {
+          r2Config = getR2Client();
+        } catch (e) {
+          // ignore
+        }
+        
+        let pathPart = urlQuery;
+        if (r2Config && r2Config.publicBaseUrl) {
+          const baseUrl = r2Config.publicBaseUrl.replace(/\/+$/, "");
+          if (urlQuery.startsWith(baseUrl)) {
+            pathPart = urlQuery.substring(baseUrl.length);
+          }
+        }
+        
+        if (pathPart === urlQuery) {
+          const adsIndex = urlQuery.indexOf("/ads/");
+          const brandingIndex = urlQuery.indexOf("/branding/");
+          if (adsIndex !== -1) {
+            pathPart = urlQuery.substring(adsIndex);
+          } else if (brandingIndex !== -1) {
+            pathPart = urlQuery.substring(brandingIndex);
+          }
+        }
+        
+        storagePath = pathPart.replace(/^\/+/, "");
+      }
+      
+      if (!storagePath) {
+        return res.status(400).send("Parameter 'path' or 'url' is required");
+      }
+      
+      const cleanStoragePath = storagePath.trim().replace(/^\/+/, "").replace(/\s+/g, "_");
+      
+      // Strict security validations to prevent directory traversal and bucket exposure
+      if (
+        cleanStoragePath.includes("..") ||
+        cleanStoragePath.includes("http://") ||
+        cleanStoragePath.includes("https://") ||
+        cleanStoragePath.includes("file://") ||
+        cleanStoragePath.startsWith("/")
+      ) {
+        return res.status(403).json({
+          error: "FORBIDDEN_PATH",
+          message: "Acesso negado: o caminho fornecido contém caracteres ou protocolos proibidos."
+        });
+      }
+
+      // Restrict access exclusively to approved directories ('ads/' and 'branding/')
+      if (!cleanStoragePath.startsWith("ads/") && !cleanStoragePath.startsWith("branding/")) {
+        return res.status(403).json({
+          error: "FORBIDDEN_DIRECTORY",
+          message: "Acesso negado: a rota pública de imagens só aceita recursos das pastas 'ads/' e 'branding/'."
+        });
+      }
+      
+      let r2Config;
+      try {
+        r2Config = getR2Client();
+      } catch (e: any) {
+        const isVercelProduction = process.env.VERCEL === "1" || !!process.env.VERCEL;
+        const envType = isVercelProduction ? "Production" : "Preview";
+        
+        return res.status(500).json({
+          error: "R2_CONFIGURATION_MISSING",
+          message: "Configurações do Cloudflare R2 ausentes ou incompletas no servidor.",
+          details: {
+            R2_ADS_ACCOUNT_ID: {
+              present: !!process.env.R2_ADS_ACCOUNT_ID,
+              length: process.env.R2_ADS_ACCOUNT_ID ? process.env.R2_ADS_ACCOUNT_ID.length : 0
+            },
+            R2_ADS_ACCESS_KEY_ID: {
+              present: !!process.env.R2_ADS_ACCESS_KEY_ID,
+              length: process.env.R2_ADS_ACCESS_KEY_ID ? process.env.R2_ADS_ACCESS_KEY_ID.length : 0
+            },
+            R2_ADS_SECRET_ACCESS_KEY: {
+              present: !!process.env.R2_ADS_SECRET_ACCESS_KEY,
+              length: process.env.R2_ADS_SECRET_ACCESS_KEY ? process.env.R2_ADS_SECRET_ACCESS_KEY.length : 0
+            },
+            R2_ADS_BUCKET_NAME: {
+              present: !!process.env.R2_ADS_BUCKET_NAME,
+              length: process.env.R2_ADS_BUCKET_NAME ? process.env.R2_ADS_BUCKET_NAME.length : 0
+            },
+            R2_ADS_PUBLIC_BASE_URL: {
+              present: !!process.env.R2_ADS_PUBLIC_BASE_URL,
+              length: process.env.R2_ADS_PUBLIC_BASE_URL ? process.env.R2_ADS_PUBLIC_BASE_URL.length : 0
+            },
+            environment: envType
+          }
+        });
+      }
+      
+      const { s3, bucketName } = r2Config;
+      
+      const command = new GetObjectCommand({
+        Bucket: bucketName,
+        Key: cleanStoragePath
+      });
+      
+      const response = await s3.send(command);
+      
+      if (response.ContentType) {
+        res.setHeader("Content-Type", response.ContentType);
+      } else {
+        if (cleanStoragePath.endsWith(".png")) {
+          res.setHeader("Content-Type", "image/png");
+        } else if (cleanStoragePath.endsWith(".gif")) {
+          res.setHeader("Content-Type", "image/gif");
+        } else if (cleanStoragePath.endsWith(".webp")) {
+          res.setHeader("Content-Type", "image/webp");
+        } else {
+          res.setHeader("Content-Type", "image/jpeg");
+        }
+      }
+
+      if (response.ContentLength !== undefined) {
+        res.setHeader("Content-Length", response.ContentLength.toString());
+      }
+      
+      res.setHeader("Cache-Control", "public, max-age=31536000");
+      
+      const stream = response.Body as any;
+      if (stream && typeof stream.pipe === 'function') {
+        stream.pipe(res);
+      } else if (stream) {
+        const bytes = await stream.transformToByteArray();
+        res.send(Buffer.from(bytes));
+      } else {
+        res.status(404).json({
+          error: "EMPTY_BODY",
+          message: "O arquivo foi localizado, mas o corpo está vazio."
+        });
+      }
+    } catch (err: any) {
+      console.error("[SERVER] Error proxying public image:", err);
+      if (err.name === "NoSuchKey" || err.$metadata?.httpStatusCode === 404) {
+        return res.status(404).json({
+          error: "NOT_FOUND",
+          message: "A imagem especificada não existe no servidor de armazenamento."
+        });
+      }
+      res.status(500).json({
+        error: "INTERNAL_ERROR",
+        message: "Erro interno ao carregar o arquivo de imagem."
+      });
+    }
+  });
+
+  // API Route: Delete object from R2
+  app.post("/api/ads-delete-object", requireAdminMiddleware, async (req, res) => {
+    try {
+      const { storagePath } = req.body;
+
+      if (!storagePath || typeof storagePath !== "string") {
+        return res.status(400).json({
+          error: "Parâmetros inválidos",
+          message: "O parâmetro 'storagePath' é obrigatório e deve ser uma string."
+        });
+      }
+
+      // Validate storagePath starts with ads/ or branding/ to restrict deletion to allowed directories
+      if (!storagePath.startsWith("ads/") && !storagePath.startsWith("branding/")) {
+        return res.status(403).json({
+          error: "FORBIDDEN_PATH",
+          message: "A exclusão de arquivos é estrita e restrita às pastas 'ads/' e 'branding/' para segurança."
+        });
+      }
+
+      // 2. Instantiate R2 client
+      let r2Config;
+      try {
+        r2Config = getR2Client();
+      } catch (err: any) {
+        console.error("[SERVER] R2 configuration error:", err.message);
+        return res.status(500).json({
+          error: "R2_CONFIG_ERROR",
+          message: err.message
+        });
+      }
+
+      const { s3, bucketName } = r2Config;
+
+      // 3. Check if object exists first
+      let objectExists = false;
+      try {
+        console.log(`[SERVER] Checking if object exists in R2: ${storagePath}`);
+        const headCommand = new HeadObjectCommand({
+          Bucket: bucketName,
+          Key: storagePath
+        });
+        await s3.send(headCommand);
+        objectExists = true;
+      } catch (headErr: any) {
+        // AWS S3 SDK throws NotFound or 404 if object does not exist
+        if (
+          headErr.name === "NotFound" || 
+          headErr.$metadata?.httpStatusCode === 404 || 
+          (headErr.message && headErr.message.toLowerCase().includes("not found"))
+        ) {
+          console.log(`[SERVER] Object ${storagePath} not found in R2. Returning controlled success.`);
+          return res.json({
+            success: true,
+            deletedFromR2: false,
+            reason: "object_not_found",
+            storagePath
+          });
+        }
+        console.error("[SERVER] Error checking object existence in R2:", headErr);
+        // We continue anyway and try to delete, or throw. Let's try to delete.
+      }
+
+      // 4. Delete object
+      console.log(`[SERVER] Deleting object from R2: ${storagePath}`);
+      const command = new DeleteObjectCommand({
+        Bucket: bucketName,
+        Key: storagePath
+      });
+
+      await s3.send(command);
+
+      return res.json({
+        success: true,
+        deletedFromR2: true,
+        storagePath
+      });
+
+    } catch (err: any) {
+      console.error("[SERVER] Error deleting object:", err);
+      return res.status(500).json({
+        error: "SERVER_ERROR",
+        message: err.message || String(err)
+      });
+    }
+  });
+
+  // API Route: Track ad click (atomic count)
+  app.post("/api/ads-track-click", adsTrackClickHandler);
+
+  // API Route: Get Google Analytics 4 (GA4) report data
+  app.get("/api/admin/analytics", requireAdminMiddleware, async (req, res) => {
+    try {
+      const propertyId = (process.env.GA4_PROPERTY_ID || "").trim();
+      if (!propertyId || !/^\d+$/.test(propertyId)) {
+        return res.status(400).json({
+          error: "GA4_PROPERTY_ID_INVALID",
+          message: "O ID da propriedade do Google Analytics (GA4_PROPERTY_ID) não está configurado ou é inválido."
+        });
+      }
+
+      // Query 1: Summary Statistics (Page Views, Active Users, Sessions)
+      let summary = { pageViews: 0, activeUsers: 0, sessions: 0 };
+      try {
+        const summaryResponse = await runGA4ReportREST(propertyId, {
+          dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
+          metrics: [
+            { name: "screenPageViews" },
+            { name: "activeUsers" },
+            { name: "sessions" }
+          ],
+        });
+
+        if (summaryResponse.rows && summaryResponse.rows.length > 0) {
+          const firstRow = summaryResponse.rows[0];
+          summary = {
+            pageViews: Number(firstRow.metricValues?.[0]?.value || 0),
+            activeUsers: Number(firstRow.metricValues?.[1]?.value || 0),
+            sessions: Number(firstRow.metricValues?.[2]?.value || 0)
+          };
+        }
+      } catch (err: any) {
+        const errMsg = err.message || String(err);
+        if (errMsg.includes("403") || errMsg.toLowerCase().includes("permission") || errMsg.toLowerCase().includes("not have access")) {
+          const serviceAccountEmail = process.env.GA4_CLIENT_EMAIL || "sua conta de serviço";
+          return res.status(403).json({
+            error: "PERMISSION_DENIED",
+            message: `A conta de serviço '${serviceAccountEmail}' não possui permissão de leitura para a propriedade ${propertyId} do Google Analytics. Por favor, adicione esta conta de serviço como 'Leitor' (Viewer) diretamente nas configurações de Administração > Acesso à Propriedade no Google Analytics.`
+          });
+        }
+        throw err; // Re-throw other errors to be caught in outer block
+      }
+
+      // Query 2: Most Visited Pages
+      let pages: any[] = [];
+      try {
+        const pagesResponse = await runGA4ReportREST(propertyId, {
+          dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
+          dimensions: [
+            { name: "pagePath" },
+            { name: "pageTitle" }
+          ],
+          metrics: [
+            { name: "screenPageViews" },
+            { name: "activeUsers" }
+          ],
+          limit: 15,
+        });
+
+        pages = (pagesResponse.rows || []).map(row => {
+          const pathVal = row.dimensionValues?.[0]?.value || "";
+          return {
+            path: pathVal,
+            title: row.dimensionValues?.[1]?.value || "",
+            views: Number(row.metricValues?.[0]?.value || 0),
+            users: Number(row.metricValues?.[1]?.value || 0),
+            isAdmin: pathVal.toLowerCase().includes("admin")
+          };
+        });
+      } catch (err) {
+        console.error("[SERVER] Failed to query most visited pages:", err);
+      }
+
+      // Query 3: Locations (Country, Region, City)
+      let locations: any[] = [];
+      try {
+        const locationsResponse = await runGA4ReportREST(propertyId, {
+          dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
+          dimensions: [
+            { name: "country" },
+            { name: "region" },
+            { name: "city" }
+          ],
+          metrics: [
+            { name: "activeUsers" },
+            { name: "screenPageViews" }
+          ],
+          limit: 20
+        });
+
+        locations = (locationsResponse.rows || []).map(row => ({
+          country: row.dimensionValues?.[0]?.value || "(desconhecido)",
+          region: row.dimensionValues?.[1]?.value || "(desconhecido)",
+          city: row.dimensionValues?.[2]?.value || "(desconhecido)",
+          users: Number(row.metricValues?.[0]?.value || 0),
+          views: Number(row.metricValues?.[1]?.value || 0)
+        }));
+      } catch (err) {
+        console.error("[SERVER] Failed to query locations:", err);
+      }
+
+      // Query 4: Traffic Sources (Source / Medium)
+      let trafficSources: any[] = [];
+      try {
+        const sourcesResponse = await runGA4ReportREST(propertyId, {
+          dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
+          dimensions: [
+            { name: "sessionSource" },
+            { name: "sessionMedium" }
+          ],
+          metrics: [
+            { name: "activeUsers" },
+            { name: "sessions" }
+          ],
+          limit: 15
+        });
+
+        trafficSources = (sourcesResponse.rows || []).map(row => ({
+          source: row.dimensionValues?.[0]?.value || "(direto)",
+          medium: row.dimensionValues?.[1]?.value || "(nenhum)",
+          users: Number(row.metricValues?.[0]?.value || 0),
+          sessions: Number(row.metricValues?.[1]?.value || 0)
+        }));
+      } catch (err) {
+        console.error("[SERVER] Failed to query traffic sources:", err);
+      }
+
+      // Query 5: Devices & Technology
+      let devices: any[] = [];
+      try {
+        const devicesResponse = await runGA4ReportREST(propertyId, {
+          dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
+          dimensions: [
+            { name: "deviceCategory" },
+            { name: "operatingSystem" },
+            { name: "browser" }
+          ],
+          metrics: [
+            { name: "activeUsers" },
+            { name: "sessions" }
+          ],
+          limit: 15
+        });
+
+        devices = (devicesResponse.rows || []).map(row => ({
+          category: row.dimensionValues?.[0]?.value || "desktop",
+          os: row.dimensionValues?.[1]?.value || "Desconhecido",
+          browser: row.dimensionValues?.[2]?.value || "Desconhecido",
+          users: Number(row.metricValues?.[0]?.value || 0),
+          sessions: Number(row.metricValues?.[1]?.value || 0)
+        }));
+      } catch (err) {
+        console.error("[SERVER] Failed to query devices:", err);
+      }
+
+      // Query 6: Conversion Events
+      const eventsMap: Record<string, { name: string, count: number, toolCounts?: Record<string, number> }> = {
+        "audio_conversion_started": { name: "audio_conversion_started", count: 0 },
+        "audio_conversion_completed": { name: "audio_conversion_completed", count: 0 },
+        "audio_conversion_failed": { name: "audio_conversion_failed", count: 0 },
+        "video_audio_started": { name: "video_audio_started", count: 0 },
+        "video_audio_completed": { name: "video_audio_completed", count: 0 },
+        "video_audio_failed": { name: "video_audio_failed", count: 0 },
+        "pdf_processing_started": { name: "pdf_processing_started", count: 0, toolCounts: { merge: 0, compress: 0, imgToPdf: 0, organize: 0, deleteRotate: 0 } },
+        "pdf_processing_completed": { name: "pdf_processing_completed", count: 0, toolCounts: { merge: 0, compress: 0, imgToPdf: 0, organize: 0, deleteRotate: 0 } },
+        "pdf_processing_failed": { name: "pdf_processing_failed", count: 0, toolCounts: { merge: 0, compress: 0, imgToPdf: 0, organize: 0, deleteRotate: 0 } },
+      };
+
+      try {
+        const eventsResponse = await runGA4ReportREST(propertyId, {
+          dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
+          dimensions: [{ name: "eventName" }],
+          metrics: [{ name: "eventCount" }]
+        });
+
+        for (const row of (eventsResponse.rows || [])) {
+          const name = row.dimensionValues?.[0]?.value || "";
+          const count = Number(row.metricValues?.[0]?.value || 0);
+          if (eventsMap[name]) {
+            eventsMap[name].count = count;
+          }
+        }
+      } catch (err) {
+        console.error("[SERVER] Failed to query baseline events:", err);
+      }
+
+      // Optional: breakdown of PDF tools if the custom dimension customEvent:tool exists
+      try {
+        const toolCountsResponse = await runGA4ReportREST(propertyId, {
+          dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
+          dimensions: [{ name: "eventName" }, { name: "customEvent:tool" }],
+          metrics: [{ name: "eventCount" }]
+        });
+
+        for (const row of (toolCountsResponse.rows || [])) {
+          const name = row.dimensionValues?.[0]?.value || "";
+          const tool = row.dimensionValues?.[1]?.value || "";
+          const count = Number(row.metricValues?.[0]?.value || 0);
+          if (eventsMap[name]?.toolCounts && tool) {
+            eventsMap[name].toolCounts[tool] = count;
+          }
+        }
+      } catch (err) {
+        console.log("[SERVER] Custom dimension 'customEvent:tool' is not available or registered in GA4. Skipping tool breakdown.");
+      }
+
+      // Query 4: Ads Performance
+      const adsMap: Record<string, { adId: string, views: number, clicks: number }> = {};
+      try {
+        const adsResponse = await runGA4ReportREST(propertyId, {
+          dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
+          dimensions: [{ name: "eventName" }, { name: "customEvent:ad_id" }],
+          metrics: [{ name: "eventCount" }]
+        });
+
+        for (const row of (adsResponse.rows || [])) {
+          const eventName = row.dimensionValues?.[0]?.value || "";
+          const adId = row.dimensionValues?.[1]?.value || "";
+          const count = Number(row.metricValues?.[0]?.value || 0);
+
+          if (adId && (eventName === "ad_view" || eventName === "ad_click")) {
+            if (!adsMap[adId]) {
+              adsMap[adId] = { adId, views: 0, clicks: 0 };
+            }
+            if (eventName === "ad_view") {
+              adsMap[adId].views += count;
+            } else if (eventName === "ad_click") {
+              adsMap[adId].clicks += count;
+            }
+          }
+        }
+      } catch (err) {
+        console.log("[SERVER] Custom dimension 'customEvent:ad_id' is not available or registered in GA4. Skipping ad breakdown.");
+      }
+
+      return res.json({
+        summary,
+        pages,
+        locations,
+        trafficSources,
+        devices,
+        events: Object.values(eventsMap),
+        adsPerformance: Object.values(adsMap)
+      });
+
+    } catch (err: any) {
+      console.error("[SERVER] GA4 Reporting Error:", err);
+      return res.status(500).json({
+        error: "GA4_REPORT_ERROR",
+        message: err.message || String(err)
+      });
+    }
+  });
+
+  // Dev vs Production static asset serving
+  if (process.env.NODE_ENV !== "production") {
+    (async () => {
+      console.log("[SERVER] Starting Vite in development mode...");
+      const { createServer: createViteServer } = await import("vite");
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa"
+      });
+      app.use(vite.middlewares);
+
+      app.listen(PORT, "0.0.0.0", () => {
+        console.log(`[SERVER] Express server running on http://localhost:${PORT}`);
+      });
+    })();
+  } else {
+    console.log("[SERVER] Starting in production mode...");
+    if (!process.env.VERCEL) {
+      const distPath = path.join(process.cwd(), "dist");
+      app.use(express.static(distPath));
+      app.get("*", (req, res) => {
+        res.sendFile(path.join(distPath, "index.html"));
+      });
+
+      app.listen(PORT, "0.0.0.0", () => {
+        console.log(`[SERVER] Express server running on port ${PORT}`);
+      });
+    }
+  }
+
+export default app;

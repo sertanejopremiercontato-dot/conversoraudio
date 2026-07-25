@@ -1,0 +1,6 @@
+{
+  "name": "MultiConverte",
+  "description": "MultiConverte: Ferramentas profissionais de conversão de áudio, vídeo, imagem e PDF de forma 100% segura e privada diretamente no seu navegador.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
