@@ -1804,41 +1804,6 @@ export default function PdfTools({ activeTool: propActiveTool, setActiveTool: pr
               </div>
             </div>
 
-            {/* Card 4: Excel para PDF */}
-            <div 
-              className="bg-[#1B2732] border border-[#2D3B47] rounded-[24px] p-6 hover:border-[#22C96B] hover:shadow-lg transition-all duration-300 group flex flex-col justify-between h-full cursor-pointer relative overflow-hidden"
-              onClick={() => {
-                if (onNavigate) {
-                  onNavigate("/documento/excel-para-pdf");
-                } else {
-                  window.history.pushState({}, "", "/documento/excel-para-pdf");
-                  window.dispatchEvent(new Event("popstate"));
-                }
-              }}
-            >
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="p-3 bg-[#202D38] text-[#22C96B] rounded-2xl border border-[#2D3B47] inline-block group-hover:scale-105 transition-all duration-300 shadow-sm">
-                    <FileSpreadsheet className="h-6 w-6" />
-                  </div>
-                  <span className="px-2 py-0.5 bg-[#173A2A] text-[#42E58A] border border-[#22C96B]/30 text-[9px] font-bold rounded-full uppercase tracking-wider">
-                    Novo
-                  </span>
-                </div>
-                <div>
-                  <h3 className="font-display font-extrabold text-base text-[#F5F7F8] group-hover:text-[#22C96B] transition-colors flex items-center gap-2">
-                    Excel para PDF
-                  </h3>
-                  <p className="text-xs text-[#AEB8C1] mt-2 leading-relaxed font-semibold">
-                    Converta arquivos XLSX e XLS em PDF com formatação de células, suporte a múltiplas planilhas e ajuste de impressão.
-                  </p>
-                </div>
-              </div>
-              <div className="pt-6 border-t border-[#2D3B47] mt-4 flex justify-end text-xs font-bold text-[#22C96B] group-hover:translate-x-1 transition-transform">
-                <span>Excel para PDF &rarr;</span>
-              </div>
-            </div>
-
             {/* Privacy Promise Info Box */}
             <div className="bg-[#1B2732] border border-[#2D3B47] rounded-[24px] p-6 flex flex-col justify-between h-full relative overflow-hidden shadow-md">
               <div className="absolute -right-12 -bottom-12 w-32 h-32 bg-[#22C96B]/10 rounded-full blur-xl pointer-events-none" />

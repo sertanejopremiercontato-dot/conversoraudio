@@ -2,50 +2,122 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://multiconverte.com.br/</loc>
-    <lastmod>2026-07-25</lastmod>
+    <lastmod>2026-07-27</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://multiconverte.com.br/converter-audio</loc>
-    <lastmod>2026-07-25</lastmod>
+    <loc>https://multiconverte.com.br/audio</loc>
+    <lastmod>2026-07-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://multiconverte.com.br/ferramentas-pdf</loc>
-    <lastmod>2026-07-25</lastmod>
+    <loc>https://multiconverte.com.br/video-para-audio</loc>
+    <lastmod>2026-07-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://multiconverte.com.br/pdf</loc>
+    <lastmod>2026-07-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://multiconverte.com.br/comprimir-pdf</loc>
-    <lastmod>2026-07-25</lastmod>
+    <loc>https://multiconverte.com.br/pdf/juntar-pdf</loc>
+    <lastmod>2026-07-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://multiconverte.com.br/juntar-pdf</loc>
-    <lastmod>2026-07-25</lastmod>
+    <loc>https://multiconverte.com.br/pdf/comprimir-pdf</loc>
+    <lastmod>2026-07-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://multiconverte.com.br/imagens-para-pdf</loc>
-    <lastmod>2026-07-25</lastmod>
+    <loc>https://multiconverte.com.br/pdf/organizar-pdf</loc>
+    <lastmod>2026-07-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://multiconverte.com.br/organizar-pdf</loc>
-    <lastmod>2026-07-25</lastmod>
+    <loc>https://multiconverte.com.br/pdf/girar-pdf</loc>
+    <lastmod>2026-07-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://multiconverte.com.br/pdf/excluir-paginas</loc>
+    <lastmod>2026-07-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://multiconverte.com.br/pdf/imagens-para-pdf</loc>
+    <lastmod>2026-07-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://multiconverte.com.br/pdf/pdf-para-imagens</loc>
+    <lastmod>2026-07-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://multiconverte.com.br/pdf/extrair-texto</loc>
-    <lastmod>2026-07-25</lastmod>
+    <lastmod>2026-07-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://multiconverte.com.br/imagem/converter</loc>
+    <lastmod>2026-07-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://multiconverte.com.br/imagem/comprimir</loc>
+    <lastmod>2026-07-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://multiconverte.com.br/imagem/redimensionar</loc>
+    <lastmod>2026-07-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://multiconverte.com.br/imagem/cortar</loc>
+    <lastmod>2026-07-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://multiconverte.com.br/imagem/girar-espelhar</loc>
+    <lastmod>2026-07-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://multiconverte.com.br/imagem/marca-dagua</loc>
+    <lastmod>2026-07-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://multiconverte.com.br/documento</loc>
+    <lastmod>2026-07-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://multiconverte.com.br/como-funciona</loc>
+    <lastmod>2026-07-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
 </urlset>

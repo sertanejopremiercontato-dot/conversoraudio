@@ -9,7 +9,7 @@ declare global {
   }
 }
 
-export const GA_MEASUREMENT_ID = (import.meta as any).env.VITE_GA_MEASUREMENT_ID || "";
+export const GA_MEASUREMENT_ID = (import.meta as any).env.VITE_GA4_MEASUREMENT_ID || (import.meta as any).env.VITE_GA_MEASUREMENT_ID || "";
 
 /**
  * Dynamically loads the GA4 script tag and initializes gtag.
@@ -17,7 +17,7 @@ export const GA_MEASUREMENT_ID = (import.meta as any).env.VITE_GA_MEASUREMENT_ID
  */
 export function initGA() {
   if (!GA_MEASUREMENT_ID) {
-    console.log("[GA4] VITE_GA_MEASUREMENT_ID not configured. GA4 tracking is disabled.");
+    console.log("[GA4] VITE_GA4_MEASUREMENT_ID not configured. GA4 tracking is disabled.");
     return;
   }
 
@@ -40,7 +40,7 @@ export function initGA() {
     };
 
     // 3. Set up default consent settings (denied by default, unless already stored as granted)
-    const savedConsent = localStorage.getItem("multiconverte_ga_consent") || localStorage.getItem("multiconvert_ga_consent") || localStorage.getItem("convertauto_ga_consent") || localStorage.getItem("somdrive_ga_consent");
+    const savedConsent = localStorage.getItem("multiconverte_ga_consent") || localStorage.getItem("multiconvert_ga_consent");
     const defaultConsent = savedConsent === "granted" ? "granted" : "denied";
 
     window.gtag("consent", "default", {

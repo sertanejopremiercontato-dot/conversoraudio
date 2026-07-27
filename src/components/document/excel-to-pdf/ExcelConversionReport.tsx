@@ -55,8 +55,31 @@ export default function ExcelConversionReport({ report }: ExcelConversionReportP
           </span>
           <p className="text-slate-200 font-semibold">
             {report.generatedPagesCount} {report.generatedPagesCount === 1 ? "página" : "páginas"}
+            {report.processingTimeMs ? ` (${(report.processingTimeMs / 1000).toFixed(2)}s)` : ""}
           </p>
         </div>
+
+        {(report.imagesDetectedCount !== undefined && report.imagesDetectedCount > 0) && (
+          <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800/80 space-y-1">
+            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
+              Imagens Embutidas
+            </span>
+            <p className="text-slate-200 font-semibold">
+              {report.imagesInsertedCount || 0} de {report.imagesDetectedCount} inseridas no PDF
+            </p>
+          </div>
+        )}
+
+        {(report.chartsDetectedCount !== undefined && report.chartsDetectedCount > 0) && (
+          <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800/80 space-y-1">
+            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
+              Gráficos Detectados
+            </span>
+            <p className="text-amber-400 font-semibold">
+              {report.chartsDetectedCount} gráfico(s) (aviso exibido)
+            </p>
+          </div>
+        )}
       </div>
 
       {report.skippedSheets.length > 0 && (

@@ -1,0 +1,16 @@
+PACOTE DE IDENTIDADE VISUAL — MULTICONVERTE
+
+Arquivos:
+- logo-multiconverte.png — logo transparente para o topo do site (2000x600)
+- multiconverte-logo-dark.png — logo sobre fundo escuro (2000x600)
+- multiconverte-logo-light.png — logo sobre fundo claro (2000x600)
+- multiconverte-symbol.png — símbolo transparente (1024x1024)
+- multiconverte-icon.png — ícone principal arredondado (1024x1024)
+- multiconverte-icon-rounded.png — ícone arredondado alternativo (1024x1024)
+- favicon.ico — navegador
+- favicon-16x16.png
+- favicon-32x32.png
+- apple-touch-icon.png — 180x180
+- android-chrome-192x192.png
+- android-chrome-512x512.png
+- multiconverte-og-image.png — compartilhamento social (1200x630)

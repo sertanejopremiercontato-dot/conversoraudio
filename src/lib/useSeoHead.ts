@@ -7,29 +7,28 @@ import firebaseConfig from "../../firebase-applet-config.json";
 // Default seed SEO configuration
 export const DEFAULT_SEO_CONFIG: SeoConfig = {
   siteName: "MultiConverte",
-  defaultTitle: "MultiConverte - Ferramentas de Áudio, Vídeo, Imagem e PDF Online Grátis",
-  defaultDescription: "Converta arquivos de áudio para MP3, WAV, AAC, OGG e FLAC, otimize imagens e gerencie documentos PDF com ferramentas gratuitas online: juntar, comprimir, imagem para PDF e organizar páginas.",
+  defaultTitle: "MultiConverte — Conversor de Áudio, PDF e Imagens Online",
+  defaultDescription: "Converta áudios, organize PDFs e edite imagens online com ferramentas simples, rápidas e seguras no MultiConverte.",
   canonicalUrl: "https://multiconverte.com.br",
   language: "pt-BR",
   author: "MultiConverte",
   theme: "#10b981",
 
   keywords: [
+    "multiconverte",
     "conversor de audio",
     "converter mp3",
     "juntar pdf",
     "comprimir pdf",
     "imagem para pdf",
-    "multiconverte",
-    "converter audio online",
-    "ferramentas de pdf gratis",
-    "conversor de mp3 para wav",
-    "organizar paginas de pdf"
+    "conversor de imagem",
+    "redimensionar imagem",
+    "extrair texto de pdf"
   ],
 
   openGraph: {
-    title: "MultiConverte - Ferramentas de Áudio, Vídeo, Imagem e PDF Grátis",
-    description: "Converta áudios em alta qualidade, otimize imagens e gerencie PDFs com total privacidade e velocidade. 100% gratuito e direto no seu navegador.",
+    title: "MultiConverte — Conversor de Áudio, PDF e Imagens Online",
+    description: "Converta áudios, organize PDFs e edite imagens online com ferramentas simples, rápidas e seguras no MultiConverte.",
     image: "https://multiconverte.com.br/multiconverte-og-image.png",
     url: "https://multiconverte.com.br",
     type: "website",
@@ -39,8 +38,8 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
 
   twitter: {
     card: "summary_large_image",
-    title: "MultiConverte - Ferramentas de Áudio, Vídeo, Imagem e PDF Grátis",
-    description: "Converta áudios em alta qualidade, otimize imagens e gerencie PDFs com total privacidade e velocidade. 100% gratuito e direto no seu navegador.",
+    title: "MultiConverte — Conversor de Áudio, PDF e Imagens Online",
+    description: "Converta áudios, organize PDFs e edite imagens online com ferramentas simples, rápidas e seguras no MultiConverte.",
     image: "https://multiconverte.com.br/multiconverte-og-image.png"
   },
 
@@ -87,6 +86,94 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       description: "Edite seus arquivos PDF gratuitamente: junte múltiplos PDFs, reduza o tamanho mantendo a qualidade, converta imagens JPG/PNG para PDF e reordene páginas.",
       keywords: ["juntar pdf", "comprimir pdf", "imagem para pdf", "organizar pdf"],
       canonicalUrl: "https://multiconverte.com.br/pdf",
+      allowIndexing: true,
+      allowFollow: true
+    },
+    merge: {
+      title: "Juntar PDF Online Grátis — Combine Múltiplos PDFs | MultiConverte",
+      description: "Combine múltiplos arquivos PDF em um único documento de forma rápida, gratuita e segura. Organize a ordem das páginas e baixe instantaneamente.",
+      keywords: ["juntar pdf", "combinar pdf", "mesclar pdf", "unir pdf", "juntar arquivos pdf"],
+      canonicalUrl: "https://multiconverte.com.br/pdf/juntar-pdf",
+      allowIndexing: true,
+      allowFollow: true
+    },
+    pdf_merge: {
+      title: "Juntar PDF Online Grátis — Combine Múltiplos PDFs | MultiConverte",
+      description: "Combine múltiplos arquivos PDF em um único documento de forma rápida, gratuita e segura. Organize a ordem das páginas e baixe instantaneamente.",
+      keywords: ["juntar pdf", "combinar pdf", "mesclar pdf", "unir pdf", "juntar arquivos pdf"],
+      canonicalUrl: "https://multiconverte.com.br/pdf/juntar-pdf",
+      allowIndexing: true,
+      allowFollow: true
+    },
+    compress: {
+      title: "Comprimir PDF Online Grátis — Reduzir Tamanho | MultiConverte",
+      description: "Reduza o tamanho dos seus arquivos PDF mantendo a melhor qualidade visual. Processamento rápido, ilimitado e direto no seu navegador.",
+      keywords: ["comprimir pdf", "reduzir tamanho pdf", "diminuir pdf", "otimizar pdf", "compactar pdf"],
+      canonicalUrl: "https://multiconverte.com.br/pdf/comprimir-pdf",
+      allowIndexing: true,
+      allowFollow: true
+    },
+    pdf_compress: {
+      title: "Comprimir PDF Online Grátis — Reduzir Tamanho | MultiConverte",
+      description: "Reduza o tamanho dos seus arquivos PDF mantendo a melhor qualidade visual. Processamento rápido, ilimitado e direto no seu navegador.",
+      keywords: ["comprimir pdf", "reduzir tamanho pdf", "diminuir pdf", "otimizar pdf", "compactar pdf"],
+      canonicalUrl: "https://multiconverte.com.br/pdf/comprimir-pdf",
+      allowIndexing: true,
+      allowFollow: true
+    },
+    organize: {
+      title: "Organizar Páginas de PDF Online Grátis | MultiConverte",
+      description: "Reordene, mova e reorganize as páginas do seu documento PDF com facilidade. Interface simples, rápida e 100% segura.",
+      keywords: ["organizar pdf", "reordenar paginas pdf", "mudar ordem paginas pdf", "organizador de pdf"],
+      canonicalUrl: "https://multiconverte.com.br/pdf/organizar-pdf",
+      allowIndexing: true,
+      allowFollow: true
+    },
+    pdf_organize: {
+      title: "Organizar Páginas de PDF Online Grátis | MultiConverte",
+      description: "Reordene, mova e reorganize as páginas do seu documento PDF com facilidade. Interface simples, rápida e 100% segura.",
+      keywords: ["organizar pdf", "reordenar paginas pdf", "mudar ordem paginas pdf", "organizador de pdf"],
+      canonicalUrl: "https://multiconverte.com.br/pdf/organizar-pdf",
+      allowIndexing: true,
+      allowFollow: true
+    },
+    girar: {
+      title: "Girar Páginas de PDF Online Grátis | MultiConverte",
+      description: "Gire a orientação de páginas específicas ou de todo o arquivo PDF para a esquerda ou direita sem perdas de qualidade.",
+      keywords: ["girar pdf", "rotacionar pdf", "virar pagina pdf", "girar pdf online"],
+      canonicalUrl: "https://multiconverte.com.br/pdf/girar-pdf",
+      allowIndexing: true,
+      allowFollow: true
+    },
+    pdf_girar: {
+      title: "Girar Páginas de PDF Online Grátis | MultiConverte",
+      description: "Gire a orientação de páginas específicas ou de todo o arquivo PDF para a esquerda ou direita sem perdas de qualidade.",
+      keywords: ["girar pdf", "rotacionar pdf", "virar pagina pdf", "girar pdf online"],
+      canonicalUrl: "https://multiconverte.com.br/pdf/girar-pdf",
+      allowIndexing: true,
+      allowFollow: true
+    },
+    excluir: {
+      title: "Excluir Páginas de PDF Online Grátis | MultiConverte",
+      description: "Remova páginas indesejadas do seu arquivo PDF em poucos cliques e baixe um novo documento limpo e otimizado.",
+      keywords: ["excluir paginas pdf", "remover pagina pdf", "deletar pagina pdf", "apagar pagina pdf"],
+      canonicalUrl: "https://multiconverte.com.br/pdf/excluir-paginas",
+      allowIndexing: true,
+      allowFollow: true
+    },
+    pdf_excluir: {
+      title: "Excluir Páginas de PDF Online Grátis | MultiConverte",
+      description: "Remova páginas indesejadas do seu arquivo PDF em poucos cliques e baixe um novo documento limpo e otimizado.",
+      keywords: ["excluir paginas pdf", "remover pagina pdf", "deletar pagina pdf", "apagar pagina pdf"],
+      canonicalUrl: "https://multiconverte.com.br/pdf/excluir-paginas",
+      allowIndexing: true,
+      allowFollow: true
+    },
+    imgToPdf: {
+      title: "Imagens para PDF Grátis: JPG, PNG e WEBP | MultiConverte",
+      description: "Transforme imagens JPG, PNG e WEBP em um único arquivo PDF, organize a ordem das páginas e baixe gratuitamente.",
+      keywords: ["imagens para PDF", "JPG para PDF", "PNG para PDF", "WEBP para PDF", "converter imagem em PDF"],
+      canonicalUrl: "https://multiconverte.com.br/pdf/imagens-para-pdf",
       allowIndexing: true,
       allowFollow: true
     },
@@ -335,16 +422,24 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
         "XLSX em PDF",
         "converter XLS para PDF",
         "planilha para PDF",
-        "converter Excel em PDF grátis",
-        "Excel para PDF sem desfigurar",
-        "planilha Excel para PDF online",
-        "converter CSV para PDF",
-        "salvar Excel como PDF",
-        "converter tabela para PDF"
+        "converter Excel em PDF grátis"
       ],
       canonicalUrl: "https://multiconverte.com.br/documento/excel-para-pdf",
-      allowIndexing: true,
-      allowFollow: true
+      allowIndexing: false,
+      allowFollow: false
+    },
+    wordToPdf: {
+      title: "Converter Word para PDF Grátis e Online | MultiConverte",
+      description: "Converta documentos Word DOCX para PDF online, mantendo textos, imagens, listas e tabelas. Processamento local, gratuito e seguro.",
+      keywords: [
+        "Word para PDF",
+        "converter DOCX para PDF",
+        "DOCX em PDF",
+        "converter Word em PDF"
+      ],
+      canonicalUrl: "https://multiconverte.com.br/document/word-to-pdf",
+      allowIndexing: false,
+      allowFollow: false
     },
     documentHub: {
       title: "Ferramentas de Documentos Online Grátis | MultiConverte",
@@ -392,6 +487,133 @@ function getFirestoreDb() {
   return getFirestore(app, firebaseConfig.firestoreDatabaseId || "(default)");
 }
 
+// Helper to sanitize SEO config and purge legacy SomDrive/Convertauto references
+export function sanitizeSeoConfig(input: Partial<SeoConfig> | null | undefined, defaultConfig: SeoConfig = DEFAULT_SEO_CONFIG): SeoConfig {
+  if (!input) return defaultConfig;
+
+  const replaceLegacyText = (text: string | undefined, fallback: string): string => {
+    if (!text || typeof text !== "string") return fallback;
+    let clean = text
+      .replace(/conversor\s*somdrive/gi, "MultiConverte")
+      .replace(/somdrive/gi, "MultiConverte")
+      .replace(/convertauto/gi, "MultiConverte")
+      .replace(/multiconvert(?!e)/gi, "MultiConverte")
+      .replace(/https?:\/\/conversor\.somdrive\.com\.br\/?/gi, "https://multiconverte.com.br/")
+      .replace(/https?:\/\/somdrive\.com\.br\/?/gi, "https://multiconverte.com.br/")
+      .replace(/https?:\/\/somdrive\.com\/?/gi, "https://multiconverte.com.br/")
+      .replace(/https?:\/\/convertauto\.com\.br\/?/gi, "https://multiconverte.com.br/");
+
+    return clean.trim();
+  };
+
+  const sanitizeKeywords = (kws: string[] | undefined, defaultKws: string[]): string[] => {
+    if (!Array.isArray(kws) || kws.length === 0) return defaultKws;
+    const cleaned = kws
+      .map(k => replaceLegacyText(k, ""))
+      .filter(k => k && k.length > 0 && !k.toLowerCase().includes("somdrive") && !k.toLowerCase().includes("convertauto"));
+    
+    if (!cleaned.some(k => k.toLowerCase() === "multiconverte")) {
+      cleaned.unshift("MultiConverte");
+    }
+    return Array.from(new Set(cleaned));
+  };
+
+  const siteName = replaceLegacyText(input.siteName, defaultConfig.siteName);
+  const defaultTitle = replaceLegacyText(input.defaultTitle, defaultConfig.defaultTitle);
+  let defaultDescription = replaceLegacyText(input.defaultDescription, defaultConfig.defaultDescription);
+
+  if (defaultDescription.length > 200 || defaultDescription.includes("converte audio mp3") || defaultDescription.includes("Online Audio Converter")) {
+    defaultDescription = defaultConfig.defaultDescription;
+  }
+
+  let canonicalUrl = replaceLegacyText(input.canonicalUrl, defaultConfig.canonicalUrl);
+  if (!canonicalUrl.startsWith("https://multiconverte.com.br")) {
+    canonicalUrl = "https://multiconverte.com.br/";
+  }
+
+  const author = replaceLegacyText(input.author, defaultConfig.author);
+
+  const openGraph = {
+    ...defaultConfig.openGraph,
+    ...(input.openGraph || {}),
+    title: replaceLegacyText(input.openGraph?.title, defaultConfig.openGraph.title),
+    description: replaceLegacyText(input.openGraph?.description, defaultConfig.openGraph.description),
+    image: input.openGraph?.image?.includes("somdrive") ? defaultConfig.openGraph.image : (input.openGraph?.image || defaultConfig.openGraph.image),
+    url: replaceLegacyText(input.openGraph?.url, defaultConfig.openGraph.url),
+    siteName: replaceLegacyText(input.openGraph?.siteName, defaultConfig.openGraph.siteName)
+  };
+
+  const twitter = {
+    ...defaultConfig.twitter,
+    ...(input.twitter || {}),
+    title: replaceLegacyText(input.twitter?.title, defaultConfig.twitter.title),
+    description: replaceLegacyText(input.twitter?.description, defaultConfig.twitter.description),
+    image: input.twitter?.image?.includes("somdrive") ? defaultConfig.twitter.image : (input.twitter?.image || defaultConfig.twitter.image)
+  };
+
+  const robotsConfig = {
+    ...defaultConfig.robotsConfig,
+    ...(input.robotsConfig || {}),
+    canonicalUrl: replaceLegacyText(input.robotsConfig?.canonicalUrl, defaultConfig.robotsConfig.canonicalUrl),
+    sitemapUrl: replaceLegacyText(input.robotsConfig?.sitemapUrl, defaultConfig.robotsConfig.sitemapUrl)
+  };
+
+  const structuredData = {
+    ...defaultConfig.structuredData,
+    ...(input.structuredData || {}),
+    webSiteName: replaceLegacyText(input.structuredData?.webSiteName, defaultConfig.structuredData.webSiteName),
+    appName: replaceLegacyText(input.structuredData?.appName, defaultConfig.structuredData.appName),
+    description: replaceLegacyText(input.structuredData?.description, defaultConfig.structuredData.description)
+  };
+
+  const rawPages = input.pages || {};
+  const sanitizedPages = { ...defaultConfig.pages } as typeof defaultConfig.pages;
+
+  for (const pageKey of Object.keys(defaultConfig.pages)) {
+    const rawPage = rawPages[pageKey] || {};
+    const defaultPage = defaultConfig.pages[pageKey];
+
+    sanitizedPages[pageKey] = {
+      ...defaultPage,
+      ...rawPage,
+      title: replaceLegacyText(rawPage.title, defaultPage.title),
+      description: replaceLegacyText(rawPage.description, defaultPage.description),
+      canonicalUrl: replaceLegacyText(rawPage.canonicalUrl, defaultPage.canonicalUrl),
+      keywords: sanitizeKeywords(rawPage.keywords, defaultPage.keywords || []),
+      ogTitle: rawPage.ogTitle ? replaceLegacyText(rawPage.ogTitle, defaultPage.ogTitle || "") : undefined,
+      ogDescription: rawPage.ogDescription ? replaceLegacyText(rawPage.ogDescription, defaultPage.ogDescription || "") : undefined,
+      ogImage: rawPage.ogImage && !rawPage.ogImage.includes("somdrive") ? rawPage.ogImage : undefined
+    };
+  }
+
+  const rawFaq = input.faqList || defaultConfig.faqList;
+  const sanitizedFaq = rawFaq.map(item => ({
+    ...item,
+    question: replaceLegacyText(item.question, item.question),
+    answer: replaceLegacyText(item.answer, item.answer)
+  }));
+
+  return {
+    ...defaultConfig,
+    ...input,
+    siteName,
+    defaultTitle,
+    defaultDescription,
+    canonicalUrl,
+    language: input.language || defaultConfig.language,
+    author,
+    theme: input.theme || defaultConfig.theme,
+    keywords: sanitizeKeywords(input.keywords, defaultConfig.keywords),
+    openGraph,
+    twitter,
+    robotsConfig,
+    structuredData,
+    pages: sanitizedPages,
+    faqList: sanitizedFaq,
+    siteLogoUrl: input.siteLogoUrl || defaultConfig.siteLogoUrl
+  };
+}
+
 // React Hook to inject SEO tags dynamically into DOM <head>
 export function useSeoHead(routeKey: string = "home", customTitle?: string, customDescription?: string) {
   const [seoConfig, setSeoConfig] = useState<SeoConfig>(DEFAULT_SEO_CONFIG);
@@ -404,17 +626,7 @@ export function useSeoHead(routeKey: string = "home", customTitle?: string, cust
       const unsubscribe = onSnapshot(seoRef, (snap) => {
         if (snap.exists()) {
           const data = snap.data() as Partial<SeoConfig>;
-          setSeoConfig({
-            ...DEFAULT_SEO_CONFIG,
-            ...data,
-            openGraph: { ...DEFAULT_SEO_CONFIG.openGraph, ...(data.openGraph || {}) },
-            twitter: { ...DEFAULT_SEO_CONFIG.twitter, ...(data.twitter || {}) },
-            robotsConfig: { ...DEFAULT_SEO_CONFIG.robotsConfig, ...(data.robotsConfig || {}) },
-            structuredData: { ...DEFAULT_SEO_CONFIG.structuredData, ...(data.structuredData || {}) },
-            pages: { ...DEFAULT_SEO_CONFIG.pages, ...(data.pages || {}) },
-            faqList: data.faqList || DEFAULT_SEO_CONFIG.faqList,
-            keywords: data.keywords || DEFAULT_SEO_CONFIG.keywords
-          });
+          setSeoConfig(sanitizeSeoConfig(data, DEFAULT_SEO_CONFIG));
         }
       }, (err) => {
         console.warn("[SEO HEAD] Listener on site_settings/seo failed, fallback default:", err);
@@ -560,6 +772,33 @@ export function useSeoHead(routeKey: string = "home", customTitle?: string, cust
         }))
       };
       setJsonLd("jsonld-faq", faqSchema);
+    }
+
+    // JSON-LD 4: BreadcrumbList Schema
+    if (routeKey !== "home" && routeKey !== "inicio") {
+      const cleanName = pageTitle.split("—")[0].split("-")[0].trim() || "Ferramenta";
+      const breadcrumbSchema = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Início",
+            "item": seoConfig.canonicalUrl || DEFAULT_SEO_CONFIG.canonicalUrl
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": cleanName,
+            "item": pageCanonical
+          }
+        ]
+      };
+      setJsonLd("jsonld-breadcrumb", breadcrumbSchema);
+    } else {
+      const el = document.getElementById("jsonld-breadcrumb");
+      if (el) el.remove();
     }
 
   }, [seoConfig, routeKey, customTitle, customDescription]);

@@ -30,57 +30,7 @@ export default function DocumentHub({ onNavigate }: DocumentHubProps) {
 
       {/* Grid of Available Document Tools */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-        {/* Card 1: Excel para PDF */}
-        <motion.div
-          whileHover={{ y: -4, transition: { duration: 0.2 } }}
-          className="bg-slate-900/40 rounded-3xl border border-slate-900 p-6 md:p-8 flex flex-col justify-between shadow-xl relative overflow-hidden group cursor-pointer"
-          onClick={() => onNavigate?.("/documento/excel-para-pdf")}
-          id="card-excel-to-pdf"
-        >
-          <div className="space-y-4">
-            <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 text-emerald-400 inline-block">
-              <FileSpreadsheet className="h-6 w-6" />
-            </div>
-
-            <div>
-              <div className="inline-block px-2.5 py-0.5 bg-emerald-500/10 text-emerald-400 font-bold text-[10px] rounded-full uppercase tracking-wider mb-2">
-                Novo • Planilhas
-              </div>
-              <h3 className="font-display text-lg font-bold text-slate-100 group-hover:text-emerald-400 transition-colors">
-                Excel para PDF
-              </h3>
-              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                Converta planilhas Excel (XLSX, XLS, CSV) em PDF, escolha as abas, ajuste orientação, margens e tamanho do papel.
-              </p>
-            </div>
-
-            <ul className="text-[11px] text-slate-400 space-y-1.5 pt-2 font-medium">
-              <li className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-                Ajuste automático para evitar cortes
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-                Múltiplas abas e renomeação
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-                Repetição de cabeçalho
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-                Preserva cores e bordas
-              </li>
-            </ul>
-          </div>
-
-          <div className="pt-6 flex items-center justify-between text-xs font-bold text-emerald-400 group-hover:translate-x-1 transition-transform">
-            <span>Converter Excel</span>
-            <ArrowRight className="h-4 w-4" />
-          </div>
-        </motion.div>
-
-        {/* Card 2: Extrair Texto de PDF */}
+        {/* Card: Extrair Texto de PDF */}
         <motion.div
           whileHover={{ y: -4, transition: { duration: 0.2 } }}
           className="bg-slate-900/40 rounded-3xl border border-slate-900 p-6 md:p-8 flex flex-col justify-between shadow-xl relative overflow-hidden group cursor-pointer"
@@ -122,6 +72,52 @@ export default function DocumentHub({ onNavigate }: DocumentHubProps) {
 
           <div className="pt-6 flex items-center justify-between text-xs font-bold text-emerald-400 group-hover:translate-x-1 transition-transform">
             <span>Extrair Texto</span>
+            <ArrowRight className="h-4 w-4" />
+          </div>
+        </motion.div>
+
+        {/* Card: Ferramentas de PDF Gerais */}
+        <motion.div
+          whileHover={{ y: -4, transition: { duration: 0.2 } }}
+          className="bg-slate-900/40 rounded-3xl border border-slate-900 p-6 md:p-8 flex flex-col justify-between shadow-xl relative overflow-hidden group cursor-pointer"
+          onClick={() => onNavigate?.("/pdf")}
+          id="card-pdf-general-tools"
+        >
+          <div className="space-y-4">
+            <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 text-emerald-400 inline-block">
+              <FileText className="h-6 w-6" />
+            </div>
+
+            <div>
+              <div className="inline-block px-2.5 py-0.5 bg-emerald-500/10 text-emerald-400 font-bold text-[10px] rounded-full uppercase tracking-wider mb-2">
+                Suíte de PDF
+              </div>
+              <h3 className="font-display text-lg font-bold text-slate-100 group-hover:text-emerald-400 transition-colors">
+                Ferramentas PDF
+              </h3>
+              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                Junte, comprima, organize e converta imagens em PDF diretamente no navegador.
+              </p>
+            </div>
+
+            <ul className="text-[11px] text-slate-400 space-y-1.5 pt-2 font-medium">
+              <li className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+                Juntar e organizar arquivos PDF
+              </li>
+              <li className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+                Comprimir tamanho sem perda de qualidade
+              </li>
+              <li className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+                Converter fotos e imagens em PDF
+              </li>
+            </ul>
+          </div>
+
+          <div className="pt-6 flex items-center justify-between text-xs font-bold text-emerald-400 group-hover:translate-x-1 transition-transform">
+            <span>Acessar Ferramentas PDF</span>
             <ArrowRight className="h-4 w-4" />
           </div>
         </motion.div>

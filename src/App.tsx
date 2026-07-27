@@ -46,6 +46,7 @@ import ImageWatermark from "./pages/image/ImageWatermark";
 import ImageBackgroundRemover from "./pages/image/ImageBackgroundRemover";
 import PdfExtractText from "./pages/pdf/PdfExtractText";
 import ExcelToPdf from "./pages/document/ExcelToPdf";
+import WordToPdf from "./pages/document/WordToPdf";
 import DocumentHub from "./pages/document/DocumentHub";
 import AdminPanel from "./pages/AdminPanel";
 import AdminLogin from "./pages/AdminLogin";
@@ -53,11 +54,12 @@ import { Ad, SeoConfig } from "./types";
 import { collection, getDocs, query, where, doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "./firebase";
 import { initGA, trackPageView, trackEvent, updateGAConsent } from "./lib/gtag";
+import { subscribeAdSenseConfig, initializeAdSenseScript } from "./services/adsenseService";
 import PublicAdCard from "./components/PublicAdCard";
-import useSeoHead, { DEFAULT_SEO_CONFIG } from "./lib/useSeoHead";
+import useSeoHead, { DEFAULT_SEO_CONFIG, sanitizeSeoConfig } from "./lib/useSeoHead";
 
 
-type TabType = "inicio" | "audio" | "pdf" | "pdfExtractText" | "excelToPdf" | "documentHub" | "videoToAudio" | "imageConverter" | "imageCompressor" | "imageResizer" | "imageCropper" | "imageRotateFlip" | "imageWatermark" | "imageBackgroundRemover";
+type TabType = "inicio" | "audio" | "pdf" | "pdfExtractText" | "excelToPdf" | "wordToPdf" | "documentHub" | "videoToAudio" | "imageConverter" | "imageCompressor" | "imageResizer" | "imageCropper" | "imageRotateFlip" | "imageWatermark" | "imageBackgroundRemover";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>("inicio");
@@ -98,10 +100,12 @@ export default function App() {
                       ? "pdf_extract_text"
                       : activeTab === "excelToPdf"
                         ? "excelToPdf"
-                        : activeTab === "documentHub"
-                          ? "documentHub"
+                        : activeTab === "wordToPdf"
+                          ? "wordToPdf"
+                          : activeTab === "documentHub"
+                            ? "documentHub"
                           : activeTab === "pdf" 
-              ? (["merge", "compress", "imgToPdf", "pdfToImages", "organize"].includes(activePdfTool) ? activePdfTool : "pdf") 
+              ? (["merge", "compress", "imgToPdf", "pdfToImages", "organize", "girar", "excluir"].includes(activePdfTool) ? activePdfTool : "pdf") 
               : "home";
       
   useSeoHead(currentRouteKey);
@@ -159,12 +163,25 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // Helper to verify if a string is a valid image URL/path
+  const isValidImageUrl = (url?: string) => {
+    if (!url || typeof url !== "string") return false;
+    const clean = url.trim().toLowerCase();
+    if (!clean) return false;
+    return (
+      clean.startsWith("/") ||
+      clean.startsWith("data:image/") ||
+      clean.includes("/api/ads-public-image") ||
+      /\.(png|jpg|jpeg|svg|webp|gif|ico)(\?.*)?$/i.test(clean)
+    );
+  };
+
   // Compute header logo source with 3-tier fallback
-  const headerLogoSrc = branding.logoUrl
+  const headerLogoSrc = isValidImageUrl(branding.logoUrl)
     ? branding.logoUrl
     : branding.logoStoragePath
       ? `/api/ads-public-image?path=${encodeURIComponent(branding.logoStoragePath)}`
-      : (seoConfig.siteLogoUrl || "/multiconverte-logo-dark.png");
+      : (isValidImageUrl(seoConfig.siteLogoUrl) ? seoConfig.siteLogoUrl : "/multiconverte-logo-dark.png");
 
   // Navigate function for pathname routing
   const navigateTo = (path: string) => {
@@ -175,28 +192,34 @@ export default function App() {
 
   // Synchronize dynamic SEO configs
   const loadConfigAndAds = async () => {
-    const storedSeo = localStorage.getItem("multiconverte_seo") || localStorage.getItem("multiconvert_seo") || localStorage.getItem("convertauto_seo") || localStorage.getItem("somdrive_seo");
+    // Purge legacy local storage keys
+    try {
+      localStorage.removeItem("somdrive_seo");
+      localStorage.removeItem("convertauto_seo");
+      localStorage.removeItem("multiconvert_seo");
+    } catch (e) {}
+
+    const storedSeo = localStorage.getItem("multiconverte_seo");
     if (storedSeo) {
       try {
-        setSeoConfig(JSON.parse(storedSeo));
+        const parsed = JSON.parse(storedSeo);
+        setSeoConfig(sanitizeSeoConfig(parsed, DEFAULT_SEO_CONFIG));
       } catch (e) {
         console.error("Error loading SEO", e);
       }
     }
 
     try {
-      const docRef = doc(db, "ads", "seo_config");
+      const docRef = doc(db, "site_settings", "seo");
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        const data = docSnap.data();
-        setSeoConfig(prev => {
-          const merged = { ...prev, ...data } as SeoConfig;
-          localStorage.setItem("multiconverte_seo", JSON.stringify(merged));
-          return merged;
-        });
+        const data = docSnap.data() as Partial<SeoConfig>;
+        const clean = sanitizeSeoConfig(data, DEFAULT_SEO_CONFIG);
+        setSeoConfig(clean);
+        localStorage.setItem("multiconverte_seo", JSON.stringify(clean));
       }
     } catch (err) {
-      console.warn("Could not load branding or SEO config from Firestore:", err);
+      console.warn("Could not load SEO config from Firestore in App:", err);
     }
   };
 
@@ -300,9 +323,14 @@ export default function App() {
     // Initialize Google Analytics 4
     initGA();
 
+    // Subscribe to AdSense config and manage dynamic script loading
+    const unsubAdSense = subscribeAdSenseConfig((cfg) => {
+      initializeAdSenseScript(cfg.adsenseEnabled);
+    });
+
     // Check if consent has already been given or if a banner is needed
-    if ((import.meta as any).env.VITE_GA_MEASUREMENT_ID) {
-      const savedDecision = localStorage.getItem("multiconverte_ga_consent") || localStorage.getItem("multiconvert_ga_consent") || localStorage.getItem("convertauto_ga_consent") || localStorage.getItem("somdrive_ga_consent");
+    if ((import.meta as any).env.VITE_GA4_MEASUREMENT_ID || (import.meta as any).env.VITE_GA_MEASUREMENT_ID) {
+      const savedDecision = localStorage.getItem("multiconverte_ga_consent") || localStorage.getItem("multiconvert_ga_consent");
       if (!savedDecision) {
         setShowConsentBanner(true);
       }
@@ -334,6 +362,9 @@ export default function App() {
       setActiveTab("pdfExtractText");
     } else if (window.location.pathname === "/documento/excel-para-pdf") {
       setActiveTab("excelToPdf");
+    } else if (window.location.pathname === "/document/word-to-pdf" || window.location.pathname === "/documento/word-para-pdf") {
+      window.history.replaceState({}, "", "/documento");
+      setActiveTab("documentHub");
     } else if (window.location.pathname === "/documento") {
       setActiveTab("documentHub");
     } else if (window.location.pathname.startsWith("/pdf")) {
@@ -364,6 +395,9 @@ export default function App() {
         setActiveTab("pdfExtractText");
       } else if (window.location.pathname === "/documento/excel-para-pdf") {
         setActiveTab("excelToPdf");
+      } else if (window.location.pathname === "/document/word-to-pdf" || window.location.pathname === "/documento/word-para-pdf") {
+        window.history.replaceState({}, "", "/documento");
+        setActiveTab("documentHub");
       } else if (window.location.pathname === "/documento") {
         setActiveTab("documentHub");
       } else if (window.location.pathname.startsWith("/pdf")) {
@@ -378,6 +412,7 @@ export default function App() {
     window.addEventListener("storage", handleStorageChange);
 
     return () => {
+      unsubAdSense();
       window.removeEventListener("popstate", handlePopState);
       window.removeEventListener("storage", handleStorageChange);
     };
@@ -615,7 +650,9 @@ export default function App() {
                           ? "/pdf/extrair-texto"
                           : tab === "excelToPdf"
                             ? "/documento/excel-para-pdf"
-                            : tab === "documentHub"
+                            : tab === "wordToPdf"
+                              ? "/document/word-to-pdf"
+                              : tab === "documentHub"
                               ? "/documento"
                               : "/pdf";
 
@@ -667,6 +704,8 @@ export default function App() {
       handleNavigate("pdfExtractText");
     } else if (path === "/documento/excel-para-pdf") {
       handleNavigate("excelToPdf");
+    } else if (path === "/document/word-to-pdf" || path === "/documento/word-para-pdf") {
+      handleNavigate("documentHub");
     } else if (path === "/documento") {
       handleNavigate("documentHub");
     } else if (path.startsWith("/pdf")) {
@@ -761,7 +800,7 @@ export default function App() {
       </AnimatePresence>
       
       {/* Top Header */}
-      <header className="bg-bg-sec border-b border-border-main sticky top-0 z-50 px-4 py-4 md:px-8 shadow-md backdrop-blur-md">
+      <header data-ads-exclude="true" className="bg-bg-sec border-b border-border-main sticky top-0 z-50 px-4 py-4 md:px-8 shadow-md backdrop-blur-md">
         <div className="max-w-[1220px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div 
             className="flex items-center cursor-pointer group py-1"
@@ -1051,28 +1090,28 @@ export default function App() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6" id="document-tools-grid">
-                      {/* Card: Excel para PDF */}
+                      {/* Card: Extrair Texto de PDF */}
                       <div
                         className="bg-card-main rounded-[28px] border border-border-main p-6 md:p-8 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-green-primary transition-all duration-300 group cursor-pointer relative"
-                        onClick={() => handleNavigate("excelToPdf")}
-                        id="card-excel-to-pdf-home"
+                        onClick={() => handleNavigate("pdfExtractText")}
+                        id="card-pdf-extract-text-home"
                       >
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
                             <div className="p-3.5 bg-[#303943] rounded-2xl border border-border-main text-[#39D977] inline-block group-hover:scale-105 transition-all shadow-inner">
-                              <FileSpreadsheet className="h-6 w-6" />
+                              <FileText className="h-6 w-6" />
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 font-bold text-[10px] rounded-full uppercase tracking-wider">
-                                Novo
+                                Ferramenta PDF
                               </span>
                               <button
                                 type="button"
-                                onClick={(e) => handleShareTool(e, "/documento/excel-para-pdf")}
-                                title="Compartilhar link da ferramenta Excel para PDF"
+                                onClick={(e) => handleShareTool(e, "/pdf/extrair-texto")}
+                                title="Compartilhar link da ferramenta Extrair Texto de PDF"
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-green-primary/50 text-text-sec hover:text-green-light text-xs font-bold transition-all"
                               >
-                                {copiedPath === "/documento/excel-para-pdf" ? (
+                                {copiedPath === "/pdf/extrair-texto" ? (
                                   <>
                                     <Check className="h-3.5 w-3.5 text-green-primary" />
                                     <span className="text-green-primary">Copiado!</span>
@@ -1088,30 +1127,30 @@ export default function App() {
                           </div>
                           <div>
                             <h3 className="font-display text-lg font-bold text-text-main group-hover:text-green-light transition-colors leading-tight">
-                              Excel para PDF
+                              Extrair Texto de PDF
                             </h3>
                             <p className="text-xs text-text-sec mt-2 leading-relaxed font-semibold">
-                              Converta planilhas XLS, XLSX e CSV em documentos PDF sem desfigurar a formatação, com seleção de abas e ajuste de impressão.
+                              Extraia o texto contido em documentos PDF por página, de forma rápida, com opção de cópia e download em TXT.
                             </p>
                           </div>
                           <ul className="text-[11px] text-text-muted space-y-1.5 pt-2 font-semibold">
                             <li className="flex items-center gap-1.5">
                               <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
-                              Suporte a XLSX, XLS e CSV com prévia interativa
+                              Visualização organizada por página
                             </li>
                             <li className="flex items-center gap-1.5">
                               <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
-                              Seleção de abas, orientação Retrato/Paisagem e tamanho A4
+                              Cópia rápida de trechos de texto
                             </li>
                             <li className="flex items-center gap-1.5">
                               <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
-                              Ajuste automático de colunas para evitar cortes nas páginas
+                              Download em formato TXT e DOC
                             </li>
                           </ul>
                         </div>
 
                         <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#39D977] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
-                          <span>Converter Excel em PDF</span>
+                          <span>Extrair Texto do PDF</span>
                           <ArrowRight className="h-4 w-4" />
                         </div>
                       </div>
@@ -1692,6 +1731,19 @@ export default function App() {
                 </motion.div>
               )}
 
+              {activeTab === "wordToPdf" && (
+                <motion.div
+                  key="word-to-pdf-view"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="bg-card-main rounded-[24px] border border-border-main shadow-lg p-6 md:p-10 text-text-main"
+                >
+                  <WordToPdf onNavigate={handleNavigatePath} />
+                </motion.div>
+              )}
+
               {activeTab === "documentHub" && (
                 <motion.div
                   key="document-hub-view"
@@ -2011,7 +2063,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-bg-sec text-text-sec py-10 px-4 md:px-8 border-t border-border-main">
+      <footer data-ads-exclude="true" className="bg-bg-sec text-text-sec py-10 px-4 md:px-8 border-t border-border-main">
         <div className="max-w-[1220px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-[13px] text-center md:text-left">
           <div className="space-y-1">
             <p id="footer-text-left" className="text-text-main font-bold">
@@ -2040,6 +2092,7 @@ export default function App() {
       <AnimatePresence>
         {showConsentBanner && (
           <motion.div
+            data-ads-exclude="true"
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
@@ -2051,7 +2104,7 @@ export default function App() {
                 Privacidade & Cookies
               </h4>
               <p className="text-xs text-text-sec leading-relaxed font-semibold">
-                Utilizamos cookies e tecnologias semelhantes para coletar dados agregados de navegação de forma 100% anônima e melhorar a sua experiência. Nenhum dado pessoal é coletado ou armazenado.
+                Utilizamos cookies de análise, mediante seu consentimento, para entender o uso das ferramentas e melhorar o site. Seus arquivos não são enviados ao Google Analytics.
               </p>
             </div>
             <div className="flex items-center gap-3 justify-end text-xs font-bold">

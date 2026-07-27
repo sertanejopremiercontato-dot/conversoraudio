@@ -104,7 +104,7 @@ async function runGA4ReportREST(propertyId: string, payload: any): Promise<any> 
   const repairedKey = repairPrivateKey(rawKey);
 
   if (!clientEmail || !repairedKey) {
-    throw new Error("Credenciais do Google Analytics (GA4_CLIENT_EMAIL ou GA4_PRIVATE_KEY) ausentes ou inválidas.");
+    throw new Error("Google Analytics ainda não configurado.");
   }
 
   // 1. Generate Google Access Token via standard JWT bearer flow
@@ -740,16 +740,19 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
       const propertyId = (process.env.GA4_PROPERTY_ID || "").trim();
       if (!propertyId || !/^\d+$/.test(propertyId)) {
         return res.status(400).json({
-          error: "GA4_PROPERTY_ID_INVALID",
-          message: "O ID da propriedade do Google Analytics (GA4_PROPERTY_ID) não está configurado ou é inválido."
+          error: "GA4_NOT_CONFIGURED",
+          message: "Google Analytics ainda não configurado."
         });
       }
 
-      // Query 1: Summary Statistics (Page Views, Active Users, Sessions)
+      const rawPeriod = String(req.query.period || "7daysAgo").trim();
+      const startDate = ["today", "7daysAgo", "30daysAgo"].includes(rawPeriod) ? rawPeriod : "7daysAgo";
+
+      // Query 1: Summary Statistics
       let summary = { pageViews: 0, activeUsers: 0, sessions: 0 };
       try {
         const summaryResponse = await runGA4ReportREST(propertyId, {
-          dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
+          dateRanges: [{ startDate, endDate: "today" }],
           metrics: [
             { name: "screenPageViews" },
             { name: "activeUsers" },
@@ -771,47 +774,47 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
           const serviceAccountEmail = process.env.GA4_CLIENT_EMAIL || "sua conta de serviço";
           return res.status(403).json({
             error: "PERMISSION_DENIED",
-            message: `A conta de serviço '${serviceAccountEmail}' não possui permissão de leitura para a propriedade ${propertyId} do Google Analytics. Por favor, adicione esta conta de serviço como 'Leitor' (Viewer) diretamente nas configurações de Administração > Acesso à Propriedade no Google Analytics.`
+            message: `A conta de serviço '${serviceAccountEmail}' não possui permissão de leitura para a propriedade ${propertyId} do Google Analytics. Adicione a conta de serviço como Visualizador (Viewer) no GA4.`
           });
         }
-        throw err; // Re-throw other errors to be caught in outer block
+        throw err;
       }
 
-      // Query 2: Most Visited Pages
-      let pages: any[] = [];
+      // Query 2: Daily Trend Chart
+      let dailyTrend: Array<{ date: string; users: number; views: number }> = [];
       try {
-        const pagesResponse = await runGA4ReportREST(propertyId, {
-          dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
-          dimensions: [
-            { name: "pagePath" },
-            { name: "pageTitle" }
-          ],
+        const trendResponse = await runGA4ReportREST(propertyId, {
+          dateRanges: [{ startDate, endDate: "today" }],
+          dimensions: [{ name: "date" }],
           metrics: [
-            { name: "screenPageViews" },
-            { name: "activeUsers" }
+            { name: "activeUsers" },
+            { name: "screenPageViews" }
           ],
-          limit: 15,
+          orderBys: [{ dimension: { dimensionName: "date" } }]
         });
 
-        pages = (pagesResponse.rows || []).map(row => {
-          const pathVal = row.dimensionValues?.[0]?.value || "";
+        dailyTrend = (trendResponse.rows || []).map(row => {
+          const dVal = row.dimensionValues?.[0]?.value || "";
+          // Format YYYYMMDD to DD/MM
+          let formattedDate = dVal;
+          if (dVal.length === 8) {
+            formattedDate = `${dVal.substring(6, 8)}/${dVal.substring(4, 6)}`;
+          }
           return {
-            path: pathVal,
-            title: row.dimensionValues?.[1]?.value || "",
-            views: Number(row.metricValues?.[0]?.value || 0),
-            users: Number(row.metricValues?.[1]?.value || 0),
-            isAdmin: pathVal.toLowerCase().includes("admin")
+            date: formattedDate,
+            users: Number(row.metricValues?.[0]?.value || 0),
+            views: Number(row.metricValues?.[1]?.value || 0)
           };
         });
       } catch (err) {
-        console.error("[SERVER] Failed to query most visited pages:", err);
+        console.error("[SERVER] Failed to query daily trend:", err);
       }
 
       // Query 3: Locations (Country, Region, City)
       let locations: any[] = [];
       try {
         const locationsResponse = await runGA4ReportREST(propertyId, {
-          dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
+          dateRanges: [{ startDate, endDate: "today" }],
           dimensions: [
             { name: "country" },
             { name: "region" },
@@ -819,27 +822,27 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
           ],
           metrics: [
             { name: "activeUsers" },
-            { name: "screenPageViews" }
+            { name: "sessions" }
           ],
-          limit: 20
+          limit: 50
         });
 
         locations = (locationsResponse.rows || []).map(row => ({
           country: row.dimensionValues?.[0]?.value || "(desconhecido)",
-          region: row.dimensionValues?.[1]?.value || "(desconhecido)",
-          city: row.dimensionValues?.[2]?.value || "(desconhecido)",
+          region: row.dimensionValues?.[1]?.value || "",
+          city: row.dimensionValues?.[2]?.value || "(not set)",
           users: Number(row.metricValues?.[0]?.value || 0),
-          views: Number(row.metricValues?.[1]?.value || 0)
+          sessions: Number(row.metricValues?.[1]?.value || 0)
         }));
       } catch (err) {
         console.error("[SERVER] Failed to query locations:", err);
       }
 
-      // Query 4: Traffic Sources (Source / Medium)
+      // Query 4: Traffic Sources
       let trafficSources: any[] = [];
       try {
         const sourcesResponse = await runGA4ReportREST(propertyId, {
-          dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
+          dateRanges: [{ startDate, endDate: "today" }],
           dimensions: [
             { name: "sessionSource" },
             { name: "sessionMedium" }
@@ -848,7 +851,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
             { name: "activeUsers" },
             { name: "sessions" }
           ],
-          limit: 15
+          limit: 20
         });
 
         trafficSources = (sourcesResponse.rows || []).map(row => ({
@@ -861,11 +864,11 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
         console.error("[SERVER] Failed to query traffic sources:", err);
       }
 
-      // Query 5: Devices & Technology
+      // Query 5: Devices
       let devices: any[] = [];
       try {
         const devicesResponse = await runGA4ReportREST(propertyId, {
-          dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
+          dateRanges: [{ startDate, endDate: "today" }],
           dimensions: [
             { name: "deviceCategory" },
             { name: "operatingSystem" },
@@ -889,22 +892,22 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
         console.error("[SERVER] Failed to query devices:", err);
       }
 
-      // Query 6: Conversion Events
-      const eventsMap: Record<string, { name: string, count: number, toolCounts?: Record<string, number> }> = {
+      // Query 6: Events
+      const eventsMap: Record<string, { name: string; count: number; toolCounts?: Record<string, number> }> = {
         "audio_conversion_started": { name: "audio_conversion_started", count: 0 },
         "audio_conversion_completed": { name: "audio_conversion_completed", count: 0 },
-        "audio_conversion_failed": { name: "audio_conversion_failed", count: 0 },
         "video_audio_started": { name: "video_audio_started", count: 0 },
         "video_audio_completed": { name: "video_audio_completed", count: 0 },
-        "video_audio_failed": { name: "video_audio_failed", count: 0 },
-        "pdf_processing_started": { name: "pdf_processing_started", count: 0, toolCounts: { merge: 0, compress: 0, imgToPdf: 0, organize: 0, deleteRotate: 0 } },
-        "pdf_processing_completed": { name: "pdf_processing_completed", count: 0, toolCounts: { merge: 0, compress: 0, imgToPdf: 0, organize: 0, deleteRotate: 0 } },
-        "pdf_processing_failed": { name: "pdf_processing_failed", count: 0, toolCounts: { merge: 0, compress: 0, imgToPdf: 0, organize: 0, deleteRotate: 0 } },
+        "image_conversion_started": { name: "image_conversion_started", count: 0 },
+        "image_conversion_completed": { name: "image_conversion_completed", count: 0 },
+        "pdf_processing_started": { name: "pdf_processing_started", count: 0, toolCounts: {} },
+        "pdf_processing_completed": { name: "pdf_processing_completed", count: 0, toolCounts: {} },
+        "download_completed": { name: "download_completed", count: 0 }
       };
 
       try {
         const eventsResponse = await runGA4ReportREST(propertyId, {
-          dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
+          dateRanges: [{ startDate, endDate: "today" }],
           dimensions: [{ name: "eventName" }],
           metrics: [{ name: "eventCount" }]
         });
@@ -914,69 +917,22 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
           const count = Number(row.metricValues?.[0]?.value || 0);
           if (eventsMap[name]) {
             eventsMap[name].count = count;
+          } else {
+            eventsMap[name] = { name, count };
           }
         }
       } catch (err) {
         console.error("[SERVER] Failed to query baseline events:", err);
       }
 
-      // Optional: breakdown of PDF tools if the custom dimension customEvent:tool exists
-      try {
-        const toolCountsResponse = await runGA4ReportREST(propertyId, {
-          dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
-          dimensions: [{ name: "eventName" }, { name: "customEvent:tool" }],
-          metrics: [{ name: "eventCount" }]
-        });
-
-        for (const row of (toolCountsResponse.rows || [])) {
-          const name = row.dimensionValues?.[0]?.value || "";
-          const tool = row.dimensionValues?.[1]?.value || "";
-          const count = Number(row.metricValues?.[0]?.value || 0);
-          if (eventsMap[name]?.toolCounts && tool) {
-            eventsMap[name].toolCounts[tool] = count;
-          }
-        }
-      } catch (err) {
-        console.log("[SERVER] Custom dimension 'customEvent:tool' is not available or registered in GA4. Skipping tool breakdown.");
-      }
-
-      // Query 4: Ads Performance
-      const adsMap: Record<string, { adId: string, views: number, clicks: number }> = {};
-      try {
-        const adsResponse = await runGA4ReportREST(propertyId, {
-          dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
-          dimensions: [{ name: "eventName" }, { name: "customEvent:ad_id" }],
-          metrics: [{ name: "eventCount" }]
-        });
-
-        for (const row of (adsResponse.rows || [])) {
-          const eventName = row.dimensionValues?.[0]?.value || "";
-          const adId = row.dimensionValues?.[1]?.value || "";
-          const count = Number(row.metricValues?.[0]?.value || 0);
-
-          if (adId && (eventName === "ad_view" || eventName === "ad_click")) {
-            if (!adsMap[adId]) {
-              adsMap[adId] = { adId, views: 0, clicks: 0 };
-            }
-            if (eventName === "ad_view") {
-              adsMap[adId].views += count;
-            } else if (eventName === "ad_click") {
-              adsMap[adId].clicks += count;
-            }
-          }
-        }
-      } catch (err) {
-        console.log("[SERVER] Custom dimension 'customEvent:ad_id' is not available or registered in GA4. Skipping ad breakdown.");
-      }
-
       return res.json({
         summary,
-        pages,
+        dailyTrend,
         locations,
         trafficSources,
         devices,
         events: Object.values(eventsMap),
-        adsPerformance: Object.values(adsMap)
+        fetchedAt: new Date().toISOString()
       });
 
     } catch (err: any) {

@@ -19,6 +19,10 @@ export interface ConversionReportData {
   warnings: string[];
   orientationUsed: string;
   pageSizeUsed: string;
+  imagesDetectedCount?: number;
+  imagesInsertedCount?: number;
+  chartsDetectedCount?: number;
+  processingTimeMs?: number;
 }
 
 export interface ProgressCallback {
@@ -90,6 +94,7 @@ export async function convertExcelToPdf(
   outputFilename?: string,
   onProgress?: ProgressCallback
 ): Promise<ConversionReportData> {
+  const startTime = Date.now();
   const selectedSheets = fileData.sheets.filter((s) => s.selected);
   const skippedSheets = fileData.sheets.filter((s) => !s.selected).map((s) => s.name);
 
@@ -117,6 +122,7 @@ export async function convertExcelToPdf(
 
   let totalCellsProcessed = 0;
   let uncalculatedFormulasCount = 0;
+  let totalImagesInsertedCount = 0;
 
   for (let i = 0; i < allChunks.length; i++) {
     const chunk = allChunks[i];
@@ -216,7 +222,7 @@ export async function convertExcelToPdf(
 
     for (let c = chunk.startCol; c <= chunk.endCol; c++) {
       const idx = c - sheet.minCol;
-      const wPt = (sheet.colWidths[idx] || 80) * PX_TO_PT * chunk.scale;
+      const wPt = (sheet.colWidths[idx] || 85) * PX_TO_PT * chunk.scale;
       colWidthsPt.push(wPt);
       sumColWidthsPt += wPt;
     }
@@ -289,7 +295,7 @@ export async function convertExcelToPdf(
           const pdfCellX = currentX;
           const pdfCellY = chunk.heightPt - currentY - effectiveRowH;
 
-          // Determine effective Cell Background Color with Executive Dark Blue defaults for titles/headers
+          // Determine effective Cell Background Color
           let fillHex = cell?.bgColor;
           if (!fillHex) {
             if (rowIdx === sheet.minRow) {
@@ -330,20 +336,68 @@ export async function convertExcelToPdf(
 
           const textColor = parsePdfColor(textColorHex, "#1e293b");
 
-          // Cell Border Color based on background lightness
-          const isDarkFill = textColorHex.toLowerCase() === "#ffffff";
-          const borderColor = parsePdfColor(isDarkFill ? "#3b82f6" : "#cbd5e1");
-
-          // Draw Cell Background Rectangle
+          // Fill Cell Background
           pdfPage.drawRectangle({
             x: pdfCellX,
             y: pdfCellY,
             width: effectiveColW,
             height: effectiveRowH,
-            color: fillColor,
-            borderColor,
-            borderWidth: 0.5
+            color: fillColor
           });
+
+          // Draw Per-Side Custom Borders or Standard Table Gridline
+          const borderObj = cell?.border;
+          const isDefaultLightFill = fillHex.toLowerCase() === "#ffffff";
+          const defaultGridColor = parsePdfColor(isDefaultLightFill ? "#cbd5e1" : "#3b82f6");
+
+          if (borderObj && (borderObj.top || borderObj.bottom || borderObj.left || borderObj.right)) {
+            // Top Side
+            if (borderObj.top) {
+              pdfPage.drawLine({
+                start: { x: pdfCellX, y: pdfCellY + effectiveRowH },
+                end: { x: pdfCellX + effectiveColW, y: pdfCellY + effectiveRowH },
+                thickness: (borderObj.top.width || 0.75) * chunk.scale,
+                color: parsePdfColor(borderObj.top.color, "#cbd5e1")
+              });
+            }
+            // Bottom Side
+            if (borderObj.bottom) {
+              pdfPage.drawLine({
+                start: { x: pdfCellX, y: pdfCellY },
+                end: { x: pdfCellX + effectiveColW, y: pdfCellY },
+                thickness: (borderObj.bottom.width || 0.75) * chunk.scale,
+                color: parsePdfColor(borderObj.bottom.color, "#cbd5e1")
+              });
+            }
+            // Left Side
+            if (borderObj.left) {
+              pdfPage.drawLine({
+                start: { x: pdfCellX, y: pdfCellY },
+                end: { x: pdfCellX, y: pdfCellY + effectiveRowH },
+                thickness: (borderObj.left.width || 0.75) * chunk.scale,
+                color: parsePdfColor(borderObj.left.color, "#cbd5e1")
+              });
+            }
+            // Right Side
+            if (borderObj.right) {
+              pdfPage.drawLine({
+                start: { x: pdfCellX + effectiveColW, y: pdfCellY },
+                end: { x: pdfCellX + effectiveColW, y: pdfCellY + effectiveRowH },
+                thickness: (borderObj.right.width || 0.75) * chunk.scale,
+                color: parsePdfColor(borderObj.right.color, "#cbd5e1")
+              });
+            }
+          } else {
+            // Draw default table cell bounding box
+            pdfPage.drawRectangle({
+              x: pdfCellX,
+              y: pdfCellY,
+              width: effectiveColW,
+              height: effectiveRowH,
+              borderColor: defaultGridColor,
+              borderWidth: 0.5
+            });
+          }
 
           // Render Text
           if (cell) {
@@ -392,8 +446,13 @@ export async function convertExcelToPdf(
                 }
                 textX = Math.max(pdfCellX + 2, textX);
 
-                // Vertical baseline position centered in cell
-                const textY = pdfCellY + ((effectiveRowH - fontSize) / 2) + (fontSize * 0.15);
+                // Vertical baseline position according to verticalAlign
+                let textY = pdfCellY + ((effectiveRowH - fontSize) / 2) + (fontSize * 0.15);
+                if (cell.verticalAlign === "top") {
+                  textY = pdfCellY + effectiveRowH - padding - fontSize + (fontSize * 0.15);
+                } else if (cell.verticalAlign === "bottom") {
+                  textY = pdfCellY + padding + (fontSize * 0.15);
+                }
 
                 if (maxAllowedWidth > 2) {
                   pdfPage.drawText(textToDraw, {
@@ -429,6 +488,35 @@ export async function convertExcelToPdf(
       }
       renderRowVector(r, false);
     }
+
+    // Embed and render static images if present in sheet
+    if (sheet.images && sheet.images.length > 0 && i === 0) {
+      for (const img of sheet.images) {
+        try {
+          const embedded = img.type === "png"
+            ? await pdfDoc.embedPng(img.data)
+            : await pdfDoc.embedJpg(img.data);
+
+          const imgW = (img.widthPx || 180) * PX_TO_PT * chunk.scale;
+          const imgH = (img.heightPx || 120) * PX_TO_PT * chunk.scale;
+
+          // Position image near top right of sheet printable area
+          const imgX = chunk.widthPt - chunk.marginPt.right - imgW - 10;
+          const imgY = chunk.heightPt - contentY - imgH - 10;
+
+          pdfPage.drawImage(embedded, {
+            x: imgX,
+            y: imgY,
+            width: imgW,
+            height: imgH
+          });
+
+          totalImagesInsertedCount++;
+        } catch (e) {
+          // Skip unparseable image silently
+        }
+      }
+    }
   }
 
   onProgress?.("Finalizando documento PDF...", selectedSheets[0].name, selectedSheets.length, selectedSheets.length, totalPages, totalPages, 98);
@@ -449,6 +537,8 @@ export async function convertExcelToPdf(
     warningsList.push(`${uncalculatedFormulasCount} células contêm fórmulas sem resultado pré-calculado no arquivo.`);
   }
 
+  const processingTimeMs = Date.now() - startTime;
+
   return {
     filename: fileData.filename,
     pdfFilename: finalFilename,
@@ -463,6 +553,10 @@ export async function convertExcelToPdf(
     unsupportedFeatures: fileData.unsupportedFeatures,
     warnings: warningsList,
     orientationUsed: allChunks[0]?.orientation === "landscape" ? "Paisagem" : "Retrato",
-    pageSizeUsed: settings.pageSize
+    pageSizeUsed: settings.pageSize,
+    imagesDetectedCount: fileData.detectedImagesCount,
+    imagesInsertedCount: totalImagesInsertedCount,
+    chartsDetectedCount: fileData.detectedChartsCount,
+    processingTimeMs
   };
 }

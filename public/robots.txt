@@ -1,15 +1,30 @@
 User-agent: *
 Allow: /
-Allow: /converter-audio
-Allow: /ferramentas-pdf
-Allow: /comprimir-pdf
-Allow: /juntar-pdf
-Allow: /imagens-para-pdf
-Allow: /organizar-pdf
+Allow: /audio
+Allow: /video-para-audio
+Allow: /pdf
+Allow: /pdf/juntar-pdf
+Allow: /pdf/comprimir-pdf
+Allow: /pdf/organizar-pdf
+Allow: /pdf/girar-pdf
+Allow: /pdf/excluir-paginas
+Allow: /pdf/imagens-para-pdf
+Allow: /pdf/pdf-para-imagens
+Allow: /pdf/extrair-texto
+Allow: /imagem/converter
+Allow: /imagem/comprimir
+Allow: /imagem/redimensionar
+Allow: /imagem/cortar
+Allow: /imagem/girar-espelhar
+Allow: /imagem/marca-dagua
+Allow: /documento
 
-# Bloquear rotas administrativas e privadas
+# Bloquear áreas administrativas, rotas ocultas e prévias técnicas
 Disallow: /admin
 Disallow: /admin-login
 Disallow: /imagem/remover-fundo
+Disallow: /documento/excel-para-pdf
+Disallow: /document/word-to-pdf
 
 Sitemap: https://multiconverte.com.br/sitemap.xml
+

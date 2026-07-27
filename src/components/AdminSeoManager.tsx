@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { initializeApp, getApps } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore/lite";
 import { SeoConfig, PageSeoItem, FaqItem } from "../types";
-import { DEFAULT_SEO_CONFIG } from "../lib/useSeoHead";
+import { DEFAULT_SEO_CONFIG, sanitizeSeoConfig } from "../lib/useSeoHead";
 import firebaseConfig from "../../firebase-applet-config.json";
 import AdminBrandingManager from "./AdminBrandingManager";
 import {
@@ -44,7 +44,7 @@ export default function AdminSeoManager() {
   const [activeTab, setActiveTab] = useState<string>("main");
   const [newKeyword, setNewKeyword] = useState<string>("");
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
-  const [selectedPage, setSelectedPage] = useState<"home" | "audio" | "pdf" | "howItWorks">("home");
+  const [selectedPage, setSelectedPage] = useState<string>("home");
 
   // Load SEO config from Firestore site_settings/seo
   useEffect(() => {
@@ -58,27 +58,22 @@ export default function AdminSeoManager() {
       const snap = await getDoc(doc(db, "site_settings", "seo"));
       if (snap.exists()) {
         const data = snap.data() as Partial<SeoConfig>;
-        setConfig({
-          ...DEFAULT_SEO_CONFIG,
-          ...data,
-          openGraph: { ...DEFAULT_SEO_CONFIG.openGraph, ...(data.openGraph || {}) },
-          twitter: { ...DEFAULT_SEO_CONFIG.twitter, ...(data.twitter || {}) },
-          robotsConfig: { ...DEFAULT_SEO_CONFIG.robotsConfig, ...(data.robotsConfig || {}) },
-          structuredData: { ...DEFAULT_SEO_CONFIG.structuredData, ...(data.structuredData || {}) },
-          pages: { ...DEFAULT_SEO_CONFIG.pages, ...(data.pages || {}) },
-          faqList: data.faqList || DEFAULT_SEO_CONFIG.faqList,
-          keywords: data.keywords || DEFAULT_SEO_CONFIG.keywords
-        });
+        const clean = sanitizeSeoConfig(data, DEFAULT_SEO_CONFIG);
+        setConfig(clean);
       } else {
         // Fallback to legacy settings/seo
         const legacySnap = await getDoc(doc(db, "settings", "seo"));
         if (legacySnap.exists()) {
           const legacyData = legacySnap.data() as Partial<SeoConfig>;
-          setConfig(prev => ({ ...prev, ...legacyData }));
+          const clean = sanitizeSeoConfig(legacyData, DEFAULT_SEO_CONFIG);
+          setConfig(clean);
+        } else {
+          setConfig(DEFAULT_SEO_CONFIG);
         }
       }
     } catch (err) {
       console.error("[SEO MANAGER] Error loading configuration:", err);
+      setConfig(DEFAULT_SEO_CONFIG);
     } finally {
       setLoading(false);
     }
@@ -89,17 +84,38 @@ export default function AdminSeoManager() {
     setSaveSuccess(false);
     try {
       const db = getDb();
-      const updatedConfig = {
+      const cleanConfig = sanitizeSeoConfig({
         ...config,
         updatedAt: new Date().toISOString()
-      };
-      
-      // Save to primary collection site_settings/seo
-      await setDoc(doc(db, "site_settings", "seo"), updatedConfig, { merge: true });
-      // Also save copy to settings/seo for backwards compatibility
-      await setDoc(doc(db, "settings", "seo"), updatedConfig, { merge: true }).catch(() => {});
+      }, DEFAULT_SEO_CONFIG);
 
-      setConfig(updatedConfig);
+      // Save to primary collection site_settings/seo
+      await setDoc(doc(db, "site_settings", "seo"), cleanConfig, { merge: true });
+      // Also save copy to settings/seo for backwards compatibility
+      await setDoc(doc(db, "settings", "seo"), cleanConfig, { merge: true }).catch(() => {});
+      // Also sanitize ads/seo_config to remove legacy SomDrive references
+      await setDoc(doc(db, "ads", "seo_config"), {
+        title: cleanConfig.defaultTitle,
+        siteName: cleanConfig.siteName,
+        siteTitle: cleanConfig.siteName,
+        siteSubtitle: "Ferramentas para áudio, PDF e imagem.",
+        description: cleanConfig.defaultDescription,
+        ogTitle: cleanConfig.openGraph?.title || cleanConfig.defaultTitle,
+        ogDescription: cleanConfig.openGraph?.description || cleanConfig.defaultDescription,
+        canonical: cleanConfig.canonicalUrl,
+        robots: "index, follow",
+        updatedAt: cleanConfig.updatedAt
+      }, { merge: true }).catch(() => {});
+
+      // Save to localStorage and purge legacy keys
+      try {
+        localStorage.setItem("multiconverte_seo", JSON.stringify(cleanConfig));
+        localStorage.removeItem("somdrive_seo");
+        localStorage.removeItem("convertauto_seo");
+        localStorage.removeItem("multiconvert_seo");
+      } catch (e) {}
+
+      setConfig(cleanConfig);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {
@@ -155,13 +171,14 @@ export default function AdminSeoManager() {
   };
 
   // Page SEO helper
-  const updatePageSeo = (pageKey: "home" | "audio" | "pdf" | "howItWorks", field: keyof PageSeoItem, val: any) => {
+  const updatePageSeo = (pageKey: string, field: keyof PageSeoItem, val: any) => {
+    const existingPage: PageSeoItem = config.pages[pageKey] || config.pages.home || { title: "", description: "" };
     setConfig({
       ...config,
       pages: {
         ...config.pages,
         [pageKey]: {
-          ...config.pages[pageKey],
+          ...existingPage,
           [field]: val
         }
       }
@@ -751,11 +768,22 @@ export default function AdminSeoManager() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 border-b border-border-main pb-3">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin border-b border-border-main">
             {[
               { id: "home", label: "Home (/)" },
-              { id: "audio", label: "Conversor Áudio (/audio)" },
-              { id: "pdf", label: "Ferramentas PDF (/pdf)" },
+              { id: "audio", label: "Áudio (/audio)" },
+              { id: "videoToAudio", label: "Vídeo p/ Áudio (/video-para-audio)" },
+              { id: "pdf", label: "Central PDF (/pdf)" },
+              { id: "imagesToPdf", label: "Imagens p/ PDF (/pdf/imagens-para-pdf)" },
+              { id: "pdfToImages", label: "PDF p/ Imagens (/pdf/pdf-para-imagens)" },
+              { id: "pdf_extract_text", label: "Extrair Texto PDF (/pdf/extrair-texto)" },
+              { id: "imageConverter", label: "Conversor Imagens (/imagem/converter)" },
+              { id: "imageCompressor", label: "Compressor Imagens (/imagem/comprimir)" },
+              { id: "imageResizer", label: "Redimensionar Imagens (/imagem/redimensionar)" },
+              { id: "imageCropper", label: "Cortar Imagens (/imagem/cortar)" },
+              { id: "imageRotateFlip", label: "Girar/Espelhar (/imagem/girar-espelhar)" },
+              { id: "image_watermark", label: "Marca d'água (/imagem/marca-dagua)" },
+              { id: "documentHub", label: "Documentos (/documento)" },
               { id: "howItWorks", label: "Como Funciona (/como-funciona)" }
             ].map(p => (
               <button

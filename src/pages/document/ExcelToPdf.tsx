@@ -11,6 +11,10 @@ import {
   convertExcelToPdf,
   ConversionReportData
 } from "../../services/document/excelToPdfService";
+import {
+  isRemoteConverterConfigured,
+  convertExcelToPdfRemote
+} from "../../services/document/documentConverterApiService";
 
 import ExcelUpload from "../../components/document/excel-to-pdf/ExcelUpload";
 import ExcelSheetSelector from "../../components/document/excel-to-pdf/ExcelSheetSelector";
@@ -43,6 +47,7 @@ export default function ExcelToPdf({ onNavigate }: ExcelToPdfProps) {
   useSeoHead("excelToPdf");
 
   const [step, setStep] = useState<Step>("upload");
+  const [rawFile, setRawFile] = useState<File | null>(null);
   const [fileData, setFileData] = useState<ParsedExcelFile | null>(null);
   const [printSettings, setPrintSettings] = useState<PrintSettings>(DEFAULT_PRINT_SETTINGS);
   const [isLoadingFile, setIsLoadingFile] = useState(false);
@@ -59,9 +64,12 @@ export default function ExcelToPdf({ onNavigate }: ExcelToPdfProps) {
 
   const [reportData, setReportData] = useState<ConversionReportData | null>(null);
 
+  const isRemoteConfigured = isRemoteConverterConfigured();
+
   const handleFileSelected = async (file: File) => {
     setIsLoadingFile(true);
     setUploadError(null);
+    setRawFile(file);
 
     try {
       const parsed = await readExcelFile(file);
@@ -95,7 +103,7 @@ export default function ExcelToPdf({ onNavigate }: ExcelToPdfProps) {
   };
 
   const handleStartConversion = async () => {
-    if (!fileData) return;
+    if (!fileData || !rawFile) return;
 
     const selectedSheets = fileData.sheets.filter((s) => s.selected);
     if (selectedSheets.length === 0) {
@@ -119,6 +127,55 @@ export default function ExcelToPdf({ onNavigate }: ExcelToPdfProps) {
       input_format: inputFormat
     });
 
+    // 1. Remote Conversion Path via Cloudflare LibreOffice Service
+    if (isRemoteConfigured) {
+      try {
+        const pdfBlob = await convertExcelToPdfRemote(rawFile, {
+          onProgress: (stage, pct) => {
+            setProgressStep(stage);
+            setProgressPercent(pct);
+          },
+        });
+
+        const pdfBlobUrl = URL.createObjectURL(pdfBlob);
+        const pdfFilename = fileData.filename.replace(/\.[^/.]+$/, "") + ".pdf";
+
+        const report: ConversionReportData = {
+          filename: fileData.filename,
+          pdfFilename,
+          pdfBlobUrl,
+          pdfBytes: new Uint8Array(await pdfBlob.arrayBuffer()),
+          pdfSize: pdfBlob.size,
+          convertedSheets: selectedSheets.map((s) => s.name),
+          skippedSheets: fileData.sheets.filter((s) => !s.selected).map((s) => s.name),
+          totalCellsProcessed: selectedSheets.reduce((sum, s) => sum + Object.keys(s.cells || {}).length, 0),
+          uncalculatedFormulasCount: 0,
+          generatedPagesCount: 1,
+          unsupportedFeatures: [],
+          warnings: [],
+          orientationUsed: printSettings.orientation,
+          pageSizeUsed: printSettings.pageSize,
+        };
+
+        setReportData(report);
+        setStep("result");
+
+        trackEvent("excel_to_pdf_completed_remote", {
+          filename: fileData.filename,
+          sheet_count: selectedSheets.length,
+          pdf_size: pdfBlob.size,
+          success: true
+        });
+        return;
+      } catch (err: any) {
+        console.error("[ExcelToPdf] Erro na conversão remota:", err);
+        setUploadError(err?.message || "Falha na conversão remota de alta fidelidade.");
+        setStep("configure");
+        return;
+      }
+    }
+
+    // 2. Local Flow (using Excel Rendering Engine and local PDF generator)
     try {
       const report = await convertExcelToPdf(
         fileData,
@@ -161,6 +218,7 @@ export default function ExcelToPdf({ onNavigate }: ExcelToPdfProps) {
     if (reportData?.pdfBlobUrl) {
       URL.revokeObjectURL(reportData.pdfBlobUrl);
     }
+    setRawFile(null);
     setFileData(null);
     setReportData(null);
     setUploadError(null);

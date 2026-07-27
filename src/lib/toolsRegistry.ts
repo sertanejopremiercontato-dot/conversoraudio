@@ -24,8 +24,17 @@ export const TOOLS_LIST: ToolDefinition[] = [
     route: "/documento/excel-para-pdf",
     category: "document",
     analyticsPrefix: "excel_to_pdf",
-    active: true,
+    active: false,
     description: "Converta planilhas XLS, XLSX e CSV em PDF, escolha as abas e ajuste a impressão sem cortes."
+  },
+  {
+    toolId: "word_to_pdf",
+    name: "Word para PDF",
+    route: "/document/word-to-pdf",
+    category: "document",
+    analyticsPrefix: "word_to_pdf",
+    active: false,
+    description: "Converta documentos DOCX para PDF mantendo textos, imagens, listas e tabelas."
   },
   {
     toolId: "image_background_remover",

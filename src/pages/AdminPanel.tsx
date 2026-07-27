@@ -20,16 +20,23 @@ import {
   Volume2,
   MousePointerClick,
   TrendingUp,
-  BarChart3
+  BarChart3,
+  RefreshCw,
+  MapPin,
+  Wrench,
+  Compass,
+  ChevronDown,
+  DollarSign
 } from "lucide-react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, orderBy, serverTimestamp, onSnapshot } from "firebase/firestore";
 import { auth, db, handleFirestoreError, OperationType } from "../firebase";
 import { Ad, SeoConfig, resolveAdImageSrc } from "../types";
-import { DEFAULT_SEO_CONFIG } from "../lib/useSeoHead";
+import { DEFAULT_SEO_CONFIG, sanitizeSeoConfig } from "../lib/useSeoHead";
 import PublicAdCard from "../components/PublicAdCard";
 import AdminSeoManager from "../components/AdminSeoManager";
 import AdminBrandingManager from "../components/AdminBrandingManager";
+import AdminAdsenseManager from "../components/AdminAdsenseManager";
 import config from "../../firebase-applet-config.json";
 
 const AdThumbnail = ({ ad, posId }: { ad: any; posId: string }) => {
@@ -147,28 +154,33 @@ export default function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   // General App states
-  const [activeTab, setActiveTab] = useState<"ads" | "seo" | "analytics" | "branding">("ads");
+  const [activeTab, setActiveTab] = useState<"ads" | "seo" | "analytics" | "branding" | "monetization">("ads");
   const [ads, setAds] = useState<Ad[]>([]);
 
   // GA4 Analytics States
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState<boolean>(false);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const [analyticsPeriod, setAnalyticsPeriod] = useState<"today" | "7daysAgo" | "30daysAgo">("7daysAgo");
+  const [showAllLocations, setShowAllLocations] = useState<boolean>(false);
+  const [showAllTools, setShowAllTools] = useState<boolean>(false);
+  const [showTechDetails, setShowTechDetails] = useState<boolean>(false);
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = async (overridePeriod?: "today" | "7daysAgo" | "30daysAgo") => {
     if (!currentUser) return;
+    const periodToUse = overridePeriod || analyticsPeriod;
     setAnalyticsLoading(true);
     setAnalyticsError(null);
     try {
       const idToken = await currentUser.getIdToken();
-      const res = await fetch("/api/admin/analytics", {
+      const res = await fetch(`/api/admin/analytics?period=${periodToUse}`, {
         headers: {
           "Authorization": `Bearer ${idToken}`
         }
       });
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({}));
-        throw new Error(errBody.error || `Erro HTTP ${res.status}`);
+        throw new Error(errBody.message || errBody.error || `Erro HTTP ${res.status}`);
       }
       const data = await res.json();
       setAnalyticsData(data);
@@ -184,7 +196,7 @@ export default function AdminPanel({ onNavigate }: AdminPanelProps) {
     if (activeTab === "analytics" && currentUser) {
       fetchAnalytics();
     }
-  }, [activeTab, currentUser]);
+  }, [activeTab, currentUser, analyticsPeriod]);
 
   const [seo, setSeo] = useState<SeoConfig>(DEFAULT_SEO_CONFIG);
 
@@ -614,30 +626,35 @@ export default function AdminPanel({ onNavigate }: AdminPanelProps) {
     };
   }, [authStatus]);
 
-  // Load SEO config from local storage or Firestore (local storage fallback for compatibility)
+  // Load SEO config from local storage or Firestore
   const loadSeo = async () => {
-    const storedSeo = localStorage.getItem("multiconverte_seo") || localStorage.getItem("multiconvert_seo") || localStorage.getItem("convertauto_seo") || localStorage.getItem("somdrive_seo");
+    try {
+      localStorage.removeItem("somdrive_seo");
+      localStorage.removeItem("convertauto_seo");
+      localStorage.removeItem("multiconvert_seo");
+    } catch (e) {}
+
+    const storedSeo = localStorage.getItem("multiconverte_seo");
     if (storedSeo) {
       try {
-        setSeo(JSON.parse(storedSeo));
+        const parsed = JSON.parse(storedSeo);
+        setSeo(sanitizeSeoConfig(parsed, DEFAULT_SEO_CONFIG));
       } catch (e) {
         console.error("Error loading local SEO", e);
       }
     }
 
     try {
-      const docRef = doc(db, "ads", "seo_config");
+      const docRef = doc(db, "site_settings", "seo");
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        const data = docSnap.data();
-        setSeo(prev => {
-          const merged = { ...prev, ...data } as SeoConfig;
-          localStorage.setItem("multiconverte_seo", JSON.stringify(merged));
-          return merged;
-        });
+        const data = docSnap.data() as Partial<SeoConfig>;
+        const clean = sanitizeSeoConfig(data, DEFAULT_SEO_CONFIG);
+        setSeo(clean);
+        localStorage.setItem("multiconverte_seo", JSON.stringify(clean));
       }
     } catch (err) {
-      console.warn("Could not load branding or SEO config from Firestore in AdminPanel:", err);
+      console.warn("Could not load SEO config from Firestore in AdminPanel:", err);
     }
   };
 
@@ -1160,6 +1177,18 @@ export default function AdminPanel({ onNavigate }: AdminPanelProps) {
             </button>
 
 
+
+            <button
+              onClick={() => { setActiveTab("monetization"); setIsAdFormOpen(false); }}
+              className={`flex items-center gap-2.5 px-4 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap lg:w-full ${
+                activeTab === "monetization" 
+                  ? "bg-card-selected text-green-primary border border-green-primary/15" 
+                  : "text-text-sec hover:bg-card-inner hover:text-text-main"
+              }`}
+            >
+              <DollarSign className="h-4 w-4" />
+              <span>Monetização / AdSense</span>
+            </button>
 
             <button
               onClick={() => { setActiveTab("analytics"); setIsAdFormOpen(false); }}
@@ -2092,409 +2121,564 @@ export default function AdminPanel({ onNavigate }: AdminPanelProps) {
           {/* TAB 5: RELATÓRIO DE ACESSOS (GA4) */}
           {activeTab === "analytics" && (
             <div className="space-y-6 text-left">
-              <div className="border-b border-border-main pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <h2 className="font-display font-extrabold text-[#F5F7F8] text-base uppercase tracking-wider flex items-center gap-2">
-                    <Eye className="h-5 w-5 text-green-primary" />
-                    Relatório de Acessos Real (Google Analytics 4)
-                  </h2>
-                  <p className="text-[11px] text-text-muted font-medium mt-1">
-                    Visualização em tempo real de estatísticas consolidadas e telemetria agregada através da API oficial do GA4.
-                  </p>
+              
+              {/* TOPO DO RELATÓRIO: TÍTULO, SELETOR DE PERÍODO, STATUS E ATUALIZAR */}
+              <div className="bg-bg-sec p-5 rounded-2xl border border-border-main space-y-4 shadow-sm">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Eye className="h-5 w-5 text-green-primary" />
+                      <h2 className="font-display font-extrabold text-[#F5F7F8] text-base uppercase tracking-wider">
+                        Relatório de Acessos
+                      </h2>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 mt-2 text-xs">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 text-green-400 border border-green-500/20 rounded-full font-bold text-[10px] uppercase tracking-wider">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                        Google Analytics conectado
+                      </span>
+                      <span className="text-[11px] text-text-muted font-medium">
+                        Atualizado em: <strong className="text-slate-200">{
+                          analyticsData?.fetchedAt
+                            ? new Date(analyticsData.fetchedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
+                            : new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
+                        }</strong>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 sm:self-auto">
+                    {/* SELETOR DE PERÍODO */}
+                    <div className="inline-flex p-1 bg-card-main border border-border-main rounded-xl">
+                      {[
+                        { id: "today", label: "Hoje" },
+                        { id: "7daysAgo", label: "Últimos 7 dias" },
+                        { id: "30daysAgo", label: "Últimos 30 dias" }
+                      ].map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => {
+                            setAnalyticsPeriod(p.id as any);
+                            fetchAnalytics(p.id as any);
+                          }}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                            analyticsPeriod === p.id
+                              ? "bg-green-primary text-white shadow-sm"
+                              : "text-text-sec hover:text-white hover:bg-card-inner/50"
+                          }`}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* BOTÃO ATUALIZAR */}
+                    <button
+                      type="button"
+                      onClick={() => fetchAnalytics()}
+                      disabled={analyticsLoading}
+                      className="px-4 py-2 bg-green-primary hover:bg-green-dark disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-md cursor-pointer flex items-center gap-2 whitespace-nowrap"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 ${analyticsLoading ? "animate-spin" : ""}`} />
+                      {analyticsLoading ? "Atualizando..." : "Atualizar relatório"}
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={fetchAnalytics}
-                  disabled={analyticsLoading}
-                  className="px-4 py-2 bg-green-primary hover:bg-green-dark disabled:bg-card-inner disabled:text-text-muted disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-colors shadow-md cursor-pointer whitespace-nowrap self-start"
-                >
-                  {analyticsLoading ? "Carregando..." : "Atualizar Relatório"}
-                </button>
               </div>
 
-              {/* Informative Security Banner */}
-              <div className="bg-bg-sec p-4 rounded-xl border border-border-main space-y-1.5">
-                <span className="text-xs font-extrabold text-[#39D977] uppercase tracking-wider flex items-center gap-1.5">
-                  <ShieldCheck className="h-4 w-4" />
-                  Privacidade, Segurança e Conformidade
-                </span>
-                <p className="text-[11px] text-text-sec leading-relaxed font-semibold">
-                  Este painel exibe exclusivamente métricas de uso agregadas. Nomes de arquivos, conteúdos de PDF, tokens, endereços IP e UIDs administrativos de visitantes nunca são transmitidos, gravados ou armazenados, em conformidade total com a LGPD e as políticas de privacidade do MultiConverte.
-                </p>
-              </div>
-
-              {analyticsLoading && (
-                <div className="bg-bg-sec p-12 rounded-2xl border border-border-main flex flex-col items-center justify-center space-y-3">
+              {/* MENSAGEM DE CARREGAMENTO */}
+              {analyticsLoading && !analyticsData && (
+                <div className="bg-bg-sec p-10 rounded-2xl border border-border-main flex flex-col items-center justify-center space-y-3">
                   <div className="w-8 h-8 rounded-full border-4 border-green-primary/30 border-t-green-primary animate-spin" />
-                  <span className="text-xs text-text-muted font-mono font-bold">Solicitando dados da API do GA4...</span>
+                  <span className="text-xs text-text-muted font-bold">Carregando dados do Google Analytics...</span>
                 </div>
               )}
 
+              {/* MENSAGEM AMIGÁVEL SE HOUVER ERRO DE CONFIGURAÇÃO */}
               {analyticsError && (
-                <div className="p-5 bg-red-500/5 border border-red-500/10 rounded-2xl text-left space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-bold text-red-500 uppercase tracking-wider">
-                    <AlertCircle className="h-5 w-5" />
-                    <span>Erro ao consultar API do Google Analytics 4</span>
-                  </div>
-                  <p className="text-xs text-text-sec font-semibold leading-relaxed">
-                    A API retornou a seguinte mensagem de falha: <code className="bg-bg-sec px-1.5 py-0.5 rounded text-red-400 font-mono text-[11px] border border-border-main">{analyticsError}</code>
-                  </p>
-                  <div className="bg-bg-sec p-4 rounded-xl border border-border-main text-[11px] text-text-muted leading-relaxed font-medium space-y-2">
-                    <span className="font-bold text-text-main block uppercase text-[10px] tracking-wider text-green-primary">Guia de Solução para Administradores:</span>
-                    <ol className="list-decimal list-inside space-y-1">
-                      <li>Certifique-se de que a variável <code className="text-white">GA4_PROPERTY_ID</code> está configurada corretamente com o ID numérico da propriedade no seu arquivo <code className="text-white">.env</code>.</li>
-                      <li>Verifique se as variáveis de Conta de Serviço (<code className="text-white">GA4_CLIENT_EMAIL</code> e <code className="text-white">GA4_PRIVATE_KEY</code>) pertencem a uma conta de serviço válida com acesso à propriedade.</li>
-                      <li>Certifique-se de que adicionou o e-mail da conta de serviço como "Leitor" nas permissões da propriedade Google Analytics 4.</li>
-                    </ol>
+                <div className="p-5 bg-card-main border border-border-main rounded-2xl text-left space-y-3 shadow-sm">
+                  <div className="flex items-center gap-3 text-amber-400">
+                    <div className="p-2 bg-amber-500/10 rounded-xl border border-amber-500/20">
+                      <AlertCircle className="h-5 w-5 text-amber-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-display text-xs font-extrabold text-slate-100 uppercase tracking-wider">
+                        {analyticsError.toLowerCase().includes("permissão") || analyticsError.toLowerCase().includes("permission")
+                          ? "Falta Conceder Acesso à Conta de Serviço"
+                          : "Atenção ao conectar o Google Analytics"}
+                      </h3>
+                      <p className="text-[11px] text-text-sec mt-0.5 font-medium leading-relaxed">
+                        {analyticsError.toLowerCase().includes("permissão") || analyticsError.toLowerCase().includes("permission")
+                          ? "A conta de serviço foi configurada no servidor, mas precisa da permissão 'Visualizador' no painel do Google Analytics."
+                          : analyticsError}
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {!analyticsLoading && !analyticsError && analyticsData && (
+              {/* RELATÓRIO CONSOLIDADO */}
+              {(!analyticsLoading || analyticsData) && (
                 <div className="space-y-6">
-                  
-                  {/* METRICAS PRINCIPAIS */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-bg-sec p-5 rounded-2xl border border-border-main space-y-1 shadow-sm">
-                      <span className="text-[10px] font-extrabold text-text-sec uppercase tracking-wider block">Visualizações de Página</span>
-                      <div className="text-2xl font-display font-extrabold text-green-primary">
-                        {analyticsData.summary?.pageViews?.toLocaleString() || 0}
+
+                  {/* 2. CARDS PRINCIPAIS */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                    {/* USUÁRIOS */}
+                    <div className="bg-bg-sec p-4 sm:p-5 rounded-2xl border border-border-main space-y-1 shadow-sm">
+                      <span className="text-[10px] font-extrabold text-text-sec uppercase tracking-wider block">
+                        Usuários
+                      </span>
+                      <div className="text-2xl sm:text-3xl font-display font-extrabold text-green-primary">
+                        {(analyticsData?.summary?.activeUsers || 0).toLocaleString()}
                       </div>
-                      <span className="text-[9px] text-text-muted font-semibold block">Total de acessos nas páginas do site</span>
+                      <span className="text-[10px] text-text-muted font-medium block">
+                        Visitantes no período
+                      </span>
                     </div>
 
-                    <div className="bg-bg-sec p-5 rounded-2xl border border-border-main space-y-1 shadow-sm">
-                      <span className="text-[10px] font-extrabold text-text-sec uppercase tracking-wider block">Usuários Ativos</span>
-                      <div className="text-2xl font-display font-extrabold text-green-primary">
-                        {analyticsData.summary?.activeUsers?.toLocaleString() || 0}
+                    {/* VISUALIZAÇÕES */}
+                    <div className="bg-bg-sec p-4 sm:p-5 rounded-2xl border border-border-main space-y-1 shadow-sm">
+                      <span className="text-[10px] font-extrabold text-text-sec uppercase tracking-wider block">
+                        Visualizações
+                      </span>
+                      <div className="text-2xl sm:text-3xl font-display font-extrabold text-green-primary">
+                        {(analyticsData?.summary?.pageViews || 0).toLocaleString()}
                       </div>
-                      <span className="text-[9px] text-text-muted font-semibold block">Visitantes únicos no período</span>
+                      <span className="text-[10px] text-text-muted font-medium block">
+                        Páginas acessadas
+                      </span>
                     </div>
 
-                    <div className="bg-bg-sec p-5 rounded-2xl border border-border-main space-y-1 shadow-sm">
-                      <span className="text-[10px] font-extrabold text-text-sec uppercase tracking-wider block">Sessões</span>
-                      <div className="text-2xl font-display font-extrabold text-green-primary">
-                        {analyticsData.summary?.sessions?.toLocaleString() || 0}
+                    {/* SESSÕES */}
+                    <div className="bg-bg-sec p-4 sm:p-5 rounded-2xl border border-border-main space-y-1 shadow-sm">
+                      <span className="text-[10px] font-extrabold text-text-sec uppercase tracking-wider block">
+                        Sessões
+                      </span>
+                      <div className="text-2xl sm:text-3xl font-display font-extrabold text-green-primary">
+                        {(analyticsData?.summary?.sessions || 0).toLocaleString()}
                       </div>
-                      <span className="text-[9px] text-text-muted font-semibold block">Visitas iniciadas por usuários</span>
+                      <span className="text-[10px] text-text-muted font-medium block">
+                        Visitas iniciadas
+                      </span>
+                    </div>
+
+                    {/* CONVERSÕES CONCLUÍDAS */}
+                    <div className="bg-bg-sec p-4 sm:p-5 rounded-2xl border border-border-main space-y-1 shadow-sm">
+                      <span className="text-[10px] font-extrabold text-text-sec uppercase tracking-wider block">
+                        Conversões Concluídas
+                      </span>
+                      <div className="text-2xl sm:text-3xl font-display font-extrabold text-[#39D977]">
+                        {(() => {
+                          if (!analyticsData?.events) return 0;
+                          return analyticsData.events.reduce((acc: number, ev: any) => {
+                            if (ev.name.includes("completed")) {
+                              return acc + Number(ev.count || 0);
+                            }
+                            return acc;
+                          }, 0).toLocaleString();
+                        })()}
+                      </div>
+                      <span className="text-[10px] text-text-muted font-medium block">
+                        Processamentos com sucesso
+                      </span>
                     </div>
                   </div>
 
-                  {/* GRID: PAGINAS MAIS VISITADAS & DESEMPENHO POR FERRAMENTA */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    
-                    {/* PAGINAS VISITADAS (PUBLIC VS ADMIN) */}
-                    <div className="bg-bg-sec p-5 rounded-2xl border border-border-main space-y-4">
+                  {/* 6. GRÁFICO DE ACESSOS */}
+                  {analyticsData?.dailyTrend && analyticsData.dailyTrend.length > 0 && (
+                    <div className="bg-bg-sec p-5 rounded-2xl border border-border-main space-y-4 shadow-sm">
                       <div className="flex items-center justify-between border-b border-border-main pb-2">
-                        <h3 className="text-xs font-extrabold text-text-main uppercase tracking-wider">
-                          Páginas e Telas Acessadas
+                        <h3 className="text-xs font-extrabold text-text-main uppercase tracking-wider flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4 text-green-primary" />
+                          Gráfico de Acessos por Dia
                         </h3>
-                        <span className="text-[10px] text-text-muted font-bold">Público vs Admin</span>
+                        <div className="flex items-center gap-4 text-[10px] font-bold">
+                          <span className="flex items-center gap-1 text-green-primary">
+                            <span className="w-2.5 h-2.5 rounded-full bg-green-primary inline-block"></span>
+                            Usuários
+                          </span>
+                          <span className="flex items-center gap-1 text-cyan-400">
+                            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block"></span>
+                            Visualizações
+                          </span>
+                        </div>
                       </div>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs font-semibold">
-                          <thead>
-                            <tr className="border-b border-border-main text-text-muted text-[10px] uppercase tracking-wider">
-                              <th className="pb-2 font-extrabold">Tipo</th>
-                              <th className="pb-2 font-extrabold">Caminho / Tela</th>
-                              <th className="pb-2 text-right font-extrabold">Acessos</th>
-                              <th className="pb-2 text-right font-extrabold">Usuários</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-border-main/50 text-text-sec">
-                            {analyticsData.pages && analyticsData.pages.length > 0 ? (
-                              analyticsData.pages.map((page: any, i: number) => {
-                                const isAdmin = page.isAdmin || page.path?.toLowerCase().includes("admin");
+
+                      {/* SVG RESPONSIVO DO GRÁFICO */}
+                      <div className="w-full h-44 pt-2 pb-1 relative">
+                        {(() => {
+                          const items = analyticsData.dailyTrend;
+                          const maxVal = Math.max(...items.map((i: any) => Math.max(i.users, i.views)), 5);
+                          const svgWidth = 600;
+                          const svgHeight = 130;
+                          const stepX = items.length > 1 ? svgWidth / (items.length - 1) : svgWidth / 2;
+
+                          const usersPoints = items.map((item: any, idx: number) => {
+                            const x = items.length === 1 ? svgWidth / 2 : idx * stepX;
+                            const y = svgHeight - (item.users / maxVal) * (svgHeight - 20) - 10;
+                            return `${x},${y}`;
+                          }).join(" ");
+
+                          const viewsPoints = items.map((item: any, idx: number) => {
+                            const x = items.length === 1 ? svgWidth / 2 : idx * stepX;
+                            const y = svgHeight - (item.views / maxVal) * (svgHeight - 20) - 10;
+                            return `${x},${y}`;
+                          }).join(" ");
+
+                          return (
+                            <svg className="w-full h-full overflow-visible" viewBox={`0 0 ${svgWidth} ${svgHeight}`} preserveAspectRatio="none">
+                              {/* Eixos Guia */}
+                              <line x1="0" y1={svgHeight - 10} x2={svgWidth} y2={svgHeight - 10} stroke="#2D3748" strokeWidth="1" strokeDasharray="3 3" />
+                              <line x1="0" y1={svgHeight / 2} x2={svgWidth} y2={svgHeight / 2} stroke="#2D3748" strokeWidth="1" strokeDasharray="3 3" />
+                              
+                              {/* Linha de Visualizações */}
+                              <polyline
+                                fill="none"
+                                stroke="#38BDF8"
+                                strokeWidth="2.5"
+                                points={viewsPoints}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+
+                              {/* Linha de Usuários */}
+                              <polyline
+                                fill="none"
+                                stroke="#10B981"
+                                strokeWidth="3"
+                                points={usersPoints}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+
+                              {/* Pontos no Gráfico */}
+                              {items.map((item: any, idx: number) => {
+                                const x = items.length === 1 ? svgWidth / 2 : idx * stepX;
+                                const yUsers = svgHeight - (item.users / maxVal) * (svgHeight - 20) - 10;
+                                const yViews = svgHeight - (item.views / maxVal) * (svgHeight - 20) - 10;
                                 return (
-                                  <tr key={i} className="hover:bg-card-inner/30 transition-colors">
-                                    <td className="py-2.5 shrink-0">
-                                      {isAdmin ? (
-                                        <span className="text-[9px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded-full">Admin</span>
-                                      ) : (
-                                        <span className="text-[9px] font-bold uppercase tracking-wider bg-green-primary/10 text-green-primary border border-green-primary/30 px-1.5 py-0.5 rounded-full">Público</span>
-                                      )}
-                                    </td>
-                                    <td className="py-2.5 font-mono text-[11px] text-white truncate max-w-[180px]" title={page.title}>
-                                      {page.path} <span className="text-[10px] text-text-muted block font-sans truncate">{page.title}</span>
-                                    </td>
-                                    <td className="py-2.5 text-right font-mono text-green-primary font-bold">{page.views?.toLocaleString() || 0}</td>
-                                    <td className="py-2.5 text-right font-mono">{page.users?.toLocaleString() || 0}</td>
-                                  </tr>
+                                  <g key={idx}>
+                                    <circle cx={x} cy={yViews} r="3.5" fill="#38BDF8" />
+                                    <circle cx={x} cy={yUsers} r="4.5" fill="#10B981" />
+                                  </g>
                                 );
-                              })
-                            ) : (
-                              <tr>
-                                <td colSpan={4} className="py-4 text-center text-text-muted text-[11px]">Nenhum dado registrado para telas ainda.</td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
+                              })}
+                            </svg>
+                          );
+                        })()}
+
+                        {/* Rótulos de Datas abaixo do Gráfico */}
+                        <div className="flex justify-between items-center text-[10px] text-text-muted font-mono font-bold mt-2">
+                          {analyticsData.dailyTrend.map((item: any, idx: number) => (
+                            <span key={idx} className="truncate px-1" title={`${item.date}: ${item.users} usuários, ${item.views} visualizações`}>
+                              {item.date}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
+                  )}
 
-                    {/* DESEMPENHO POR FERRAMENTA */}
-                    <div className="bg-bg-sec p-5 rounded-2xl border border-border-main space-y-4">
-                      <h3 className="text-xs font-extrabold text-text-main uppercase tracking-wider border-b border-border-main pb-2">
-                        Desempenho por Ferramenta
-                      </h3>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs font-semibold">
-                          <thead>
-                            <tr className="border-b border-border-main text-text-muted text-[10px] uppercase tracking-wider">
-                              <th className="pb-2 font-extrabold">Ferramenta</th>
-                              <th className="pb-2 text-right font-extrabold">Iniciadas</th>
-                              <th className="pb-2 text-right font-extrabold">Concluídas</th>
-                              <th className="pb-2 text-right font-extrabold">Taxa</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-border-main/50 text-text-sec font-mono text-[11px]">
-                            {(() => {
-                              const audioStarted = analyticsData.events?.find((e: any) => e.name === "audio_conversion_started")?.count || 0;
-                              const audioCompleted = analyticsData.events?.find((e: any) => e.name === "audio_conversion_completed")?.count || 0;
-                              const audioRate = audioStarted > 0 ? Math.min(100, (audioCompleted / audioStarted) * 100).toFixed(1) : "0.0";
+                  {/* 3. LOCALIZAÇÃO DOS VISITANTES (BLOCO PRINCIPAL DE DESTAQUE) */}
+                  <div className="bg-bg-sec p-5 rounded-2xl border border-border-main space-y-4 shadow-sm">
+                    <div className="flex items-center justify-between border-b border-border-main pb-3">
+                      <div>
+                        <h3 className="text-sm font-extrabold text-text-main uppercase tracking-wider flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-green-primary" />
+                          Localização dos Visitantes
+                        </h3>
+                        <p className="text-[11px] text-text-muted font-medium mt-0.5">
+                          Principais cidades e regiões que acessam o MultiConverte.
+                        </p>
+                      </div>
+                      {analyticsData?.locations && analyticsData.locations.length > 15 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllLocations(!showAllLocations)}
+                          className="text-xs font-bold text-green-primary hover:underline cursor-pointer"
+                        >
+                          {showAllLocations ? "Ver menos" : "Ver todas as cidades"}
+                        </button>
+                      )}
+                    </div>
 
-                              const videoStarted = analyticsData.events?.find((e: any) => e.name === "video_audio_started")?.count || 0;
-                              const videoCompleted = analyticsData.events?.find((e: any) => e.name === "video_audio_completed")?.count || 0;
-                              const videoRate = videoStarted > 0 ? Math.min(100, (videoCompleted / videoStarted) * 100).toFixed(1) : "0.0";
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs font-semibold">
+                        <thead>
+                          <tr className="border-b border-border-main text-text-muted text-[10px] uppercase tracking-wider">
+                            <th className="pb-2.5 font-extrabold">Cidade</th>
+                            <th className="pb-2.5 font-extrabold">Estado / Região</th>
+                            <th className="pb-2.5 font-extrabold">País</th>
+                            <th className="pb-2.5 text-right font-extrabold">Usuários</th>
+                            <th className="pb-2.5 text-right font-extrabold">Acessos</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border-main/50 text-text-sec">
+                          {(() => {
+                            const rawLocs = analyticsData?.locations || [];
+                            if (rawLocs.length === 0) {
+                              return (
+                                <tr>
+                                  <td colSpan={5} className="py-6 text-center text-text-muted text-xs">
+                                    Localização não identificada no período selecionado.
+                                  </td>
+                                </tr>
+                              );
+                            }
 
-                              const imageStarted = analyticsData.events?.find((e: any) => e.name === "image_conversion_started")?.count || 0;
-                              const imageCompleted = analyticsData.events?.find((e: any) => e.name === "image_conversion_completed")?.count || 0;
-                              const imageRate = imageStarted > 0 ? Math.min(100, (imageCompleted / imageStarted) * 100).toFixed(1) : "0.0";
+                            // Ordenar por maior número de usuários
+                            const sortedLocs = [...rawLocs].sort((a, b) => (b.users || 0) - (a.users || 0));
+                            const visibleLocs = showAllLocations ? sortedLocs : sortedLocs.slice(0, 15);
 
-                              const rotateFlipStarted = analyticsData.events?.find((e: any) => e.name === "image_rotate_flip_started")?.count || 0;
-                              const rotateFlipCompleted = analyticsData.events?.find((e: any) => e.name === "image_rotate_flip_completed")?.count || 0;
-                              const rotateFlipRate = rotateFlipStarted > 0 ? Math.min(100, (rotateFlipCompleted / rotateFlipStarted) * 100).toFixed(1) : "0.0";
-
-                              const bgManualStarted = analyticsData.events?.find((e: any) => e.name === "image_background_manual_started" || e.name === "image_background_removal_started")?.count || 0;
-                              const bgManualCompleted = analyticsData.events?.find((e: any) => e.name === "image_background_manual_completed" || e.name === "image_background_removal_completed")?.count || 0;
-                              const bgManualRate = bgManualStarted > 0 ? Math.min(100, (bgManualCompleted / bgManualStarted) * 100).toFixed(1) : "0.0";
-
-                              const pdfTools = [
-                                { id: "merge", label: "Juntar PDFs" },
-                                { id: "compress", label: "Comprimir PDF" },
-                                { id: "imgToPdf", label: "Imagens p/ PDF" },
-                                { id: "organize", label: "Organizar Páginas" },
-                                { id: "deleteRotate", label: "Excluir & Girar" }
-                              ];
+                            return visibleLocs.map((loc: any, i: number) => {
+                              const rawCity = (loc.city || "").trim();
+                              const isUnknownCity = !rawCity || rawCity === "(not set)" || rawCity === "(desconhecido)";
+                              const displayCity = isUnknownCity ? "Localização não identificada" : rawCity;
+                              const displayRegion = loc.region && loc.region !== "(not set)" ? loc.region : "—";
+                              const displayCountry = loc.country && loc.country !== "(not set)" ? loc.country : "Brasil";
 
                               return (
-                                <>
-                                  <tr className="hover:bg-card-inner/30 transition-colors">
-                                    <td className="py-2.5 text-white font-sans font-bold">Conversor de Áudio</td>
-                                    <td className="py-2.5 text-right font-bold">{audioStarted.toLocaleString()}</td>
-                                    <td className="py-2.5 text-right text-green-primary font-bold">{audioCompleted.toLocaleString()}</td>
-                                    <td className="py-2.5 text-right text-[#39D977] font-bold">{audioRate}%</td>
-                                  </tr>
-                                  <tr className="hover:bg-card-inner/30 transition-colors">
-                                    <td className="py-2.5 text-white font-sans font-bold">Vídeo para Áudio</td>
-                                    <td className="py-2.5 text-right font-bold">{videoStarted.toLocaleString()}</td>
-                                    <td className="py-2.5 text-right text-green-primary font-bold">{videoCompleted.toLocaleString()}</td>
-                                    <td className="py-2.5 text-right text-[#39D977] font-bold">{videoRate}%</td>
-                                  </tr>
-                                  <tr className="hover:bg-card-inner/30 transition-colors">
-                                    <td className="py-2.5 text-white font-sans font-bold">Conversor de Imagens</td>
-                                    <td className="py-2.5 text-right font-bold">{imageStarted.toLocaleString()}</td>
-                                    <td className="py-2.5 text-right text-green-primary font-bold">{imageCompleted.toLocaleString()}</td>
-                                    <td className="py-2.5 text-right text-[#39D977] font-bold">{imageRate}%</td>
-                                  </tr>
-                                  <tr className="hover:bg-card-inner/30 transition-colors">
-                                    <td className="py-2.5 text-white font-sans font-bold">Girar e Espelhar Imagens</td>
-                                    <td className="py-2.5 text-right font-bold">{rotateFlipStarted.toLocaleString()}</td>
-                                    <td className="py-2.5 text-right text-green-primary font-bold">{rotateFlipCompleted.toLocaleString()}</td>
-                                    <td className="py-2.5 text-right text-[#39D977] font-bold">{rotateFlipRate}%</td>
-                                  </tr>
-                                  <tr className="hover:bg-card-inner/30 transition-colors">
-                                    <td className="py-2.5 text-white font-sans font-bold">Remover Fundo Manual</td>
-                                    <td className="py-2.5 text-right font-bold">{bgManualStarted.toLocaleString()}</td>
-                                    <td className="py-2.5 text-right text-green-primary font-bold">{bgManualCompleted.toLocaleString()}</td>
-                                    <td className="py-2.5 text-right text-[#39D977] font-bold">{bgManualRate}%</td>
-                                  </tr>
-                                  {pdfTools.map((t) => {
-                                    const started = analyticsData.events?.find((e: any) => e.name === "pdf_processing_started")?.toolCounts?.[t.id] || 0;
-                                    const completed = analyticsData.events?.find((e: any) => e.name === "pdf_processing_completed")?.toolCounts?.[t.id] || 0;
-                                    const rate = started > 0 ? Math.min(100, (completed / started) * 100).toFixed(1) : "0.0";
-                                    return (
-                                      <tr key={t.id} className="hover:bg-card-inner/30 transition-colors">
-                                        <td className="py-2.5 text-white font-sans font-bold">{t.label}</td>
-                                        <td className="py-2.5 text-right font-bold">{started.toLocaleString()}</td>
-                                        <td className="py-2.5 text-right text-green-primary font-bold">{completed.toLocaleString()}</td>
-                                        <td className="py-2.5 text-right text-[#39D977] font-bold">{rate}%</td>
-                                      </tr>
-                                    );
-                                  })}
-                                </>
+                                <tr key={i} className="hover:bg-card-inner/30 transition-colors">
+                                  <td className="py-3 font-bold text-white text-xs">
+                                    {displayCity}
+                                  </td>
+                                  <td className="py-3 text-text-sec text-xs">
+                                    {displayRegion}
+                                  </td>
+                                  <td className="py-3 text-text-sec text-xs">
+                                    {displayCountry}
+                                  </td>
+                                  <td className="py-3 text-right font-mono text-green-primary font-extrabold">
+                                    {(loc.users || 0).toLocaleString()}
+                                  </td>
+                                  <td className="py-3 text-right font-mono text-slate-300">
+                                    {(loc.sessions || loc.views || 0).toLocaleString()}
+                                  </td>
+                                </tr>
                               );
-                            })()}
-                          </tbody>
-                        </table>
-                      </div>
+                            });
+                          })()}
+                        </tbody>
+                      </table>
                     </div>
 
+                    {analyticsData?.locations && analyticsData.locations.length > 15 && (
+                      <div className="pt-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setShowAllLocations(!showAllLocations)}
+                          className="px-4 py-2 bg-card-main hover:bg-card-inner border border-border-main text-text-sec hover:text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                        >
+                          {showAllLocations ? "Mostrar apenas as 15 principais" : "Ver todas as cidades"}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
-                  {/* GRID: LOCALIZACAO & ORIGEM DOS VISITANTES */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    
-                    {/* LOCALIZACAO DOS VISITANTES */}
-                    <div className="bg-bg-sec p-5 rounded-2xl border border-border-main space-y-4">
-                      <h3 className="text-xs font-extrabold text-text-main uppercase tracking-wider border-b border-border-main pb-2">
-                        Localização dos Visitantes
-                      </h3>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs font-semibold">
-                          <thead>
-                            <tr className="border-b border-border-main text-text-muted text-[10px] uppercase tracking-wider">
-                              <th className="pb-2 font-extrabold">País / Região</th>
-                              <th className="pb-2 font-extrabold">Cidade</th>
-                              <th className="pb-2 text-right font-extrabold">Usuários</th>
-                              <th className="pb-2 text-right font-extrabold">Acessos</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-border-main/50 text-text-sec">
-                            {analyticsData.locations && analyticsData.locations.length > 0 ? (
-                              analyticsData.locations.map((loc: any, i: number) => (
-                                <tr key={i} className="hover:bg-card-inner/30 transition-colors">
-                                  <td className="py-2.5 text-white font-bold truncate max-w-[140px]">
-                                    {loc.country} <span className="text-[10px] text-text-muted block font-normal">{loc.region}</span>
-                                  </td>
-                                  <td className="py-2.5 text-text-sec text-[11px]">{loc.city}</td>
-                                  <td className="py-2.5 text-right font-mono text-green-primary font-bold">{loc.users?.toLocaleString() || 0}</td>
-                                  <td className="py-2.5 text-right font-mono">{loc.views?.toLocaleString() || 0}</td>
-                                </tr>
-                              ))
-                            ) : (
-                              <tr>
-                                <td colSpan={4} className="py-4 text-center text-text-muted text-[11px]">Nenhuma localização agregada no momento.</td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
+                  {/* 4. FERRAMENTAS MAIS UTILIZADAS */}
+                  <div className="bg-bg-sec p-5 rounded-2xl border border-border-main space-y-4 shadow-sm">
+                    <div className="flex items-center justify-between border-b border-border-main pb-3">
+                      <div>
+                        <h3 className="text-sm font-extrabold text-text-main uppercase tracking-wider flex items-center gap-2">
+                          <Wrench className="h-4 w-4 text-green-primary" />
+                          Ferramentas Mais Utilizadas
+                        </h3>
+                        <p className="text-[11px] text-text-muted font-medium mt-0.5">
+                          Ferramentas ativas com aberturas, conversões ou downloads no período.
+                        </p>
                       </div>
                     </div>
 
-                    {/* ORIGEM DOS VISITANTES */}
-                    <div className="bg-bg-sec p-5 rounded-2xl border border-border-main space-y-4">
-                      <h3 className="text-xs font-extrabold text-text-main uppercase tracking-wider border-b border-border-main pb-2">
-                        Origem dos Visitantes (Tráfego)
-                      </h3>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs font-semibold">
-                          <thead>
-                            <tr className="border-b border-border-main text-text-muted text-[10px] uppercase tracking-wider">
-                              <th className="pb-2 font-extrabold">Origem / Mídia</th>
-                              <th className="pb-2 text-right font-extrabold">Usuários</th>
-                              <th className="pb-2 text-right font-extrabold">Sessões</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-border-main/50 text-text-sec">
-                            {analyticsData.trafficSources && analyticsData.trafficSources.length > 0 ? (
-                              analyticsData.trafficSources.map((src: any, i: number) => (
-                                <tr key={i} className="hover:bg-card-inner/30 transition-colors">
-                                  <td className="py-2.5 text-white font-bold font-mono text-[11px]">
-                                    {src.source} / <span className="text-green-primary">{src.medium}</span>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs font-semibold">
+                        <thead>
+                          <tr className="border-b border-border-main text-text-muted text-[10px] uppercase tracking-wider">
+                            <th className="pb-2.5 font-extrabold">Ferramenta</th>
+                            <th className="pb-2.5 text-right font-extrabold">Aberturas</th>
+                            <th className="pb-2.5 text-right font-extrabold">Conversões Concluídas</th>
+                            <th className="pb-2.5 text-right font-extrabold">Downloads</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border-main/50 text-text-sec">
+                          {(() => {
+                            if (!analyticsData?.events) {
+                              return (
+                                <tr>
+                                  <td colSpan={4} className="py-6 text-center text-text-muted text-xs">
+                                    Nenhuma conversão ou abertura registrada no período.
                                   </td>
-                                  <td className="py-2.5 text-right font-mono text-green-primary font-bold">{src.users?.toLocaleString() || 0}</td>
-                                  <td className="py-2.5 text-right font-mono">{src.sessions?.toLocaleString() || 0}</td>
                                 </tr>
-                              ))
-                            ) : (
-                              <tr>
-                                <td colSpan={3} className="py-4 text-center text-text-muted text-[11px]">Nenhuma origem de tráfego registrada ainda.</td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
+                              );
+                            }
 
+                            const events = analyticsData.events;
+                            const getCount = (name: string) => Number(events.find((e: any) => e.name === name)?.count || 0);
+
+                            const toolsList = [
+                              {
+                                name: "Conversor de Áudio",
+                                openings: getCount("audio_conversion_started"),
+                                conversions: getCount("audio_conversion_completed"),
+                                downloads: getCount("download_completed")
+                              },
+                              {
+                                name: "Vídeo para Áudio",
+                                openings: getCount("video_audio_started"),
+                                conversions: getCount("video_audio_completed"),
+                                downloads: getCount("download_completed")
+                              },
+                              {
+                                name: "Conversor de Imagens",
+                                openings: getCount("image_conversion_started"),
+                                conversions: getCount("image_conversion_completed"),
+                                downloads: getCount("download_completed")
+                              },
+                              {
+                                name: "Ferramentas PDF (Juntar, Comprimir, Organizar)",
+                                openings: getCount("pdf_processing_started"),
+                                conversions: getCount("pdf_processing_completed"),
+                                downloads: getCount("download_completed")
+                              }
+                            ];
+
+                            // MOSTRAR APENAS FERRAMENTAS COM PELO MENOS UMA ABERTURA OU CONVERSÃO (NÃO MOSTRAR FERRAMENTAS ZERADAS)
+                            const activeTools = toolsList
+                              .filter(t => t.openings > 0 || t.conversions > 0 || t.downloads > 0)
+                              .sort((a, b) => (b.conversions + b.openings) - (a.conversions + a.openings));
+
+                            if (activeTools.length === 0) {
+                              return (
+                                <tr>
+                                  <td colSpan={4} className="py-6 text-center text-text-muted text-xs">
+                                    Nenhuma atividade de ferramenta registrada neste período.
+                                  </td>
+                                </tr>
+                              );
+                            }
+
+                            const visibleTools = showAllTools ? activeTools : activeTools.slice(0, 10);
+
+                            return visibleTools.map((t: any, i: number) => (
+                              <tr key={i} className="hover:bg-card-inner/30 transition-colors">
+                                <td className="py-3 font-bold text-white text-xs">
+                                  {t.name}
+                                </td>
+                                <td className="py-3 text-right font-mono text-slate-200 font-bold">
+                                  {t.openings.toLocaleString()}
+                                </td>
+                                <td className="py-3 text-right font-mono text-green-primary font-extrabold">
+                                  {t.conversions.toLocaleString()}
+                                </td>
+                                <td className="py-3 text-right font-mono text-[#39D977] font-bold">
+                                  {t.downloads.toLocaleString()}
+                                </td>
+                              </tr>
+                            ));
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
 
-                  {/* GRID: DISPOSITIVOS & ANUNCIOS */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    
-                    {/* DISPOSITIVOS E TECNOLOGIA */}
-                    <div className="bg-bg-sec p-5 rounded-2xl border border-border-main space-y-4">
-                      <h3 className="text-xs font-extrabold text-text-main uppercase tracking-wider border-b border-border-main pb-2">
-                        Dispositivos e Tecnologia
+                  {/* 5. ORIGEM DOS VISITANTES */}
+                  <div className="bg-bg-sec p-5 rounded-2xl border border-border-main space-y-4 shadow-sm">
+                    <div className="border-b border-border-main pb-3">
+                      <h3 className="text-sm font-extrabold text-text-main uppercase tracking-wider flex items-center gap-2">
+                        <Compass className="h-4 w-4 text-green-primary" />
+                        Origem dos Visitantes
                       </h3>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs font-semibold">
-                          <thead>
-                            <tr className="border-b border-border-main text-text-muted text-[10px] uppercase tracking-wider">
-                              <th className="pb-2 font-extrabold">Dispositivo / SO</th>
-                              <th className="pb-2 font-extrabold">Navegador</th>
-                              <th className="pb-2 text-right font-extrabold">Usuários</th>
-                              <th className="pb-2 text-right font-extrabold">Sessões</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-border-main/50 text-text-sec">
-                            {analyticsData.devices && analyticsData.devices.length > 0 ? (
-                              analyticsData.devices.map((dev: any, i: number) => (
-                                <tr key={i} className="hover:bg-card-inner/30 transition-colors">
-                                  <td className="py-2.5 text-white font-bold capitalize">
-                                    {dev.category} <span className="text-[10px] text-text-muted block font-normal">{dev.os}</span>
+                      <p className="text-[11px] text-text-muted font-medium mt-0.5">
+                        Canais de tráfego que direcionaram acessos ao site.
+                      </p>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs font-semibold">
+                        <thead>
+                          <tr className="border-b border-border-main text-text-muted text-[10px] uppercase tracking-wider">
+                            <th className="pb-2.5 font-extrabold">Origem</th>
+                            <th className="pb-2.5 font-extrabold">Mídia</th>
+                            <th className="pb-2.5 text-right font-extrabold">Usuários</th>
+                            <th className="pb-2.5 text-right font-extrabold">Sessões</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border-main/50 text-text-sec">
+                          {(() => {
+                            const rawSources = analyticsData?.trafficSources || [];
+                            if (rawSources.length === 0) {
+                              return (
+                                <tr>
+                                  <td colSpan={4} className="py-6 text-center text-text-muted text-xs">
+                                    Nenhuma origem de tráfego registrada no período.
                                   </td>
-                                  <td className="py-2.5 text-text-sec text-[11px]">{dev.browser}</td>
-                                  <td className="py-2.5 text-right font-mono text-green-primary font-bold">{dev.users?.toLocaleString() || 0}</td>
-                                  <td className="py-2.5 text-right font-mono">{dev.sessions?.toLocaleString() || 0}</td>
                                 </tr>
-                              ))
-                            ) : (
-                              <tr>
-                                <td colSpan={4} className="py-4 text-center text-text-muted text-[11px]">Nenhum dado de dispositivo coletado ainda.</td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
+                              );
+                            }
 
-                    {/* ANUNCIOS PERFORMANCE */}
-                    <div className="bg-bg-sec p-5 rounded-2xl border border-border-main space-y-4">
-                      <h3 className="text-xs font-extrabold text-text-main uppercase tracking-wider border-b border-border-main pb-2">
-                        Desempenho dos Anúncios
-                      </h3>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs font-semibold">
-                          <thead>
-                            <tr className="border-b border-border-main text-text-muted text-[10px] uppercase tracking-wider">
-                              <th className="pb-2 font-extrabold">ID do Anúncio</th>
-                              <th className="pb-2 text-right font-extrabold">Visualizações</th>
-                              <th className="pb-2 text-right font-extrabold">Cliques</th>
-                              <th className="pb-2 text-right font-extrabold">CTR (Taxa de Clique)</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-border-main/50 text-text-sec font-mono text-[11px]">
-                            {analyticsData.adsPerformance && analyticsData.adsPerformance.length > 0 ? (
-                              analyticsData.adsPerformance.map((item: any, i: number) => {
-                                const views = item.views || 0;
-                                const clicks = item.clicks || 0;
-                                const ctr = views > 0 ? ((clicks / views) * 100).toFixed(2) : "0.00";
-                                return (
-                                  <tr key={i} className="hover:bg-card-inner/30 transition-colors">
-                                    <td className="py-2.5 text-white truncate max-w-[120px]" title={item.adId}>
-                                      {item.adId}
-                                    </td>
-                                    <td className="py-2.5 text-right">{views.toLocaleString()}</td>
-                                    <td className="py-2.5 text-right text-green-primary font-bold">{clicks.toLocaleString()}</td>
-                                    <td className="py-2.5 text-right text-[#39D977] font-bold">{ctr}%</td>
-                                  </tr>
-                                );
-                              })
-                            ) : (
-                              <tr>
-                                <td colSpan={4} className="py-4 text-center text-text-muted text-[11px]">Nenhuma interação com anúncios consolidada ainda.</td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
+                            return rawSources.map((src: any, i: number) => {
+                              const sName = (src.source || "").toLowerCase();
+                              let friendlyName = src.source || "Acesso direto";
+                              if (sName.includes("google")) friendlyName = "Google";
+                              else if (sName.includes("direct") || sName === "(none)") friendlyName = "Acesso direto";
+                              else if (sName.includes("instagram") || sName.includes("facebook") || sName.includes("t.co")) friendlyName = "Redes sociais";
+                              else if (sName.includes("referral")) friendlyName = "Referências";
 
+                              return (
+                                <tr key={i} className="hover:bg-card-inner/30 transition-colors">
+                                  <td className="py-3 font-bold text-white text-xs">
+                                    {friendlyName} <span className="text-[10px] text-text-muted font-mono font-normal block">{src.source}</span>
+                                  </td>
+                                  <td className="py-3 font-mono text-[11px] text-green-primary">
+                                    {src.medium || "(nenhum)"}
+                                  </td>
+                                  <td className="py-3 text-right font-mono text-green-primary font-bold">
+                                    {(src.users || 0).toLocaleString()}
+                                  </td>
+                                  <td className="py-3 text-right font-mono text-slate-300">
+                                    {(src.sessions || 0).toLocaleString()}
+                                  </td>
+                                </tr>
+                              );
+                            });
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* 7. DETALHES TÉCNICOS (EXPANSÍVEL) */}
+                  <div className="pt-2 border-t border-border-main/60">
+                    <button
+                      type="button"
+                      onClick={() => setShowTechDetails(!showTechDetails)}
+                      className="text-xs font-bold text-text-muted hover:text-white transition-colors cursor-pointer flex items-center gap-1.5"
+                    >
+                      <span>{showTechDetails ? "Ocultar detalhes técnicos" : "Ver detalhes técnicos"}</span>
+                      <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showTechDetails ? "rotate-180" : ""}`} />
+                    </button>
+
+                    {showTechDetails && (
+                      <div className="mt-3 p-4 bg-card-main border border-border-main rounded-xl space-y-2 text-[11px] text-text-muted">
+                        <span className="font-bold text-text-main block uppercase text-[10px] tracking-wider text-green-primary">
+                          Informações Técnicas de Integração GA4
+                        </span>
+                        <p>ID da Propriedade: <code className="font-mono text-slate-200">{process.env.GA4_PROPERTY_ID || "Configurado no Servidor"}</code></p>
+                        <p>Variáveis do sistema: <code className="font-mono text-slate-200">GA4_PROPERTY_ID, GA4_CLIENT_EMAIL, GA4_PRIVATE_KEY</code></p>
+                        <p>API Endpoint: <code className="font-mono text-slate-200">/api/admin/analytics?period={analyticsPeriod}</code></p>
+                      </div>
+                    )}
                   </div>
 
                 </div>
               )}
+
             </div>
+          )}
+
+          {/* TAB 5: MONETIZATION / ADSENSE */}
+          {activeTab === "monetization" && (
+            <AdminAdsenseManager currentUserId={currentUser?.uid} />
           )}
 
         </main>
