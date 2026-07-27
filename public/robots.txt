@@ -19,6 +19,9 @@ Allow: /imagem/girar-espelhar
 Allow: /imagem/marca-dagua
 Allow: /documento
 
+User-agent: Mediapartners-Google
+Allow: /
+
 # Bloquear áreas administrativas, rotas ocultas e prévias técnicas
 Disallow: /admin
 Disallow: /admin-login
