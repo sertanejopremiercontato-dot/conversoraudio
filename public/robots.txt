@@ -29,5 +29,5 @@ Disallow: /imagem/remover-fundo
 Disallow: /documento/excel-para-pdf
 Disallow: /document/word-to-pdf
 
-Sitemap: https://multiconverte.com.br/sitemap.xml
+Sitemap: https://www.multiconverte.com.br/sitemap.xml
 

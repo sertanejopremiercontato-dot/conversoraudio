@@ -26,7 +26,8 @@ import {
   Wrench,
   Compass,
   ChevronDown,
-  DollarSign
+  DollarSign,
+  Search
 } from "lucide-react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, orderBy, serverTimestamp, onSnapshot } from "firebase/firestore";
@@ -37,6 +38,7 @@ import PublicAdCard from "../components/PublicAdCard";
 import AdminSeoManager from "../components/AdminSeoManager";
 import AdminBrandingManager from "../components/AdminBrandingManager";
 import AdminAdsenseManager from "../components/AdminAdsenseManager";
+import AdminSearchConsoleManager from "../components/AdminSearchConsoleManager";
 import config from "../../firebase-applet-config.json";
 
 const AdThumbnail = ({ ad, posId }: { ad: any; posId: string }) => {
@@ -154,7 +156,7 @@ export default function AdminPanel({ onNavigate }: AdminPanelProps) {
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   // General App states
-  const [activeTab, setActiveTab] = useState<"ads" | "seo" | "analytics" | "branding" | "monetization">("ads");
+  const [activeTab, setActiveTab] = useState<"ads" | "seo" | "analytics" | "branding" | "monetization" | "search_console">("ads");
   const [ads, setAds] = useState<Ad[]>([]);
 
   // GA4 Analytics States
@@ -1162,6 +1164,18 @@ export default function AdminPanel({ onNavigate }: AdminPanelProps) {
             >
               <Globe className="h-4 w-4" />
               <span>SEO & Meta Tags</span>
+            </button>
+
+            <button
+              onClick={() => { setActiveTab("search_console"); setIsAdFormOpen(false); }}
+              className={`flex items-center gap-2.5 px-4 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap lg:w-full ${
+                activeTab === "search_console" 
+                  ? "bg-card-selected text-green-primary border border-green-primary/15" 
+                  : "text-text-sec hover:bg-card-inner hover:text-text-main"
+              }`}
+            >
+              <Search className="h-4 w-4" />
+              <span>Search Console & Indexação</span>
             </button>
 
             <button
@@ -2679,6 +2693,11 @@ export default function AdminPanel({ onNavigate }: AdminPanelProps) {
           {/* TAB 5: MONETIZATION / ADSENSE */}
           {activeTab === "monetization" && (
             <AdminAdsenseManager currentUserId={currentUser?.uid} />
+          )}
+
+          {/* TAB 6: GOOGLE SEARCH CONSOLE & INDEXING */}
+          {activeTab === "search_console" && (
+            <AdminSearchConsoleManager currentUserId={currentUser?.uid} />
           )}
 
         </main>

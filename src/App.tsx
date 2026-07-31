@@ -571,7 +571,7 @@ export default function App() {
       canonicalElement.setAttribute("rel", "canonical");
       document.head.appendChild(canonicalElement);
     }
-    canonicalElement.setAttribute("href", seoConfig.canonical || "https://multiconverte.com.br");
+    canonicalElement.setAttribute("href", seoConfig.canonical || "https://www.multiconverte.com.br");
   }, [activeTab, activePdfTool, seoConfig]);
 
   const getActiveAdsByPosition = (position: string) => {
