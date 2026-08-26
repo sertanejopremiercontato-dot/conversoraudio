@@ -85,52 +85,141 @@ export function updateGAConsent(status: "granted" | "denied") {
 }
 
 /**
- * Manually registers a page view in Google Analytics.
+ * Helper para envio não-bloqueante de telemetria ao backend da plataforma (/api/telemetry/event)
  */
-export function trackPageView(title: string, path: string) {
-  if (!GA_MEASUREMENT_ID || !window.gtag) {
-    return;
-  }
-
+function sendInternalTelemetryBeacon(payload: Record<string, any>): void {
   try {
-    window.gtag("event", "page_view", {
-      page_title: title,
-      page_location: `${window.location.origin}${path}`,
-      page_path: path,
-    });
-    console.log(`[GA4] Tracked Page View: ${path} (${title})`);
-  } catch (err) {
-    console.error("[GA4] Error tracking page view:", err);
+    if (typeof window === "undefined") return;
+
+    const path = window.location.pathname || "";
+    if (path.includes("/admin") || path.includes("/preview")) return;
+
+    const dataString = JSON.stringify(payload);
+
+    if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+      const blob = new Blob([dataString], { type: "application/json" });
+      navigator.sendBeacon("/api/telemetry/event", blob);
+    } else {
+      fetch("/api/telemetry/event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: dataString,
+        keepalive: true,
+      }).catch(() => {});
+    }
+  } catch {
+    // Falha silenciosa e não-bloqueante
   }
 }
 
 /**
- * Sends a custom GA4 event, cleansing any potentially sensitive input arguments.
+ * Manually registers a page view in Google Analytics and internal platform telemetry.
  */
-export function trackEvent(eventName: string, params: Record<string, any> = {}) {
-  if (!GA_MEASUREMENT_ID || !window.gtag) {
-    return;
+export function trackPageView(title: string, path: string) {
+  // 1. GA4 tracking (opcional se configurado)
+  if (GA_MEASUREMENT_ID && window.gtag) {
+    try {
+      window.gtag("event", "page_view", {
+        page_title: title,
+        page_location: `${window.location.origin}${path}`,
+        page_path: path,
+      });
+      console.log(`[GA4] Tracked Page View: ${path} (${title})`);
+    } catch (err) {
+      console.error("[GA4] Error tracking page view:", err);
+    }
   }
 
+  // 2. Telemetria interna real da plataforma (com prevenção de duplicidade com V2)
   try {
-    // Scrub potential personally identifiable info (PII) before sending
-    const cleanParams: Record<string, any> = {};
-    const safeKeys = ["tool_name", "removal_mode", "input_format", "output_format", "quality", "quality_mode", "background_type", "refinement_used", "acceleration_type", "file_count", "files_count", "processed_count", "failed_count", "rotation_type", "flip_type", "auto_orientation", "watermark_type", "preset_name", "repeat_mode", "success", "ad_id", "ad_position", "format", "tool", "category"];
-    const piiKeywords = ["email", "filename", "file_name", "content", "ip", "token", "uid", "user", "username", "password", "key", "secret", "auth"];
-
-    for (const [key, value] of Object.entries(params)) {
-      const lowerKey = key.toLowerCase();
-      const isExplicitlySafe = safeKeys.includes(lowerKey);
-      const isSensitive = !isExplicitlySafe && piiKeywords.some((keyword) => lowerKey.includes(keyword));
-
-      if (!isSensitive) {
-        cleanParams[key] = value;
-      }
+    if (path.includes("/admin") || path.includes("/preview")) {
+      return;
     }
 
-    window.gtag("event", eventName, cleanParams);
-    console.log(`[GA4] Tracked Event "${eventName}":`, cleanParams);
-  } catch (err) {
-    console.error(`[GA4] Error tracking event "${eventName}":`, err);
+    const lastV2 = (window as any).__last_v2_pv;
+    const isDuplicate = lastV2 && lastV2.path === path && (Date.now() - lastV2.time) < 2000;
+
+    if (!isDuplicate) {
+      (window as any).__last_v2_pv = { path, time: Date.now() };
+      sendInternalTelemetryBeacon({
+        type: "page_view",
+        path,
+        title: title || "Conversor de Áudio & Mídia Online",
+      });
+    }
+  } catch {
+    // Telemetria nunca interrompe a aplicação
+  }
+}
+
+/**
+ * Sends a custom event to GA4 and internal platform telemetry, cleansing any potentially sensitive input arguments.
+ */
+export function trackEvent(eventName: string, params: Record<string, any> = {}) {
+  // Scrub potential personally identifiable info (PII) before sending
+  const cleanParams: Record<string, any> = {};
+  const safeKeys = ["tool_name", "removal_mode", "input_format", "output_format", "quality", "quality_mode", "background_type", "refinement_used", "acceleration_type", "file_count", "files_count", "processed_count", "failed_count", "rotation_type", "flip_type", "auto_orientation", "watermark_type", "preset_name", "repeat_mode", "success", "ad_id", "ad_position", "format", "tool", "category"];
+  const piiKeywords = ["email", "filename", "file_name", "content", "ip", "token", "uid", "user", "username", "password", "key", "secret", "auth", "name"];
+
+  for (const [key, value] of Object.entries(params)) {
+    const lowerKey = key.toLowerCase();
+    const isExplicitlySafe = safeKeys.includes(lowerKey);
+    const isSensitive = !isExplicitlySafe && piiKeywords.some((keyword) => lowerKey.includes(keyword));
+
+    if (!isSensitive && (typeof value === "string" || typeof value === "number" || typeof value === "boolean")) {
+      cleanParams[key] = value;
+    }
+  }
+
+  // 1. GA4 tracking (opcional se configurado)
+  if (GA_MEASUREMENT_ID && window.gtag) {
+    try {
+      window.gtag("event", eventName, cleanParams);
+      console.log(`[GA4] Tracked Event "${eventName}":`, cleanParams);
+    } catch (err) {
+      console.error(`[GA4] Error tracking event "${eventName}":`, err);
+    }
+  }
+
+  // 2. Telemetria interna real da plataforma (site_metrics)
+  try {
+    let eventType = "tool_event";
+    if (
+      eventName.includes("conversion_completed") ||
+      eventName.includes("converted") ||
+      eventName.includes("convert_success") ||
+      eventName.includes("completed_remote")
+    ) {
+      eventType = "conversion";
+    } else if (
+      eventName.includes("download") ||
+      eventName.includes("downloaded") ||
+      eventName.includes("download_clicked")
+    ) {
+      eventType = "download";
+    }
+
+    let inferredTool = typeof cleanParams.tool === "string" ? cleanParams.tool : typeof cleanParams.tool_name === "string" ? cleanParams.tool_name : "";
+    if (!inferredTool) {
+      if (eventName.startsWith("audio_")) inferredTool = "audio";
+      else if (eventName.startsWith("video_")) inferredTool = "videoToAudio";
+      else if (eventName.startsWith("pdf_") || eventName.startsWith("images_to_pdf")) inferredTool = "pdf";
+      else if (eventName.startsWith("image_")) inferredTool = "image";
+      else if (eventName.startsWith("word_to_pdf")) inferredTool = "wordToPdf";
+      else if (eventName.startsWith("excel_to_pdf")) inferredTool = "excelToPdf";
+    }
+
+    sendInternalTelemetryBeacon({
+      type: eventType,
+      eventName,
+      tool: inferredTool || undefined,
+      output_format: cleanParams.output_format || cleanParams.format,
+      input_format: cleanParams.input_format,
+      file_count: cleanParams.files_count || cleanParams.file_count || cleanParams.processed_count,
+      quality: cleanParams.quality || cleanParams.quality_mode,
+      app_version: "v1",
+    });
+  } catch {
+    // Telemetria não bloqueia execução
   }
 }

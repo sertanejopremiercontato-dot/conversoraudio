@@ -344,7 +344,7 @@ export default function AdminSeoManager() {
                 type="text"
                 value={config.canonicalUrl}
                 onChange={(e) => setConfig({ ...config, canonicalUrl: e.target.value })}
-                placeholder="https://www.multiconverte.com.br"
+                placeholder="https://www.conversoraudio.com.br"
                 className="w-full bg-card-main border border-border-main rounded-xl px-4 py-2.5 text-text-main font-medium focus:outline-none focus:border-green-primary"
               />
             </div>
@@ -480,7 +480,7 @@ export default function AdminSeoManager() {
                 type="text"
                 value={config.openGraph.url}
                 onChange={(e) => setConfig({ ...config, openGraph: { ...config.openGraph, url: e.target.value } })}
-                placeholder="https://www.multiconverte.com.br"
+                placeholder="https://www.conversoraudio.com.br"
                 className="w-full bg-card-main border border-border-main rounded-xl px-4 py-2.5 text-text-main font-medium focus:outline-none focus:border-green-primary"
               />
             </div>
@@ -502,7 +502,7 @@ export default function AdminSeoManager() {
                 type="text"
                 value={config.openGraph.image}
                 onChange={(e) => setConfig({ ...config, openGraph: { ...config.openGraph, image: e.target.value } })}
-                placeholder="https://www.multiconverte.com.br/multiconverte-og-image.png"
+                placeholder="https://www.conversoraudio.com.br/og-cover.png"
                 className="w-full bg-card-main border border-border-main rounded-xl px-4 py-2.5 text-text-main font-medium focus:outline-none focus:border-green-primary"
               />
             </div>
@@ -584,7 +584,7 @@ export default function AdminSeoManager() {
                 type="text"
                 value={config.twitter.image}
                 onChange={(e) => setConfig({ ...config, twitter: { ...config.twitter, image: e.target.value } })}
-                placeholder="https://www.multiconverte.com.br/multiconverte-og-image.png"
+                placeholder="https://www.conversoraudio.com.br/og-cover.png"
                 className="w-full bg-card-main border border-border-main rounded-xl px-4 py-2.5 text-text-main font-medium focus:outline-none focus:border-green-primary"
               />
             </div>
@@ -677,7 +677,7 @@ export default function AdminSeoManager() {
                   ...config,
                   robotsConfig: { ...config.robotsConfig, sitemapUrl: e.target.value }
                 })}
-                placeholder="https://www.multiconverte.com.br/sitemap.xml"
+                placeholder="https://www.conversoraudio.com.br/sitemap.xml"
                 className="w-full bg-card-main border border-border-main rounded-xl px-4 py-2.5 text-text-main font-medium focus:outline-none focus:border-green-primary"
               />
             </div>
@@ -832,7 +832,7 @@ export default function AdminSeoManager() {
                     type="text"
                     value={pageData.canonicalUrl || ""}
                     onChange={(e) => updatePageSeo(selectedPage, "canonicalUrl", e.target.value)}
-                    placeholder="https://www.multiconverte.com.br/rota"
+                    placeholder="https://www.conversoraudio.com.br/rota"
                     className="w-full bg-card-main border border-border-main rounded-xl px-4 py-2.5 text-text-main font-medium focus:outline-none focus:border-green-primary"
                   />
                 </div>

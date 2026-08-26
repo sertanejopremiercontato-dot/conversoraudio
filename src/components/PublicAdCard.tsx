@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Ad, resolveAdImageSrc } from "../types";
 import { trackEvent } from "../lib/gtag";
 import { handleAdClick } from "../lib/adClickTracker";
+import { trackBannerImpression } from "../v2/integrations/analytics";
 import { Image as ImageIcon, ArrowRight, ExternalLink } from "lucide-react";
 
 interface PublicAdCardProps {
@@ -66,6 +67,49 @@ export default function PublicAdCard({ ad, position, onImageError, isAdminPrevie
     setCurrentSrc(preferred);
     setHasFailedOnce(false);
   }, [ad.imageUrl, ad.storagePath]);
+
+  const cardRef = useRef<HTMLDivElement | null>(null);
+
+  // Observa visualização real do anúncio (>= 50% na tela por >= 400ms)
+  useEffect(() => {
+    if (isAdminPreview || !ad.id || ad.id === "preview" || ad.id === "demo") return;
+    if (typeof window === "undefined" || !("IntersectionObserver" in window)) return;
+
+    const el = cardRef.current;
+    if (!el) return;
+
+    let timer: NodeJS.Timeout | null = null;
+    let hasSent = false;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry && entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+          if (!hasSent) {
+            timer = setTimeout(() => {
+              if (!hasSent) {
+                hasSent = true;
+                trackBannerImpression(ad.id, ad.title || ad.publicTitle || "Ad", position);
+              }
+            }, 400);
+          }
+        } else {
+          if (timer) {
+            clearTimeout(timer);
+            timer = null;
+          }
+        }
+      },
+      { threshold: [0.5] }
+    );
+
+    observer.observe(el);
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [ad.id, ad.title, ad.publicTitle, position, isAdminPreview]);
 
   const handleImageError = () => {
     if (!hasFailedOnce && alternativeSrc && currentSrc !== alternativeSrc) {

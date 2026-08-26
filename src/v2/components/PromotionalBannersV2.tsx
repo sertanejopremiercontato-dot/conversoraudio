@@ -9,6 +9,7 @@ import {
   CheckCircle2 
 } from "lucide-react";
 import { DEFAULT_HOME_CONTENT, PromoBannerConfig } from "../config/homeContent";
+import { useBannerTracker } from "../integrations/analytics/bannerTracker";
 
 interface PromotionalBannersV2Props {
   config?: PromoBannerConfig;
@@ -18,10 +19,21 @@ interface PromotionalBannersV2Props {
 export const PromotionalBannersV2: React.FC<PromotionalBannersV2Props> = ({
   config = DEFAULT_HOME_CONTENT.promoBanner
 }) => {
+  const { elementRef, recordClick } = useBannerTracker({
+    bannerId: "promo_spotify_playlist",
+    bannerTitle: config.title || "Playlist Spotify Oficial",
+    placement: "home_promo",
+    enabled: !!config.enabled
+  });
+
   if (!config.enabled) return null;
 
   return (
-    <section className="w-full my-4" id="v2-promo-banner-section">
+    <section 
+      ref={elementRef}
+      className="w-full my-4" 
+      id="v2-promo-banner-section"
+    >
       <div className={`relative overflow-hidden rounded-[26px] bg-gradient-to-r ${config.gradientBg} p-6 sm:p-8 md:p-10 text-white shadow-[0_12px_36px_rgba(8,27,75,0.25)] border border-white/10`}>
         
         {/* Subtle decorative background equalizer lines & glowing circles */}
@@ -90,6 +102,7 @@ export const PromotionalBannersV2: React.FC<PromotionalBannersV2Props> = ({
                 href={config.ctaLink}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={recordClick}
                 className="px-5 py-3 rounded-full bg-[#10B981] hover:bg-[#059669] text-white text-xs sm:text-sm font-black flex items-center gap-2 shadow-[0_4px_16px_rgba(16,185,129,0.4)] hover:shadow-[0_6px_22px_rgba(16,185,129,0.5)] hover:scale-[1.03] active:scale-[0.98] transition-all cursor-pointer"
               >
                 <div className="w-5 h-5 rounded-full bg-black/20 flex items-center justify-center">

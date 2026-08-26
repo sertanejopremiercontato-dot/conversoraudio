@@ -128,7 +128,7 @@ async function runGA4ReportREST(propertyId: string, payload: any): Promise<any> 
 }
 
 // Lightweight Firebase ID Token verification using standard Google REST API
-async function verifyFirebaseIdToken(token: string): Promise<{ uid: string }> {
+async function verifyFirebaseIdToken(token: string): Promise<{ uid: string; email?: string }> {
   const apiKey = firebaseConfig?.apiKey;
   if (!apiKey) {
     throw new Error("API Key do Firebase ausente para verificação de token.");
@@ -153,14 +153,20 @@ async function verifyFirebaseIdToken(token: string): Promise<{ uid: string }> {
     throw new Error("Usuário não encontrado ou token inválido");
   }
   
-  return { uid: user.localId };
+  return { uid: user.localId, email: user.email };
 }
 
 // Helper function to check if a user is an active admin
-async function checkIsAdminSecure(uid: string, token: string): Promise<boolean> {
+async function checkIsAdminSecure(uid: string, token: string, userEmail?: string): Promise<boolean> {
   if (!uid || !token) {
     console.warn("[ANALYTICS] Missing UID or Token for admin check");
     return false;
+  }
+
+  // Master admin fast-path bypass
+  if (userEmail && userEmail.toLowerCase() === "sertanejopremiercontato@gmail.com") {
+    console.log(`[ANALYTICS] Master admin verified: ${userEmail}`);
+    return true;
   }
 
   if (firebaseConfig) {
@@ -247,6 +253,7 @@ export default async function handler(req: any, res: any) {
     }
 
     const uid = decodedToken.uid;
+    const email = decodedToken.email;
     if (!uid) {
       console.warn("[ANALYTICS-AUTH] Decoded token lacks UID");
       return res.status(401).json({
@@ -256,9 +263,9 @@ export default async function handler(req: any, res: any) {
     }
 
     // Check if user is active admin
-    const isAdmin = await checkIsAdminSecure(uid, token);
+    const isAdmin = await checkIsAdminSecure(uid, token, email);
     if (!isAdmin) {
-      console.warn(`[ANALYTICS-AUTH] User ${uid} is not an active admin`);
+      console.warn(`[ANALYTICS-AUTH] User ${uid} (${email || "no-email"}) is not an active admin`);
       return res.status(403).json({
         error: "FORBIDDEN",
         message: "Acesso negado. Você não possui permissões de administrador ativo."

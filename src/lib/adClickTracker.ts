@@ -1,6 +1,7 @@
 import React from "react";
 import { Ad } from "../types";
 import { trackEvent } from "./gtag";
+import { trackBannerClick } from "../v2/integrations/analytics";
 
 // In-memory timestamps map to prevent technical double-clicks within 1 second for LGPD compliance & protection
 const lastClickTimestamps = new Map<string, number>();
@@ -33,6 +34,9 @@ export function handleAdClick(
   
   if (!isDuplicateInstantClick) {
     lastClickTimestamps.set(ad.id, now);
+
+    // Track real click to site_metrics banner telemetry
+    trackBannerClick(ad.id, ad.title || ad.publicTitle || "Ad", pos);
 
     // Track real click to server via navigator.sendBeacon with fallback to fetch keepalive
     const payload = {

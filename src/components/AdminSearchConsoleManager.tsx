@@ -35,7 +35,7 @@ export default function AdminSearchConsoleManager({ currentUserId: _currentUserI
     lastChecked: string;
   } | null>(null);
 
-  const officialDomain = "https://www.multiconverte.com.br";
+  const officialDomain = "https://www.conversoraudio.com.br";
   const sitemapUrl = `${officialDomain}/sitemap.xml`;
   const robotsUrl = `${officialDomain}/robots.txt`;
 
@@ -164,7 +164,7 @@ export default function AdminSearchConsoleManager({ currentUserId: _currentUserI
               </span>
             </div>
             <p className="text-xs text-emerald-100/80 mt-1 leading-relaxed">
-              O domínio <strong className="text-white font-mono">multiconverte.com.br</strong> está verificado no Google Search Console através de registro TXT no DNS. Nenhuma metatag no HTML é necessária.
+              O domínio <strong className="text-white font-mono">conversoraudio.com.br</strong> está verificado no Google Search Console através de registro TXT no DNS. Nenhuma metatag no HTML é necessária.
             </p>
           </div>
         </div>
@@ -372,7 +372,7 @@ export default function AdminSearchConsoleManager({ currentUserId: _currentUserI
             <span>Plano de Migração de Domínio (Antigo &rarr; Novo)</span>
           </h3>
           <p className="text-xs text-text-sec mt-1 leading-relaxed">
-            Direcionamento de autoridade SEO do domínio legado para <strong className="text-white font-bold">https://www.multiconverte.com.br</strong>.
+            Direcionamento de autoridade SEO do domínio legado para <strong className="text-white font-bold">https://www.conversoraudio.com.br</strong>.
           </p>
         </div>
 
@@ -391,7 +391,7 @@ export default function AdminSearchConsoleManager({ currentUserId: _currentUserI
             <span className="font-extrabold text-green-primary uppercase text-[10px] tracking-wider block">
               Domínio Destino (Oficial Padronizado)
             </span>
-            <code className="text-white font-mono text-xs block">https://www.multiconverte.com.br</code>
+            <code className="text-white font-mono text-xs block">https://www.conversoraudio.com.br</code>
             <p className="text-[11px] text-text-muted leading-relaxed">
               Recebe todo o tráfego e autoridade de busca sem dispersão de canonical.
             </p>
@@ -404,10 +404,10 @@ export default function AdminSearchConsoleManager({ currentUserId: _currentUserI
           </span>
           <ol className="list-decimal list-inside space-y-2 text-text-sec leading-relaxed">
             <li>
-              <strong className="text-white">Enviar Sitemap no Search Console:</strong> Acesse a propriedade <code className="text-green-primary">multiconverte.com.br</code> ou <code className="text-green-primary">https://www.multiconverte.com.br/</code>, navegue em <strong className="text-white">Sitemaps</strong> e envie: <code className="text-green-primary">https://www.multiconverte.com.br/sitemap.xml</code>.
+              <strong className="text-white">Enviar Sitemap no Search Console:</strong> Acesse a propriedade <code className="text-green-primary">conversoraudio.com.br</code> ou <code className="text-green-primary">https://www.conversoraudio.com.br/</code>, navegue em <strong className="text-white">Sitemaps</strong> e envie: <code className="text-green-primary">https://www.conversoraudio.com.br/sitemap.xml</code>.
             </li>
             <li>
-              <strong className="text-white">Inspeção de URL para a Home:</strong> Inspecione <code className="text-green-primary">https://www.multiconverte.com.br/</code> e clique em <strong className="text-white">Solicitar Indexação</strong>.
+              <strong className="text-white">Inspeção de URL para a Home:</strong> Inspecione <code className="text-green-primary">https://www.conversoraudio.com.br/</code> e clique em <strong className="text-white">Solicitar Indexação</strong>.
             </li>
             <li>
               <strong className="text-white">Manter Redirecionamento 301/308:</strong> Mantenha os redirecionamentos do domínio antigo e do domínio sem www ativos no Vercel Edge/DNS.

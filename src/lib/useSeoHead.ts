@@ -9,7 +9,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
   siteName: "MultiConverte",
   defaultTitle: "MultiConverte — Conversor de Áudio, PDF e Imagens Online",
   defaultDescription: "Converta áudios, organize PDFs e edite imagens online com ferramentas simples, rápidas e seguras no MultiConverte.",
-  canonicalUrl: "https://www.multiconverte.com.br",
+  canonicalUrl: "https://www.conversoraudio.com.br",
   language: "pt-BR",
   author: "MultiConverte",
   theme: "#10b981",
@@ -29,8 +29,8 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
   openGraph: {
     title: "MultiConverte — Conversor de Áudio, PDF e Imagens Online",
     description: "Converta áudios, organize PDFs e edite imagens online com ferramentas simples, rápidas e seguras no MultiConverte.",
-    image: "https://www.multiconverte.com.br/multiconverte-og-image.png",
-    url: "https://www.multiconverte.com.br",
+    image: "https://www.conversoraudio.com.br/og-cover.png",
+    url: "https://www.conversoraudio.com.br",
     type: "website",
     siteName: "MultiConverte",
     locale: "pt_BR"
@@ -40,14 +40,14 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
     card: "summary_large_image",
     title: "MultiConverte — Conversor de Áudio, PDF e Imagens Online",
     description: "Converta áudios, organize PDFs e edite imagens online com ferramentas simples, rápidas e seguras no MultiConverte.",
-    image: "https://www.multiconverte.com.br/multiconverte-og-image.png"
+    image: "https://www.conversoraudio.com.br/og-cover.png"
   },
 
   robotsConfig: {
     allowIndexing: true,
     allowFollow: true,
-    sitemapUrl: "https://www.multiconverte.com.br/sitemap.xml",
-    canonicalUrl: "https://www.multiconverte.com.br",
+    sitemapUrl: "https://www.conversoraudio.com.br/sitemap.xml",
+    canonicalUrl: "https://www.conversoraudio.com.br",
     blockAdmin: true,
     blockPrivateRoutes: true,
     blockApi: true
@@ -69,7 +69,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       title: "MultiConverte - Ferramentas de Áudio, Vídeo, Imagem e PDF Online Grátis",
       description: "Converta arquivos de áudio e edite PDFs gratuitamente online. Rápido, seguro e sem instalação.",
       keywords: ["conversor de audio", "ferramentas pdf", "multiconverte", "conversor mp3"],
-      canonicalUrl: "https://www.multiconverte.com.br",
+      canonicalUrl: "https://www.conversoraudio.com.br",
       allowIndexing: true,
       allowFollow: true
     },
@@ -77,7 +77,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       title: "Conversor de Áudio Online Grátis - MP3, WAV, AAC, OGG | MultiConverte",
       description: "Converta qualquer arquivo de áudio para MP3, WAV, AAC, OGG, M4A ou FLAC em alta fidelidade diretamente no seu navegador.",
       keywords: ["conversor mp3", "converter audio", "mp3 para wav", "audio converter"],
-      canonicalUrl: "https://www.multiconverte.com.br/audio",
+      canonicalUrl: "https://www.conversoraudio.com.br/audio",
       allowIndexing: true,
       allowFollow: true
     },
@@ -85,7 +85,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       title: "Editor de Metadados de Áudio Online | MP3, WAV, FLAC e M4A",
       description: "Edite, analise e limpe metadados ID3, RIFF e VorbisComments de arquivos de áudio online sem recompresso ou perda de qualidade. 100% no navegador.",
       keywords: ["editor de metadados de áudio", "editar id3 mp3", "remover metadados audio", "editar capa mp3", "editor id3v2", "limpeza de privacidade audio", "metadata editor mp3 wav flac m4a"],
-      canonicalUrl: "https://www.multiconverte.com.br/audio/editor-metadados",
+      canonicalUrl: "https://www.conversoraudio.com.br/audio/editor-metadados",
       allowIndexing: true,
       allowFollow: true
     },
@@ -93,7 +93,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       title: "Ferramentas PDF Online Grátis - Juntar, Comprimir, Converter | MultiConverte",
       description: "Edite seus arquivos PDF gratuitamente: junte múltiplos PDFs, reduza o tamanho mantendo a qualidade, converta imagens JPG/PNG para PDF e reordene páginas.",
       keywords: ["juntar pdf", "comprimir pdf", "imagem para pdf", "organizar pdf"],
-      canonicalUrl: "https://www.multiconverte.com.br/pdf",
+      canonicalUrl: "https://www.conversoraudio.com.br/pdf",
       allowIndexing: true,
       allowFollow: true
     },
@@ -101,7 +101,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       title: "Juntar PDF Online Grátis — Combine Múltiplos PDFs | MultiConverte",
       description: "Combine múltiplos arquivos PDF em um único documento de forma rápida, gratuita e segura. Organize a ordem das páginas e baixe instantaneamente.",
       keywords: ["juntar pdf", "combinar pdf", "mesclar pdf", "unir pdf", "juntar arquivos pdf"],
-      canonicalUrl: "https://www.multiconverte.com.br/pdf/juntar-pdf",
+      canonicalUrl: "https://www.conversoraudio.com.br/pdf/juntar-pdf",
       allowIndexing: true,
       allowFollow: true
     },
@@ -109,7 +109,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       title: "Juntar PDF Online Grátis — Combine Múltiplos PDFs | MultiConverte",
       description: "Combine múltiplos arquivos PDF em um único documento de forma rápida, gratuita e segura. Organize a ordem das páginas e baixe instantaneamente.",
       keywords: ["juntar pdf", "combinar pdf", "mesclar pdf", "unir pdf", "juntar arquivos pdf"],
-      canonicalUrl: "https://www.multiconverte.com.br/pdf/juntar-pdf",
+      canonicalUrl: "https://www.conversoraudio.com.br/pdf/juntar-pdf",
       allowIndexing: true,
       allowFollow: true
     },
@@ -117,7 +117,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       title: "Comprimir PDF Online Grátis — Reduzir Tamanho | MultiConverte",
       description: "Reduza o tamanho dos seus arquivos PDF mantendo a melhor qualidade visual. Processamento rápido, ilimitado e direto no seu navegador.",
       keywords: ["comprimir pdf", "reduzir tamanho pdf", "diminuir pdf", "otimizar pdf", "compactar pdf"],
-      canonicalUrl: "https://www.multiconverte.com.br/pdf/comprimir-pdf",
+      canonicalUrl: "https://www.conversoraudio.com.br/pdf/comprimir-pdf",
       allowIndexing: true,
       allowFollow: true
     },
@@ -125,7 +125,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       title: "Comprimir PDF Online Grátis — Reduzir Tamanho | MultiConverte",
       description: "Reduza o tamanho dos seus arquivos PDF mantendo a melhor qualidade visual. Processamento rápido, ilimitado e direto no seu navegador.",
       keywords: ["comprimir pdf", "reduzir tamanho pdf", "diminuir pdf", "otimizar pdf", "compactar pdf"],
-      canonicalUrl: "https://www.multiconverte.com.br/pdf/comprimir-pdf",
+      canonicalUrl: "https://www.conversoraudio.com.br/pdf/comprimir-pdf",
       allowIndexing: true,
       allowFollow: true
     },
@@ -133,7 +133,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       title: "Organizar Páginas de PDF Online Grátis | MultiConverte",
       description: "Reordene, mova e reorganize as páginas do seu documento PDF com facilidade. Interface simples, rápida e 100% segura.",
       keywords: ["organizar pdf", "reordenar paginas pdf", "mudar ordem paginas pdf", "organizador de pdf"],
-      canonicalUrl: "https://www.multiconverte.com.br/pdf/organizar-pdf",
+      canonicalUrl: "https://www.conversoraudio.com.br/pdf/organizar-pdf",
       allowIndexing: true,
       allowFollow: true
     },
@@ -141,7 +141,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       title: "Organizar Páginas de PDF Online Grátis | MultiConverte",
       description: "Reordene, mova e reorganize as páginas do seu documento PDF com facilidade. Interface simples, rápida e 100% segura.",
       keywords: ["organizar pdf", "reordenar paginas pdf", "mudar ordem paginas pdf", "organizador de pdf"],
-      canonicalUrl: "https://www.multiconverte.com.br/pdf/organizar-pdf",
+      canonicalUrl: "https://www.conversoraudio.com.br/pdf/organizar-pdf",
       allowIndexing: true,
       allowFollow: true
     },
@@ -149,7 +149,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       title: "Girar Páginas de PDF Online Grátis | MultiConverte",
       description: "Gire a orientação de páginas específicas ou de todo o arquivo PDF para a esquerda ou direita sem perdas de qualidade.",
       keywords: ["girar pdf", "rotacionar pdf", "virar pagina pdf", "girar pdf online"],
-      canonicalUrl: "https://www.multiconverte.com.br/pdf/girar-pdf",
+      canonicalUrl: "https://www.conversoraudio.com.br/pdf/girar-pdf",
       allowIndexing: true,
       allowFollow: true
     },
@@ -157,7 +157,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       title: "Girar Páginas de PDF Online Grátis | MultiConverte",
       description: "Gire a orientação de páginas específicas ou de todo o arquivo PDF para a esquerda ou direita sem perdas de qualidade.",
       keywords: ["girar pdf", "rotacionar pdf", "virar pagina pdf", "girar pdf online"],
-      canonicalUrl: "https://www.multiconverte.com.br/pdf/girar-pdf",
+      canonicalUrl: "https://www.conversoraudio.com.br/pdf/girar-pdf",
       allowIndexing: true,
       allowFollow: true
     },
@@ -165,7 +165,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       title: "Excluir Páginas de PDF Online Grátis | MultiConverte",
       description: "Remova páginas indesejadas do seu arquivo PDF em poucos cliques e baixe um novo documento limpo e otimizado.",
       keywords: ["excluir paginas pdf", "remover pagina pdf", "deletar pagina pdf", "apagar pagina pdf"],
-      canonicalUrl: "https://www.multiconverte.com.br/pdf/excluir-paginas",
+      canonicalUrl: "https://www.conversoraudio.com.br/pdf/excluir-paginas",
       allowIndexing: true,
       allowFollow: true
     },
@@ -173,7 +173,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       title: "Excluir Páginas de PDF Online Grátis | MultiConverte",
       description: "Remova páginas indesejadas do seu arquivo PDF em poucos cliques e baixe um novo documento limpo e otimizado.",
       keywords: ["excluir paginas pdf", "remover pagina pdf", "deletar pagina pdf", "apagar pagina pdf"],
-      canonicalUrl: "https://www.multiconverte.com.br/pdf/excluir-paginas",
+      canonicalUrl: "https://www.conversoraudio.com.br/pdf/excluir-paginas",
       allowIndexing: true,
       allowFollow: true
     },
@@ -181,7 +181,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       title: "Imagens para PDF Grátis: JPG, PNG e WEBP | MultiConverte",
       description: "Transforme imagens JPG, PNG e WEBP em um único arquivo PDF, organize a ordem das páginas e baixe gratuitamente.",
       keywords: ["imagens para PDF", "JPG para PDF", "PNG para PDF", "WEBP para PDF", "converter imagem em PDF"],
-      canonicalUrl: "https://www.multiconverte.com.br/pdf/imagens-para-pdf",
+      canonicalUrl: "https://www.conversoraudio.com.br/pdf/imagens-para-pdf",
       allowIndexing: true,
       allowFollow: true
     },
@@ -189,7 +189,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       title: "Como Funciona | MultiConverte & PDF Tools",
       description: "Saiba como utilizar o MultiConverte para converter áudios e editar arquivos PDF com máxima privacidade e processamento instantâneo.",
       keywords: ["como funciona multiconverte", "privacidade conversor audio", "tutorial pdf"],
-      canonicalUrl: "https://www.multiconverte.com.br/como-funciona",
+      canonicalUrl: "https://www.conversoraudio.com.br/como-funciona",
       allowIndexing: true,
       allowFollow: true
     },
@@ -215,7 +215,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
         "extrair áudio online grátis",
         "conversor MultiConverte"
       ],
-      canonicalUrl: "https://www.multiconverte.com.br/video-para-audio",
+      canonicalUrl: "https://www.conversoraudio.com.br/video-para-audio",
       allowIndexing: true,
       allowFollow: true
     },
@@ -235,7 +235,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
         "converter JPG para PDF grátis",
         "converter PNG para PDF online"
       ],
-      canonicalUrl: "https://www.multiconverte.com.br/pdf/imagens-para-pdf",
+      canonicalUrl: "https://www.conversoraudio.com.br/pdf/imagens-para-pdf",
       allowIndexing: true,
       allowFollow: true
     },
@@ -253,7 +253,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
         "baixar páginas do PDF em JPG",
         "PDF para imagem online"
       ],
-      canonicalUrl: "https://www.multiconverte.com.br/pdf/pdf-para-imagens",
+      canonicalUrl: "https://www.conversoraudio.com.br/pdf/pdf-para-imagens",
       allowIndexing: true,
       allowFollow: true
     },
@@ -271,7 +271,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
         "converter foto online",
         "conversor de imagem gratis"
       ],
-      canonicalUrl: "https://www.multiconverte.com.br/imagem/converter",
+      canonicalUrl: "https://www.conversoraudio.com.br/imagem/converter",
       allowIndexing: true,
       allowFollow: true
     },
@@ -295,7 +295,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
         "diminuir KB da imagem",
         "reduzir tamanho JPG"
       ],
-      canonicalUrl: "https://www.multiconverte.com.br/imagem/comprimir",
+      canonicalUrl: "https://www.conversoraudio.com.br/imagem/comprimir",
       allowIndexing: true,
       allowFollow: true
     },
@@ -318,7 +318,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
         "alterar pixels da imagem",
         "redimensionar imagem grátis"
       ],
-      canonicalUrl: "https://www.multiconverte.com.br/imagem/redimensionar",
+      canonicalUrl: "https://www.conversoraudio.com.br/imagem/redimensionar",
       allowIndexing: true,
       allowFollow: true
     },
@@ -336,7 +336,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
         "cortar foto para stories",
         "cortar imagem youtube thumbnail"
       ],
-      canonicalUrl: "https://www.multiconverte.com.br/imagem/cortar",
+      canonicalUrl: "https://www.conversoraudio.com.br/imagem/cortar",
       allowIndexing: true,
       allowFollow: true
     },
@@ -358,7 +358,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
         "girar várias imagens",
         "espelhar imagens em lote"
       ],
-      canonicalUrl: "https://www.multiconverte.com.br/imagem/girar-espelhar",
+      canonicalUrl: "https://www.conversoraudio.com.br/imagem/girar-espelhar",
       allowIndexing: true,
       allowFollow: true
     },
@@ -378,7 +378,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
         "proteger imagem com marca d’água",
         "marca repetida em foto"
       ],
-      canonicalUrl: "https://www.multiconverte.com.br/imagem/marca-dagua",
+      canonicalUrl: "https://www.conversoraudio.com.br/imagem/marca-dagua",
       allowIndexing: true,
       allowFollow: true
     },
@@ -398,7 +398,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
         "selecionar fundo por cor",
         "PNG transparente"
       ],
-      canonicalUrl: "https://www.multiconverte.com.br/imagem/remover-fundo",
+      canonicalUrl: "https://www.conversoraudio.com.br/imagem/remover-fundo",
       allowIndexing: false,
       allowFollow: false
     },
@@ -417,7 +417,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
         "extrair texto grátis",
         "baixar texto de PDF"
       ],
-      canonicalUrl: "https://www.multiconverte.com.br/pdf/extrair-texto",
+      canonicalUrl: "https://www.conversoraudio.com.br/pdf/extrair-texto",
       allowIndexing: true,
       allowFollow: true
     },
@@ -432,7 +432,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
         "planilha para PDF",
         "converter Excel em PDF grátis"
       ],
-      canonicalUrl: "https://www.multiconverte.com.br/documento/excel-para-pdf",
+      canonicalUrl: "https://www.conversoraudio.com.br/documento/excel-para-pdf",
       allowIndexing: false,
       allowFollow: false
     },
@@ -445,7 +445,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
         "DOCX em PDF",
         "converter Word em PDF"
       ],
-      canonicalUrl: "https://www.multiconverte.com.br/document/word-to-pdf",
+      canonicalUrl: "https://www.conversoraudio.com.br/document/word-to-pdf",
       allowIndexing: false,
       allowFollow: false
     },
@@ -459,7 +459,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
         "extrair texto de PDF",
         "documentos online grátis"
       ],
-      canonicalUrl: "https://www.multiconverte.com.br/documento",
+      canonicalUrl: "https://www.conversoraudio.com.br/documento",
       allowIndexing: true,
       allowFollow: true
     }
@@ -506,10 +506,10 @@ export function sanitizeSeoConfig(input: Partial<SeoConfig> | null | undefined, 
       .replace(/somdrive/gi, "MultiConverte")
       .replace(/convertauto/gi, "MultiConverte")
       .replace(/multiconvert(?!e)/gi, "MultiConverte")
-      .replace(/https?:\/\/conversor\.somdrive\.com\.br\/?/gi, "https://www.multiconverte.com.br/")
-      .replace(/https?:\/\/somdrive\.com\.br\/?/gi, "https://www.multiconverte.com.br/")
-      .replace(/https?:\/\/somdrive\.com\/?/gi, "https://www.multiconverte.com.br/")
-      .replace(/https?:\/\/convertauto\.com\.br\/?/gi, "https://www.multiconverte.com.br/");
+      .replace(/https?:\/\/conversor\.somdrive\.com\.br\/?/gi, "https://www.conversoraudio.com.br/")
+      .replace(/https?:\/\/somdrive\.com\.br\/?/gi, "https://www.conversoraudio.com.br/")
+      .replace(/https?:\/\/somdrive\.com\/?/gi, "https://www.conversoraudio.com.br/")
+      .replace(/https?:\/\/convertauto\.com\.br\/?/gi, "https://www.conversoraudio.com.br/");
 
     return clean.trim();
   };
@@ -535,8 +535,8 @@ export function sanitizeSeoConfig(input: Partial<SeoConfig> | null | undefined, 
   }
 
   let canonicalUrl = replaceLegacyText(input.canonicalUrl, defaultConfig.canonicalUrl);
-  if (!canonicalUrl.startsWith("https://www.multiconverte.com.br")) {
-    canonicalUrl = "https://www.multiconverte.com.br/";
+  if (!canonicalUrl.startsWith("https://www.conversoraudio.com.br")) {
+    canonicalUrl = "https://www.conversoraudio.com.br/";
   }
 
   const author = replaceLegacyText(input.author, defaultConfig.author);

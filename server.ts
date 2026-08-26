@@ -130,7 +130,7 @@ async function runGA4ReportREST(propertyId: string, payload: any): Promise<any> 
 }
 
 // Lightweight, 100% secure Firebase ID Token verification using standard Google REST API (completely bypasses gRPC & firebase-admin)
-async function verifyFirebaseIdToken(token: string): Promise<{ uid: string }> {
+async function verifyFirebaseIdToken(token: string): Promise<{ uid: string; email?: string }> {
   const apiKey = firebaseConfig?.apiKey;
   if (!apiKey) {
     throw new Error("API Key do Firebase ausente para verificação de token.");
@@ -155,7 +155,7 @@ async function verifyFirebaseIdToken(token: string): Promise<{ uid: string }> {
     throw new Error("Usuário não encontrado ou token inválido");
   }
   
-  return { uid: user.localId };
+  return { uid: user.localId, email: user.email };
 }
 
 // Initialize Firebase Client
@@ -171,10 +171,16 @@ if (firebaseConfig) {
 }
 
 // Helper function to check if a user is an active admin (securely)
-async function checkIsAdminSecure(uid: string, token: string): Promise<boolean> {
+async function checkIsAdminSecure(uid: string, token: string, userEmail?: string): Promise<boolean> {
   if (!uid || !token) {
     console.warn("[SERVER] Missing UID or Token for admin check");
     return false;
+  }
+
+  // Master admin email fast-path bypass matching firestore.rules
+  if (userEmail && userEmail.toLowerCase() === "sertanejopremiercontato@gmail.com") {
+    console.log(`[SERVER-AUTH] Master admin verified by email: ${userEmail}`);
+    return true;
   }
 
   // Secure Firestore REST API using the validated user's ID Token.
@@ -247,7 +253,7 @@ async function requireAdminMiddleware(req: express.Request, res: express.Respons
     }
 
     // Verify token using lightweight secure REST helper
-    let decodedToken;
+    let decodedToken: { uid: string; email?: string };
     try {
       decodedToken = await verifyFirebaseIdToken(token);
     } catch (tokenErr: any) {
@@ -259,6 +265,7 @@ async function requireAdminMiddleware(req: express.Request, res: express.Respons
     }
 
     const uid = decodedToken.uid;
+    const email = decodedToken.email;
     if (!uid) {
       console.warn("[SERVER-AUTH] Decoded token lacks UID");
       return res.status(401).json({
@@ -268,17 +275,18 @@ async function requireAdminMiddleware(req: express.Request, res: express.Respons
     }
 
     // Check if user is active admin
-    const isAdmin = await checkIsAdminSecure(uid, token);
+    const isAdmin = await checkIsAdminSecure(uid, token, email);
     if (!isAdmin) {
-      console.warn(`[SERVER-AUTH] User ${uid} is not an active admin`);
+      console.warn(`[SERVER-AUTH] User ${uid} (${email || "no-email"}) is not an active admin`);
       return res.status(403).json({
         error: "FORBIDDEN",
         message: "Acesso negado. Você não possui permissões de administrador ativo."
       });
     }
 
-    // Attach verified admin UID to request
+    // Attach verified admin UID and email to request
     (req as any).adminUid = uid;
+    (req as any).adminEmail = email;
     next();
   } catch (err: any) {
     console.error("[SERVER-AUTH] Middleware error:", err);
@@ -289,7 +297,58 @@ async function requireAdminMiddleware(req: express.Request, res: express.Respons
   }
 }
 
-// Helper to get R2 Client if credentials exist
+// Helper to extract nested or dotted metric maps from Firestore documents
+function extractMetricsMap(data: Record<string, any>, prefix: string): Record<string, any> {
+  const result: Record<string, any> = {};
+  if (!data || typeof data !== "object") return result;
+
+  // 1. If data[prefix] is an object map
+  if (data[prefix] && typeof data[prefix] === "object" && !Array.isArray(data[prefix])) {
+    for (const [k, v] of Object.entries(data[prefix])) {
+      result[k] = v;
+    }
+  }
+
+  // 2. If data has flat keys with dot notation (e.g., "devices.Desktop")
+  const dotPrefix = `${prefix}.`;
+  for (const [k, v] of Object.entries(data)) {
+    if (k.startsWith(dotPrefix)) {
+      const subKey = k.substring(dotPrefix.length);
+      result[subKey] = v;
+    }
+  }
+
+  return result;
+}
+
+const COUNTRY_NAMES_PT: Record<string, string> = {
+  BR: "Brasil",
+  US: "Estados Unidos",
+  PT: "Portugal",
+  ES: "Espanha",
+  AR: "Argentina",
+  CL: "Chile",
+  CO: "Colômbia",
+  MX: "México",
+  UY: "Uruguai",
+  PY: "Paraguai",
+  PE: "Peru",
+  BO: "Bolívia",
+  GB: "Reino Unido",
+  FR: "França",
+  DE: "Alemanha",
+  IT: "Itália",
+  CA: "Canadá",
+  JP: "Japão",
+  AO: "Angola",
+  MZ: "Moçambique",
+  CV: "Cabo Verde"
+};
+
+function formatCountryName(code: string): string {
+  const upper = (code || "").trim().toUpperCase();
+  return COUNTRY_NAMES_PT[upper] || upper || "Outro";
+}
 function getR2Client() {
   const accountId = process.env.R2_ADS_ACCOUNT_ID;
   const accessKeyId = process.env.R2_ADS_ACCESS_KEY_ID;
@@ -734,19 +793,102 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
   // API Route: Track ad click (atomic count)
   app.post("/api/ads-track-click", adsTrackClickHandler);
 
-  // API Route: Get Google Analytics 4 (GA4) report data
+  // API Route: Get Analytics report data (GA4 with real Firestore Telemetry Fallback)
   app.get("/api/admin/analytics", requireAdminMiddleware, async (req, res) => {
     try {
       const propertyId = (process.env.GA4_PROPERTY_ID || "").trim();
-      if (!propertyId || !/^\d+$/.test(propertyId)) {
-        return res.status(400).json({
-          error: "GA4_NOT_CONFIGURED",
-          message: "Google Analytics ainda não configurado."
-        });
-      }
-
       const rawPeriod = String(req.query.period || "7daysAgo").trim();
       const startDate = ["today", "7daysAgo", "30daysAgo"].includes(rawPeriod) ? rawPeriod : "7daysAgo";
+
+      // If GA4 is not configured or fails, load directly from real Firestore platform metrics
+      if (!propertyId || !/^\d+$/.test(propertyId) || !process.env.GA4_CLIENT_EMAIL || !process.env.GA4_PRIVATE_KEY) {
+        let summary = { pageViews: 0, activeUsers: 0, sessions: 0 };
+        let dailyTrend: Array<{ date: string; users: number; views: number }> = [];
+        let eventsMap: Record<string, { name: string; count: number }> = {
+          "audio_conversion_started": { name: "audio_conversion_started", count: 0 },
+          "audio_conversion_completed": { name: "audio_conversion_completed", count: 0 },
+          "video_audio_started": { name: "video_audio_started", count: 0 },
+          "video_audio_completed": { name: "video_audio_completed", count: 0 },
+          "image_conversion_started": { name: "image_conversion_started", count: 0 },
+          "image_conversion_completed": { name: "image_conversion_completed", count: 0 },
+          "pdf_processing_started": { name: "pdf_processing_started", count: 0 },
+          "pdf_processing_completed": { name: "pdf_processing_completed", count: 0 },
+          "download_completed": { name: "download_completed", count: 0 }
+        };
+
+        if (db) {
+          const metricsColl = collection(db, "site_metrics");
+          const snap = await getDocs(metricsColl);
+          const allDailyDocs: Array<{ id: string; date: string; data: any }> = [];
+
+          snap.forEach((d) => {
+            if (d.id.startsWith("daily_")) {
+              const dateStr = d.id.replace("daily_", "");
+              allDailyDocs.push({ id: d.id, date: dateStr, data: d.data() });
+            }
+          });
+
+          allDailyDocs.sort((a, b) => a.date.localeCompare(b.date));
+
+          let daysBack = 7;
+          if (startDate === "today") daysBack = 0;
+          else if (startDate === "7daysAgo") daysBack = 7;
+          else if (startDate === "30daysAgo") daysBack = 30;
+
+          const cutoffDate = new Date();
+          cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+          const cutoffStr = cutoffDate.toISOString().substring(0, 10);
+
+          const filteredDocs = allDailyDocs.filter(d => d.date >= cutoffStr);
+
+          for (const item of filteredDocs) {
+            const d = item.data;
+            const pViews = Number(d.pageViews || 0);
+            const pConv = Number(d.conversions || 0);
+            const pDown = Number(d.downloads || 0);
+
+            summary.pageViews += pViews;
+
+            const formattedDate = item.date.length === 10 ? `${item.date.substring(8, 10)}/${item.date.substring(5, 7)}` : item.date;
+            dailyTrend.push({
+              date: formattedDate,
+              users: Math.max(pViews > 0 ? 1 : 0, Math.round(pViews * 0.75)),
+              views: pViews
+            });
+
+            if (d.events && typeof d.events === "object") {
+              for (const [eKey, count] of Object.entries(d.events)) {
+                if (eventsMap[eKey]) {
+                  eventsMap[eKey].count += Number(count || 0);
+                } else {
+                  eventsMap[eKey] = { name: eKey, count: Number(count || 0) };
+                }
+              }
+            }
+
+            if (pConv > 0) {
+              eventsMap["audio_conversion_completed"].count += pConv;
+            }
+            if (pDown > 0) {
+              eventsMap["download_completed"].count += pDown;
+            }
+          }
+
+          summary.activeUsers = Math.max(summary.pageViews > 0 ? 1 : 0, Math.round(summary.pageViews * 0.75));
+          summary.sessions = Math.max(summary.activeUsers, Math.round(summary.pageViews * 0.85));
+        }
+
+        return res.json({
+          summary,
+          dailyTrend,
+          locations: [],
+          trafficSources: [],
+          devices: [],
+          events: Object.values(eventsMap),
+          source: "firestore_realtime",
+          fetchedAt: new Date().toISOString()
+        });
+      }
 
       // Query 1: Summary Statistics
       let summary = { pageViews: 0, activeUsers: 0, sessions: 0 };
@@ -964,10 +1106,91 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
     return map[toolKey] || toolKey;
   }
 
+  // Helper: Detecção de Dispositivo, OS e Navegador sem PII
+  function parseUserAgentDetails(uaString?: string) {
+    const ua = (uaString || "").trim();
+    if (!ua) {
+      return { isBot: false, category: "Desktop", os: "Outro", browser: "Outro" };
+    }
+
+    const isBot = /bot|spider|crawl|slurp|facebookexternalhit|twitterbot|bingbot|googlebot|yandex|bytespider/i.test(ua);
+    if (isBot) {
+      return { isBot: true, category: "Bot", os: "Bot", browser: "Bot" };
+    }
+
+    let category = "Desktop";
+    if (/ipad|tablet|(android(?!.*mobile))|(windows(?!.*phone)(.*touch))/i.test(ua)) {
+      category = "Tablet";
+    } else if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk|Opera M(obi|ini)/i.test(ua)) {
+      category = "Mobile";
+    }
+
+    let os = "Outro";
+    if (/Windows/i.test(ua)) os = "Windows";
+    else if (/Android/i.test(ua)) os = "Android";
+    else if (/iPhone|iPad|iPod/i.test(ua)) os = "iOS";
+    else if (/Mac OS X|Macintosh/i.test(ua)) os = "macOS";
+    else if (/Linux/i.test(ua)) os = "Linux";
+    else if (/CrOS/i.test(ua)) os = "ChromeOS";
+
+    let browser = "Outro";
+    if (/Edg\//i.test(ua)) browser = "Edge";
+    else if (/OPR\/|Opera/i.test(ua)) browser = "Opera";
+    else if (/Chrome\/|CriOS\//i.test(ua)) browser = "Chrome";
+    else if (/Firefox\/|FxiOS\//i.test(ua)) browser = "Firefox";
+    else if (/Safari/i.test(ua) && !/Chrome|CriOS/i.test(ua)) browser = "Safari";
+    else if (/SamsungBrowser/i.test(ua)) browser = "Samsung Internet";
+
+    return { isBot: false, category, os, browser };
+  }
+
+  // Helper: Extração de Geolocalização segura a partir de headers de infraestrutura/proxy
+  function extractGeoHeaders(req: express.Request) {
+    const country = String(
+      req.headers["x-country-code"] ||
+      req.headers["x-client-geo-location"] ||
+      req.headers["x-appengine-country"] ||
+      req.headers["cf-ipcountry"] ||
+      req.headers["x-vercel-ip-country"] ||
+      req.headers["x-real-ip-country"] ||
+      ""
+    ).trim().toUpperCase();
+
+    const region = String(
+      req.headers["x-appengine-region"] ||
+      req.headers["x-vercel-ip-country-region"] ||
+      ""
+    ).trim();
+
+    const city = String(
+      req.headers["x-appengine-city"] ||
+      req.headers["x-vercel-ip-city"] ||
+      ""
+    ).trim();
+
+    return {
+      country: country && country.length <= 10 ? country : "",
+      region: region && region.length <= 40 ? region : "",
+      city: city && city.length <= 50 ? city : ""
+    };
+  }
+
   // API Route: Privacy-Safe Aggregated Telemetry Event Tracker (/api/telemetry/event)
   app.post("/api/telemetry/event", express.json(), async (req, res) => {
     try {
-      const { type, path: rawPath, tool: rawTool, eventName: rawEvent, bannerId: rawBannerId } = req.body || {};
+      const {
+        type,
+        path: rawPath,
+        tool: rawTool,
+        eventName: rawEvent,
+        bannerId: rawBannerId,
+        bannerTitle: rawBannerTitle,
+        placement: rawPlacement,
+        isNewSession,
+        trafficSource: rawTrafficSource,
+        referrerDomain: rawReferrerDomain,
+        utmSource: rawUtmSource
+      } = req.body || {};
       
       const pathStr = typeof rawPath === "string" ? rawPath.trim() : "";
       if (pathStr.includes("/admin") || pathStr.includes("/preview")) {
@@ -976,6 +1199,12 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
       if (!db) {
         return res.json({ success: true, ignored: true });
+      }
+
+      const userAgentStr = String(req.headers["user-agent"] || "");
+      const { isBot, category, os, browser } = parseUserAgentDetails(userAgentStr);
+      if (isBot) {
+        return res.json({ success: true, ignoredBot: true });
       }
 
       const todayStr = new Date().toISOString().substring(0, 10);
@@ -987,6 +1216,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
         updatedAt: new Date().toISOString()
       };
 
+      // Page Views
       if (type === "page_view" || !type) {
         updates.pageViews = increment(1);
         if (pathStr) {
@@ -995,11 +1225,18 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
         }
       }
 
+      // Sessions
+      if (isNewSession) {
+        updates.sessions = increment(1);
+      }
+
+      // Tools Usage
       const toolKey = typeof rawTool === "string" ? rawTool.trim().replace(/[^a-zA-Z0-9_-]/g, "_") : "";
       if (toolKey) {
         updates[`tools.${toolKey}`] = increment(1);
       }
 
+      // Conversions
       const isConversion = type === "conversion" || (typeof rawEvent === "string" && (rawEvent.includes("completed") || rawEvent.includes("convert_success") || rawEvent.includes("conversion_completed")));
       if (isConversion) {
         updates.conversions = increment(1);
@@ -1008,6 +1245,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
         }
       }
 
+      // Downloads
       const isDownload = type === "download" || (typeof rawEvent === "string" && rawEvent.includes("download"));
       if (isDownload) {
         updates.downloads = increment(1);
@@ -1016,13 +1254,82 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
         }
       }
 
-      if (rawBannerId && typeof rawBannerId === "string") {
-        const bannerKey = rawBannerId.trim().replace(/[^a-zA-Z0-9_-]/g, "_");
+      // Banner Impressions (>= 50% visible for 1s)
+      if (type === "banner_impression" && rawBannerId) {
+        const bannerKey = String(rawBannerId).trim().replace(/[^a-zA-Z0-9_-]/g, "_");
         if (bannerKey) {
-          updates[`bannerClicks.${bannerKey}`] = increment(1);
+          updates[`bannerImpressions.${bannerKey}`] = increment(1);
+          updates[`bannerLastImpression.${bannerKey}`] = new Date().toISOString();
+          if (rawBannerTitle && typeof rawBannerTitle === "string") {
+            updates[`bannerNames.${bannerKey}`] = rawBannerTitle.substring(0, 80);
+          }
+          if (rawPlacement && typeof rawPlacement === "string") {
+            updates[`bannerPlacements.${bannerKey}`] = rawPlacement.substring(0, 40);
+          }
         }
       }
 
+      // Banner Clicks (Real user click only)
+      if (type === "banner_click" && rawBannerId) {
+        const bannerKey = String(rawBannerId).trim().replace(/[^a-zA-Z0-9_-]/g, "_");
+        if (bannerKey) {
+          updates[`bannerClicks.${bannerKey}`] = increment(1);
+          updates[`bannerLastClick.${bannerKey}`] = new Date().toISOString();
+          if (rawBannerTitle && typeof rawBannerTitle === "string") {
+            updates[`bannerNames.${bannerKey}`] = rawBannerTitle.substring(0, 80);
+          }
+          if (rawPlacement && typeof rawPlacement === "string") {
+            updates[`bannerPlacements.${bannerKey}`] = rawPlacement.substring(0, 40);
+          }
+        }
+      }
+
+      // Traffic Sources & UTMs
+      if (rawTrafficSource && typeof rawTrafficSource === "string") {
+        const sourceKey = rawTrafficSource.trim().replace(/[^a-zA-Z0-9_-]/g, "_") || "Direto";
+        updates[`trafficSources.${sourceKey}`] = increment(1);
+      }
+      if (rawReferrerDomain && typeof rawReferrerDomain === "string") {
+        const refKey = rawReferrerDomain.trim().replace(/[^a-zA-Z0-9_-]/g, "_") || "Direto";
+        updates[`referrers.${refKey}`] = increment(1);
+      }
+      if (rawUtmSource && typeof rawUtmSource === "string") {
+        const utmKey = rawUtmSource.trim().replace(/[^a-zA-Z0-9_-]/g, "_");
+        if (utmKey) {
+          updates[`utms.${utmKey}`] = increment(1);
+        }
+      }
+
+      // Devices, OS and Browsers
+      if (category) {
+        const deviceKey = category.replace(/[^a-zA-Z0-9_-]/g, "_");
+        updates[`devices.${deviceKey}`] = increment(1);
+      }
+      if (os) {
+        const osKey = os.replace(/[^a-zA-Z0-9_-]/g, "_");
+        updates[`os.${osKey}`] = increment(1);
+      }
+      if (browser) {
+        const browserKey = browser.replace(/[^a-zA-Z0-9_-]/g, "_");
+        updates[`browsers.${browserKey}`] = increment(1);
+      }
+
+      // Geo headers from GCP/Cloud Run/Proxy
+      const geo = extractGeoHeaders(req);
+      if (geo.country) {
+        const cleanCountry = geo.country.replace(/[^a-zA-Z0-9_-]/g, "_");
+        updates[`countries.${cleanCountry}`] = increment(1);
+        if (geo.region) {
+          const cleanRegion = `${cleanCountry}_${geo.region}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+          updates[`regions.${cleanRegion}`] = increment(1);
+        }
+        if (geo.city) {
+          const cleanCity = `${cleanCountry}_${geo.city}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+          updates[`cities.${cleanCity}`] = increment(1);
+        }
+      }
+
+      // Custom Events
       if (rawEvent && typeof rawEvent === "string") {
         const eventKey = rawEvent.trim().replace(/[^a-zA-Z0-9_-]/g, "_");
         if (eventKey) {
@@ -1047,10 +1354,19 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
       const rawPeriod = String(req.query.period || "7daysAgo").trim();
       const period = ["today", "7daysAgo", "30daysAgo", "total"].includes(rawPeriod) ? rawPeriod : "7daysAgo";
 
-      let summary = { pageViews: 0, activeUsers: 0, sessions: 0, conversions: 0, downloads: 0 };
-      let dailyTrend: Array<{ date: string; users: number; views: number; conversions: number; downloads: number }> = [];
+      let summary = { pageViews: 0, activeUsers: 0, sessions: 0, conversions: 0, downloads: 0, conversionRate: "0%" };
+      let dailyTrend: Array<{ date: string; users: number; views: number; sessions: number; conversions: number; downloads: number }> = [];
       let topPagesMap: Record<string, number> = {};
       let toolsRankingMap: Record<string, { views: number; conversions: number; downloads: number }> = {};
+      let bannerStatsMap: Record<string, { impressions: number; clicks: number; name?: string; placement?: string; lastImpressionAt?: string; lastClickAt?: string }> = {};
+      let trafficSourcesMap: Record<string, number> = {};
+      let utmsMap: Record<string, number> = {};
+      let devicesMap: Record<string, number> = {};
+      let osMap: Record<string, number> = {};
+      let browsersMap: Record<string, number> = {};
+      let countriesMap: Record<string, number> = {};
+      let regionsMap: Record<string, number> = {};
+      let citiesMap: Record<string, number> = {};
       let eventsMap: Record<string, number> = {};
 
       if (db) {
@@ -1087,66 +1403,267 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
           const pViews = Number(d.pageViews || 0);
           const pConv = Number(d.conversions || 0);
           const pDown = Number(d.downloads || 0);
+          const pSess = Number(d.sessions || 0);
 
           summary.pageViews += pViews;
           summary.conversions += pConv;
           summary.downloads += pDown;
+          summary.sessions += pSess;
 
           const formattedDate = item.date.length === 10 ? `${item.date.substring(8, 10)}/${item.date.substring(5, 7)}` : item.date;
           dailyTrend.push({
             date: formattedDate,
             users: Math.max(pViews > 0 ? 1 : 0, Math.round(pViews * 0.75)),
             views: pViews,
+            sessions: pSess > 0 ? pSess : Math.max(pViews > 0 ? 1 : 0, Math.round(pViews * 0.85)),
             conversions: pConv,
             downloads: pDown
           });
 
-          if (d.routes && typeof d.routes === "object") {
-            for (const [rKey, count] of Object.entries(d.routes)) {
-              let cleanPath = rKey.replace(/_/g, "/");
-              if (cleanPath === "/home" || cleanPath === "home") cleanPath = "/";
-              const actualPath = cleanPath.startsWith("/") ? cleanPath : `/${cleanPath}`;
-              topPagesMap[actualPath] = (topPagesMap[actualPath] || 0) + Number(count || 0);
-            }
+          // Routes / Pages
+          const docRoutes = extractMetricsMap(d, "routes");
+          for (const [rKey, count] of Object.entries(docRoutes)) {
+            let cleanPath = rKey.replace(/_/g, "/");
+            if (cleanPath === "/home" || cleanPath === "home") cleanPath = "/";
+            const actualPath = cleanPath.startsWith("/") ? cleanPath : `/${cleanPath}`;
+            topPagesMap[actualPath] = (topPagesMap[actualPath] || 0) + Number(count || 0);
           }
 
-          if (d.tools && typeof d.tools === "object") {
-            for (const [tKey, count] of Object.entries(d.tools)) {
-              if (!toolsRankingMap[tKey]) {
-                toolsRankingMap[tKey] = { views: 0, conversions: 0, downloads: 0 };
+          // Tools
+          const docTools = extractMetricsMap(d, "tools");
+          for (const [tKey, count] of Object.entries(docTools)) {
+            if (!toolsRankingMap[tKey]) {
+              toolsRankingMap[tKey] = { views: 0, conversions: 0, downloads: 0 };
+            }
+            toolsRankingMap[tKey].views += Number(count || 0);
+          }
+
+          const docToolConversions = extractMetricsMap(d, "toolConversions");
+          for (const [tKey, count] of Object.entries(docToolConversions)) {
+            if (!toolsRankingMap[tKey]) {
+              toolsRankingMap[tKey] = { views: 0, conversions: 0, downloads: 0 };
+            }
+            toolsRankingMap[tKey].conversions += Number(count || 0);
+          }
+
+          const docToolDownloads = extractMetricsMap(d, "toolDownloads");
+          for (const [tKey, count] of Object.entries(docToolDownloads)) {
+            if (!toolsRankingMap[tKey]) {
+              toolsRankingMap[tKey] = { views: 0, conversions: 0, downloads: 0 };
+            }
+            toolsRankingMap[tKey].downloads += Number(count || 0);
+          }
+
+          // Banners (Impressions, Clicks, Names, Timestamps)
+          const docBannerImpressions = extractMetricsMap(d, "bannerImpressions");
+          for (const [bKey, count] of Object.entries(docBannerImpressions)) {
+            if (!bannerStatsMap[bKey]) {
+              bannerStatsMap[bKey] = { impressions: 0, clicks: 0 };
+            }
+            bannerStatsMap[bKey].impressions += Number(count || 0);
+          }
+
+          const docBannerClicks = extractMetricsMap(d, "bannerClicks");
+          for (const [bKey, count] of Object.entries(docBannerClicks)) {
+            if (!bannerStatsMap[bKey]) {
+              bannerStatsMap[bKey] = { impressions: 0, clicks: 0 };
+            }
+            bannerStatsMap[bKey].clicks += Number(count || 0);
+          }
+
+          const docBannerNames = extractMetricsMap(d, "bannerNames");
+          for (const [bKey, name] of Object.entries(docBannerNames)) {
+            if (!bannerStatsMap[bKey]) {
+              bannerStatsMap[bKey] = { impressions: 0, clicks: 0 };
+            }
+            if (name) bannerStatsMap[bKey].name = String(name);
+          }
+
+          const docBannerPlacements = extractMetricsMap(d, "bannerPlacements");
+          for (const [bKey, placement] of Object.entries(docBannerPlacements)) {
+            if (!bannerStatsMap[bKey]) {
+              bannerStatsMap[bKey] = { impressions: 0, clicks: 0 };
+            }
+            if (placement) bannerStatsMap[bKey].placement = String(placement);
+          }
+
+          const docBannerLastImpression = extractMetricsMap(d, "bannerLastImpression");
+          for (const [bKey, ts] of Object.entries(docBannerLastImpression)) {
+            if (bannerStatsMap[bKey] && ts) {
+              if (!bannerStatsMap[bKey].lastImpressionAt || String(ts) > bannerStatsMap[bKey].lastImpressionAt!) {
+                bannerStatsMap[bKey].lastImpressionAt = String(ts);
               }
-              toolsRankingMap[tKey].views += Number(count || 0);
             }
           }
 
-          if (d.toolConversions && typeof d.toolConversions === "object") {
-            for (const [tKey, count] of Object.entries(d.toolConversions)) {
-              if (!toolsRankingMap[tKey]) {
-                toolsRankingMap[tKey] = { views: 0, conversions: 0, downloads: 0 };
+          const docBannerLastClick = extractMetricsMap(d, "bannerLastClick");
+          for (const [bKey, ts] of Object.entries(docBannerLastClick)) {
+            if (bannerStatsMap[bKey] && ts) {
+              if (!bannerStatsMap[bKey].lastClickAt || String(ts) > bannerStatsMap[bKey].lastClickAt!) {
+                bannerStatsMap[bKey].lastClickAt = String(ts);
               }
-              toolsRankingMap[tKey].conversions += Number(count || 0);
             }
           }
 
-          if (d.toolDownloads && typeof d.toolDownloads === "object") {
-            for (const [tKey, count] of Object.entries(d.toolDownloads)) {
-              if (!toolsRankingMap[tKey]) {
-                toolsRankingMap[tKey] = { views: 0, conversions: 0, downloads: 0 };
-              }
-              toolsRankingMap[tKey].downloads += Number(count || 0);
-            }
+          // Traffic sources & UTMs
+          const docTrafficSources = extractMetricsMap(d, "trafficSources");
+          for (const [sKey, count] of Object.entries(docTrafficSources)) {
+            const cleanSource = sKey.replace(/_/g, " ");
+            trafficSourcesMap[cleanSource] = (trafficSourcesMap[cleanSource] || 0) + Number(count || 0);
           }
 
-          if (d.events && typeof d.events === "object") {
-            for (const [eKey, count] of Object.entries(d.events)) {
-              eventsMap[eKey] = (eventsMap[eKey] || 0) + Number(count || 0);
-            }
+          const docUtms = extractMetricsMap(d, "utms");
+          for (const [uKey, count] of Object.entries(docUtms)) {
+            const cleanUtm = uKey.replace(/_/g, " ");
+            utmsMap[cleanUtm] = (utmsMap[cleanUtm] || 0) + Number(count || 0);
+          }
+
+          // Devices, OS, Browsers
+          const docDevices = extractMetricsMap(d, "devices");
+          for (const [devKey, count] of Object.entries(docDevices)) {
+            devicesMap[devKey] = (devicesMap[devKey] || 0) + Number(count || 0);
+          }
+
+          const docOs = extractMetricsMap(d, "os");
+          for (const [osKey, count] of Object.entries(docOs)) {
+            osMap[osKey] = (osMap[osKey] || 0) + Number(count || 0);
+          }
+
+          const docBrowsers = extractMetricsMap(d, "browsers");
+          for (const [brKey, count] of Object.entries(docBrowsers)) {
+            browsersMap[brKey] = (browsersMap[brKey] || 0) + Number(count || 0);
+          }
+
+          // Locations
+          const docCountries = extractMetricsMap(d, "countries");
+          for (const [cKey, count] of Object.entries(docCountries)) {
+            const countryFormatted = formatCountryName(cKey);
+            countriesMap[countryFormatted] = (countriesMap[countryFormatted] || 0) + Number(count || 0);
+          }
+
+          const docRegions = extractMetricsMap(d, "regions");
+          for (const [rKey, count] of Object.entries(docRegions)) {
+            regionsMap[rKey] = (regionsMap[rKey] || 0) + Number(count || 0);
+          }
+
+          const docCities = extractMetricsMap(d, "cities");
+          for (const [ctKey, count] of Object.entries(docCities)) {
+            citiesMap[ctKey] = (citiesMap[ctKey] || 0) + Number(count || 0);
+          }
+
+          // Custom Events
+          const docEvents = extractMetricsMap(d, "events");
+          for (const [eKey, count] of Object.entries(docEvents)) {
+            eventsMap[eKey] = (eventsMap[eKey] || 0) + Number(count || 0);
           }
         }
 
         summary.activeUsers = Math.max(summary.pageViews > 0 ? 1 : 0, Math.round(summary.pageViews * 0.75));
-        summary.sessions = Math.max(summary.activeUsers, Math.round(summary.pageViews * 0.85));
+        if (summary.sessions === 0 && summary.pageViews > 0) {
+          summary.sessions = Math.max(summary.activeUsers, Math.round(summary.pageViews * 0.85));
+        }
+
+        if (summary.pageViews > 0) {
+          summary.conversionRate = ((summary.conversions / summary.pageViews) * 100).toFixed(1) + "%";
+        }
       }
+
+      // Fetch all registered banners from "home_banners" (and "ads") collection to ensure ALL banners appear
+      const registeredBanners: Array<{
+        id: string;
+        name: string;
+        status: "active" | "inactive";
+        placement: string;
+        imageUrl?: string;
+        linkUrl?: string;
+        order?: number;
+      }> = [];
+
+      if (db) {
+        try {
+          const [hbSnap, adsSnap] = await Promise.allSettled([
+            getDocs(collection(db, "home_banners")),
+            getDocs(collection(db, "ads"))
+          ]);
+
+          if (hbSnap.status === "fulfilled") {
+            hbSnap.value.forEach(d => {
+              const bData = d.data();
+              registeredBanners.push({
+                id: d.id,
+                name: bData.name || bData.title || "Banner Carrossel",
+                status: bData.active !== false ? "active" : "inactive",
+                placement: "Carrossel Principal (Home)",
+                imageUrl: bData.imageUrl || "",
+                linkUrl: bData.linkUrl || bData.destinationUrl || "",
+                order: Number(bData.order || 0)
+              });
+            });
+          }
+
+          if (adsSnap.status === "fulfilled") {
+            adsSnap.value.forEach(d => {
+              const aData = d.data();
+              registeredBanners.push({
+                id: d.id,
+                name: aData.name || aData.publicTitle || aData.title || "Anúncio Publicitário",
+                status: (aData.active !== false && aData.isActive !== false) ? "active" : "inactive",
+                placement: aData.position === "sidebar_top" ? "Barra Lateral (Topo)" : aData.position === "top_banner" ? "Banner Superior" : aData.position === "below_how_it_works" ? "Abaixo do Como Funciona" : aData.position || "Espaço Publicitário",
+                imageUrl: aData.imageUrl || "",
+                linkUrl: aData.destinationUrl || aData.linkUrl || "",
+                order: Number(aData.order || 0)
+              });
+            });
+          }
+        } catch (e) {
+          console.warn("[SERVER-V2] Error loading registered banners:", e);
+        }
+      }
+
+      // Combine registered banners with metrics from bannerStatsMap
+      const bannersList: Array<{
+        id: string;
+        name: string;
+        status: "active" | "inactive";
+        placement: string;
+        imageUrl?: string;
+        linkUrl?: string;
+        impressions: number;
+        clicks: number;
+        ctr: number;
+        lastImpressionAt?: string;
+        lastClickAt?: string;
+      }> = [];
+
+      for (const reg of registeredBanners) {
+        const cleanId = reg.id.replace(/[^a-zA-Z0-9_-]/g, "_");
+        const stats = bannerStatsMap[cleanId] || bannerStatsMap[reg.id] || { impressions: 0, clicks: 0 };
+        const impressions = Number(stats.impressions || 0);
+        const clicks = Number(stats.clicks || 0);
+        const ctr = impressions > 0 ? Number(((clicks / impressions) * 100).toFixed(2)) : 0;
+
+        bannersList.push({
+          id: reg.id,
+          name: reg.name,
+          status: reg.status,
+          placement: reg.placement,
+          imageUrl: reg.imageUrl,
+          linkUrl: reg.linkUrl,
+          impressions,
+          clicks,
+          ctr,
+          lastImpressionAt: stats.lastImpressionAt,
+          lastClickAt: stats.lastClickAt
+        });
+      }
+
+      // Default sorting: Most impressions descending, then clicks, then by order
+      bannersList.sort((a, b) => {
+        if (b.impressions !== a.impressions) {
+          return b.impressions - a.impressions;
+        }
+        return b.clicks - a.clicks;
+      });
 
       const topPages = Object.entries(topPagesMap)
         .map(([path, views]) => ({ path, views, users: Math.max(views > 0 ? 1 : 0, Math.round(views * 0.75)) }))
@@ -1154,14 +1671,110 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
         .slice(0, 10);
 
       const toolsRanking = Object.entries(toolsRankingMap)
-        .map(([tool, stats]) => ({
-          tool,
-          toolName: getToolReadableName(tool),
-          views: stats.views,
-          conversions: stats.conversions,
-          downloads: stats.downloads
+        .map(([tool, stats]) => {
+          const totalOps = stats.views + stats.conversions + stats.downloads;
+          const rate = stats.views > 0 ? ((stats.conversions / stats.views) * 100).toFixed(1) + "%" : "0%";
+          return {
+            tool,
+            toolName: getToolReadableName(tool),
+            views: stats.views,
+            conversions: stats.conversions,
+            downloads: stats.downloads,
+            conversionRate: rate,
+            totalOps
+          };
+        })
+        .sort((a, b) => b.totalOps - a.totalOps);
+
+      const totalTrafficSessions = Object.values(trafficSourcesMap).reduce((acc, v) => acc + v, 0) || summary.sessions || 1;
+      const trafficSources = Object.entries(trafficSourcesMap)
+        .map(([source, count]) => ({
+          source,
+          medium: source.includes("Orgânica") ? "organic" : source.includes("Campanha") ? "cpc / ref" : "direct",
+          users: Math.max(count > 0 ? 1 : 0, Math.round(count * 0.75)),
+          sessions: count,
+          percentage: `${Math.min(100, Math.round((count / totalTrafficSessions) * 100))}%`
         }))
-        .sort((a, b) => (b.views + b.conversions + b.downloads) - (a.views + a.conversions + a.downloads));
+        .sort((a, b) => b.sessions - a.sessions);
+
+      const utms = Object.entries(utmsMap)
+        .map(([campaign, count]) => ({ campaign, count }))
+        .sort((a, b) => b.count - a.count);
+
+      const totalDeviceCounts = Object.values(devicesMap).reduce((acc, v) => acc + v, 0) || summary.pageViews || 1;
+      const devices = Object.entries(devicesMap)
+        .map(([category, count]) => ({
+          category,
+          count,
+          percentage: `${Math.round((count / totalDeviceCounts) * 100)}%`
+        }))
+        .sort((a, b) => b.count - a.count);
+
+      const totalBrowserCounts = Object.values(browsersMap).reduce((acc, v) => acc + v, 0) || summary.pageViews || 1;
+      const browsers = Object.entries(browsersMap)
+        .map(([browser, count]) => ({
+          browser,
+          count,
+          percentage: `${Math.round((count / totalBrowserCounts) * 100)}%`
+        }))
+        .sort((a, b) => b.count - a.count);
+
+      const totalOsCounts = Object.values(osMap).reduce((acc, v) => acc + v, 0) || summary.pageViews || 1;
+      const operatingSystems = Object.entries(osMap)
+        .map(([os, count]) => ({
+          os,
+          count,
+          percentage: `${Math.round((count / totalOsCounts) * 100)}%`
+        }))
+        .sort((a, b) => b.count - a.count);
+
+      const totalCountryCounts = Object.values(countriesMap).reduce((acc, v) => acc + v, 0) || 1;
+      const countriesList = Object.entries(countriesMap)
+        .map(([country, count]) => ({
+          country,
+          count,
+          percentage: `${Math.round((count / totalCountryCounts) * 100)}%`
+        }))
+        .sort((a, b) => b.count - a.count);
+
+      const totalRegionCounts = Object.values(regionsMap).reduce((acc, v) => acc + v, 0) || 1;
+      const regionsList = Object.entries(regionsMap)
+        .map(([regionKey, count]) => {
+          const parts = regionKey.split("_");
+          const country = parts[0] || "";
+          const region = parts.slice(1).join(" ") || regionKey;
+          return {
+            region,
+            country,
+            count,
+            percentage: `${Math.round((count / totalRegionCounts) * 100)}%`
+          };
+        })
+        .sort((a, b) => b.count - a.count);
+
+      const totalCityCounts = Object.values(citiesMap).reduce((acc, v) => acc + v, 0) || 1;
+      const citiesList = Object.entries(citiesMap)
+        .map(([cityKey, count]) => {
+          const parts = cityKey.split("_");
+          const country = parts[0] || "";
+          const city = parts.slice(1).join(" ") || cityKey;
+          return {
+            city,
+            country,
+            count,
+            percentage: `${Math.round((count / totalCityCounts) * 100)}%`
+          };
+        })
+        .sort((a, b) => b.count - a.count);
+
+      const locations = {
+        countries: countriesList,
+        regions: regionsList,
+        cities: citiesList,
+        hasCountryData: countriesList.length > 0,
+        hasRegionData: regionsList.length > 0,
+        hasCityData: citiesList.length > 0
+      };
 
       const eventsList = Object.entries(eventsMap)
         .map(([name, count]) => ({ name, count }))
@@ -1172,9 +1785,14 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
         dailyTrend,
         topPages,
         toolsRanking,
-        locations: [],
-        trafficSources: [],
-        devices: [],
+        banners: bannersList,
+        bannersRanking: bannersList,
+        trafficSources,
+        utms,
+        locations,
+        devices,
+        browsers,
+        operatingSystems,
         events: eventsList,
         source: "firestore_realtime",
         app_version: "v2",

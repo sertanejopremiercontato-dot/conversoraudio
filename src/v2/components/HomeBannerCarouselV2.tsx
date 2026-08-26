@@ -11,6 +11,7 @@ import {
   ChevronLeft, 
   ChevronRight 
 } from "lucide-react";
+import { trackBannerImpression, trackBannerClick } from "../integrations/analytics";
 
 interface HomeBannerCarouselV2Props {
   onNavigate?: (route: AppRouteV2) => void;
@@ -40,6 +41,85 @@ export const HomeBannerCarouselV2: React.FC<HomeBannerCarouselV2Props> = ({ onNa
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const autoplayTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const isContainerVisibleRef = useRef<boolean>(false);
+  const impressionTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Observador de visibilidade do container do carrossel (>= 50% visível por ~1 segundo)
+  useEffect(() => {
+    if (typeof window === "undefined" || !("IntersectionObserver" in window)) return;
+    const el = containerRef.current;
+    if (!el) return;
+
+    const checkAndScheduleImpression = () => {
+      if (impressionTimerRef.current) {
+        clearTimeout(impressionTimerRef.current);
+        impressionTimerRef.current = null;
+      }
+
+      if (isContainerVisibleRef.current && banners[currentIndex]) {
+        const currentBanner = banners[currentIndex];
+        // Critério: Pelo menos 50% visível por 1 segundo (1000ms)
+        impressionTimerRef.current = setTimeout(() => {
+          if (isContainerVisibleRef.current && currentBanner) {
+            trackBannerImpression(currentBanner.id, currentBanner.name || currentBanner.title, "home_carousel");
+          }
+        }, 1000);
+      }
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        const isVisible = !!(entry && entry.isIntersecting && entry.intersectionRatio >= 0.5);
+        isContainerVisibleRef.current = isVisible;
+
+        if (isVisible) {
+          checkAndScheduleImpression();
+        } else {
+          if (impressionTimerRef.current) {
+            clearTimeout(impressionTimerRef.current);
+            impressionTimerRef.current = null;
+          }
+        }
+      },
+      { threshold: [0.5] }
+    );
+
+    observer.observe(el);
+
+    return () => {
+      if (impressionTimerRef.current) {
+        clearTimeout(impressionTimerRef.current);
+        impressionTimerRef.current = null;
+      }
+      observer.disconnect();
+    };
+  }, [banners, currentIndex]);
+
+  // Ao trocar de slide no carrossel, se estiver visível, agenda a impressão do novo banner após 1s
+  useEffect(() => {
+    if (impressionTimerRef.current) {
+      clearTimeout(impressionTimerRef.current);
+      impressionTimerRef.current = null;
+    }
+
+    if (isContainerVisibleRef.current && banners[currentIndex]) {
+      const currentBanner = banners[currentIndex];
+      impressionTimerRef.current = setTimeout(() => {
+        if (isContainerVisibleRef.current && currentBanner) {
+          trackBannerImpression(currentBanner.id, currentBanner.name || currentBanner.title, "home_carousel");
+        }
+      }, 1000);
+    }
+
+    return () => {
+      if (impressionTimerRef.current) {
+        clearTimeout(impressionTimerRef.current);
+        impressionTimerRef.current = null;
+      }
+    };
+  }, [currentIndex, banners]);
 
   // Listener em tempo real (Source of Truth no Firestore collection "home_banners")
   useEffect(() => {
@@ -159,6 +239,7 @@ export const HomeBannerCarouselV2: React.FC<HomeBannerCarouselV2Props> = ({ onNa
 
   // Clique no Banner
   const handleBannerClick = (banner: HomeBannerV2) => {
+    trackBannerClick(banner.id, banner.name || banner.title, "home_carousel");
     const link = banner.linkUrl || banner.destinationUrl;
     if (!link) return;
 
@@ -177,6 +258,7 @@ export const HomeBannerCarouselV2: React.FC<HomeBannerCarouselV2Props> = ({ onNa
 
   return (
     <section 
+      ref={containerRef}
       className="w-full max-w-[1320px] mx-auto mb-6 sm:mb-8 md:mb-10"
       id="v2-home-banner-carousel-container"
       onMouseEnter={() => setIsPaused(true)}

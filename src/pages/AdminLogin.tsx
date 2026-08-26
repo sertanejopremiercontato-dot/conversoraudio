@@ -142,16 +142,17 @@ export default function AdminLogin({ onNavigate }: AdminLoginProps) {
         <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
           <div className="space-y-1.5 text-left">
             <label className="text-[10px] font-extrabold text-text-sec uppercase tracking-wider block">
-              Login
+              E-mail
             </label>
             <input
-              type="text"
+              type="email"
               name="admin-login"
               autoComplete="off"
+              spellCheck={false}
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Login"
+              placeholder="Digite seu e-mail"
               className="w-full bg-card-inner border border-border-main rounded-xl px-4 py-3 text-xs text-text-main placeholder-text-muted focus:outline-none focus:border-green-primary font-medium"
             />
           </div>
@@ -167,7 +168,7 @@ export default function AdminLogin({ onNavigate }: AdminLoginProps) {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Senha"
+              placeholder="Digite sua senha"
               className="w-full bg-card-inner border border-border-main rounded-xl px-4 py-3 text-xs text-text-main placeholder-text-muted focus:outline-none focus:border-green-primary font-medium"
             />
           </div>
@@ -177,7 +178,7 @@ export default function AdminLogin({ onNavigate }: AdminLoginProps) {
             disabled={loading}
             className="w-full py-3.5 bg-green-primary hover:bg-green-dark disabled:bg-green-primary/50 text-white rounded-xl font-extrabold text-xs shadow-md transition-colors cursor-pointer select-none mt-2"
           >
-            {loading ? "Verificando..." : "Entrar"}
+            {loading ? "Verificando..." : "Entrar no Painel"}
           </button>
         </form>
       </div>

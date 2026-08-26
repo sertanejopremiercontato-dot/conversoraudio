@@ -3,8 +3,8 @@ import { db, handleFirestoreError, OperationType } from "../firebase";
 
 export const PUBLISHER_ID = "ca-pub-8846628306821055";
 export const MASKED_PUBLISHER_ID = "ca-pub-8846******21055";
-export const OFFICIAL_DOMAIN = "https://multiconverte.com.br";
-export const EXPECTED_ADS_TXT_URL = "https://multiconverte.com.br/ads.txt";
+export const OFFICIAL_DOMAIN = "https://www.conversoraudio.com.br";
+export const EXPECTED_ADS_TXT_URL = "https://www.conversoraudio.com.br/ads.txt";
 export const OFFICIAL_ADS_TXT_LINE = "google.com, pub-8846628306821055, DIRECT, f08c47fec0942fa0";
 export const OFFICIAL_SNIPPET = `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8846628306821055" crossorigin="anonymous"></script>`;
 export const OFFICIAL_METATAG = `<meta name="google-adsense-account" content="ca-pub-8846628306821055">`;

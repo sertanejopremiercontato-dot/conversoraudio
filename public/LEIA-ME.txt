@@ -1,16 +1,17 @@
-PACOTE DE IDENTIDADE VISUAL — MULTICONVERTE
+PACOTE DE IMAGENS - CONVERSOR AUDIO
 
-Arquivos:
-- logo-multiconverte.png — logo transparente para o topo do site (2000x600)
-- multiconverte-logo-dark.png — logo sobre fundo escuro (2000x600)
-- multiconverte-logo-light.png — logo sobre fundo claro (2000x600)
-- multiconverte-symbol.png — símbolo transparente (1024x1024)
-- multiconverte-icon.png — ícone principal arredondado (1024x1024)
-- multiconverte-icon-rounded.png — ícone arredondado alternativo (1024x1024)
-- favicon.ico — navegador
-- favicon-16x16.png
-- favicon-32x32.png
-- apple-touch-icon.png — 180x180
+Este ZIP traz imagens PNG prontas para substituir os arquivos antigos da pasta public.
+
+Principais arquivos incluídos:
 - android-chrome-192x192.png
 - android-chrome-512x512.png
-- multiconverte-og-image.png — compartilhamento social (1200x630)
+- apple-touch-icon.png
+- favicon-16x16.png
+- favicon-32x32.png
+- favicon-48x48.png
+- favicon.png
+- favicon.ico
+- logo-conversoraudio.png
+- conversoraudio-og-image.png
+
+Também incluí nomes antigos/legados (multiconvert, multiconverter, convertauto e somdrive) para você simplesmente substituir na pasta public.

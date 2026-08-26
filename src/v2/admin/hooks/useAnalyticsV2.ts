@@ -7,12 +7,14 @@ export interface AnalyticsSummaryV2 {
   sessions: number;
   conversions: number;
   downloads: number;
+  conversionRate?: string;
 }
 
 export interface AnalyticsDailyTrendV2 {
   date: string;
   users: number;
   views: number;
+  sessions?: number;
   conversions?: number;
   downloads?: number;
 }
@@ -29,14 +31,51 @@ export interface AnalyticsToolRankingV2 {
   views: number;
   conversions: number;
   downloads: number;
+  conversionRate?: string;
+  totalOps?: number;
 }
 
-export interface AnalyticsLocationV2 {
+export interface AnalyticsBannerItemV2 {
+  id: string;
+  name: string;
+  status: "active" | "inactive";
+  placement: string;
+  imageUrl?: string;
+  linkUrl?: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  lastImpressionAt?: string | null;
+  lastClickAt?: string | null;
+}
+
+export interface AnalyticsCountryItemV2 {
   country: string;
+  count: number;
+  percentage: string;
+}
+
+export interface AnalyticsRegionItemV2 {
   region: string;
+  country: string;
+  count: number;
+  percentage: string;
+}
+
+export interface AnalyticsCityItemV2 {
   city: string;
-  users: number;
-  sessions: number;
+  country: string;
+  count: number;
+  percentage: string;
+}
+
+export interface AnalyticsLocationDataV2 {
+  countries: AnalyticsCountryItemV2[];
+  regions: AnalyticsRegionItemV2[];
+  cities: AnalyticsCityItemV2[];
+  hasCountryData: boolean;
+  hasRegionData: boolean;
+  hasCityData: boolean;
 }
 
 export interface AnalyticsTrafficSourceV2 {
@@ -44,14 +83,30 @@ export interface AnalyticsTrafficSourceV2 {
   medium: string;
   users: number;
   sessions: number;
+  percentage?: string;
 }
 
-export interface AnalyticsDeviceV2 {
+export interface AnalyticsUtmV2 {
+  campaign: string;
+  count: number;
+}
+
+export interface AnalyticsDeviceItemV2 {
   category: string;
-  os: string;
+  count: number;
+  percentage: string;
+}
+
+export interface AnalyticsBrowserItemV2 {
   browser: string;
-  users: number;
-  sessions: number;
+  count: number;
+  percentage: string;
+}
+
+export interface AnalyticsOsItemV2 {
+  os: string;
+  count: number;
+  percentage: string;
 }
 
 export interface AnalyticsEventV2 {
@@ -65,9 +120,14 @@ export interface AnalyticsDataV2 {
   dailyTrend: AnalyticsDailyTrendV2[];
   topPages: AnalyticsTopPageV2[];
   toolsRanking?: AnalyticsToolRankingV2[];
-  locations: AnalyticsLocationV2[];
+  banners?: AnalyticsBannerItemV2[];
+  bannersRanking?: AnalyticsBannerItemV2[];
+  locations: AnalyticsLocationDataV2;
   trafficSources: AnalyticsTrafficSourceV2[];
-  devices: AnalyticsDeviceV2[];
+  utms?: AnalyticsUtmV2[];
+  devices: AnalyticsDeviceItemV2[];
+  browsers?: AnalyticsBrowserItemV2[];
+  operatingSystems?: AnalyticsOsItemV2[];
   events: AnalyticsEventV2[];
   source?: string;
   app_version?: string;

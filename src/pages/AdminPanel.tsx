@@ -2054,7 +2054,7 @@ export default function AdminPanel({ onNavigate }: AdminPanelProps) {
                     <span className="text-[10px] font-extrabold text-text-sec uppercase tracking-wider block">Snippet de Busca Google (Prévia):</span>
                     <div className="bg-[#1e1e1e] border border-border-main p-4 rounded-xl text-left space-y-1 font-sans text-sm">
                       <div className="text-[11px] text-[#A8B2BD] flex items-center gap-1">
-                        multiconverte.com.br <span className="opacity-50">&gt; início</span>
+                        conversoraudio.com.br <span className="opacity-50">&gt; início</span>
                       </div>
                       <h4 className="text-[#38bdf8] font-medium hover:underline cursor-pointer text-base leading-tight truncate">
                         {seo.pages.home.title}
