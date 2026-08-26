@@ -1631,152 +1631,152 @@ export default function PdfTools({ activeTool: propActiveTool, setActiveTool: pr
           >
             {/* Tool 1: Juntar PDF */}
             <div 
-              className="bg-[#1B2732] border border-[#2D3B47] rounded-[24px] p-6 hover:border-[#22C96B] hover:shadow-lg transition-all duration-300 group flex flex-col justify-between h-full cursor-pointer"
+              className="bg-card-main border border-border-main rounded-[24px] p-6 hover:border-[#0284C7] hover:shadow-lg transition-all duration-300 group flex flex-col justify-between h-full cursor-pointer shadow-sm"
               onClick={() => setActiveTool("merge")}
             >
               <div className="space-y-4">
-                <div className="p-3 bg-[#202D38] text-[#22C96B] rounded-2xl border border-[#2D3B47] inline-block group-hover:scale-105 transition-all duration-300 shadow-sm">
+                <div className="p-3 bg-[#E0F2FE] text-[#0284C7] rounded-2xl border border-[#BAE6FD] inline-block group-hover:scale-105 transition-all duration-300 shadow-sm">
                   <Layers className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-display font-extrabold text-base text-[#F5F7F8] group-hover:text-[#22C96B] transition-colors flex items-center gap-2">
+                  <h3 className="font-display font-extrabold text-base text-[#0F172A] group-hover:text-[#0284C7] transition-colors flex items-center gap-2">
                     Juntar PDF
                   </h3>
-                  <p className="text-xs text-[#AEB8C1] mt-2 leading-relaxed font-semibold">
+                  <p className="text-xs text-[#475569] mt-2 leading-relaxed font-semibold">
                     Combine vários arquivos PDF em uma única sequência. Reordene a sequência dos arquivos antes de juntar de forma simples.
                   </p>
                 </div>
               </div>
-              <div className="pt-6 border-t border-[#2D3B47] mt-4 flex justify-end text-xs font-bold text-[#22C96B] group-hover:translate-x-1 transition-transform">
+              <div className="pt-6 border-t border-border-main mt-4 flex justify-end text-xs font-bold text-[#0284C7] group-hover:translate-x-1 transition-transform">
                 <span>Mesclar arquivos &rarr;</span>
               </div>
             </div>
 
             {/* Tool 2: Comprimir PDF */}
             <div 
-              className="bg-[#1B2732] border border-[#2D3B47] rounded-[24px] p-6 hover:border-[#22C96B] hover:shadow-lg transition-all duration-300 group flex flex-col justify-between h-full cursor-pointer"
+              className="bg-card-main border border-border-main rounded-[24px] p-6 hover:border-[#0284C7] hover:shadow-lg transition-all duration-300 group flex flex-col justify-between h-full cursor-pointer shadow-sm"
               onClick={() => setActiveTool("compress")}
             >
               <div className="space-y-4">
-                <div className="p-3 bg-[#202D38] text-[#22C96B] rounded-2xl border border-[#2D3B47] inline-block group-hover:scale-105 transition-all duration-300 shadow-sm">
+                <div className="p-3 bg-[#E0F2FE] text-[#0284C7] rounded-2xl border border-[#BAE6FD] inline-block group-hover:scale-105 transition-all duration-300 shadow-sm">
                   <Sparkles className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-display font-extrabold text-base text-[#F5F7F8] group-hover:text-[#22C96B] transition-colors flex items-center gap-2">
+                  <h3 className="font-display font-extrabold text-base text-[#0F172A] group-hover:text-[#0284C7] transition-colors flex items-center gap-2">
                     Comprimir PDF
                   </h3>
-                  <p className="text-xs text-[#AEB8C1] mt-2 leading-relaxed font-semibold">
+                  <p className="text-xs text-[#475569] mt-2 leading-relaxed font-semibold">
                     Reduza o tamanho do seu arquivo PDF otimizando as tabelas de objetos internos sem perder legibilidade das fontes e textos.
                   </p>
                 </div>
               </div>
-              <div className="pt-6 border-t border-[#2D3B47] mt-4 flex justify-end text-xs font-bold text-[#22C96B] group-hover:translate-x-1 transition-transform">
+              <div className="pt-6 border-t border-border-main mt-4 flex justify-end text-xs font-bold text-[#0284C7] group-hover:translate-x-1 transition-transform">
                 <span>Otimizar tamanho &rarr;</span>
               </div>
             </div>
 
             {/* Tool 4: Organizar PDF */}
             <div 
-              className="bg-[#1B2732] border border-[#2D3B47] rounded-[24px] p-6 hover:border-[#22C96B] hover:shadow-lg transition-all duration-300 group flex flex-col justify-between h-full cursor-pointer"
+              className="bg-card-main border border-border-main rounded-[24px] p-6 hover:border-[#0284C7] hover:shadow-lg transition-all duration-300 group flex flex-col justify-between h-full cursor-pointer shadow-sm"
               onClick={() => setActiveTool("organize")}
             >
               <div className="space-y-4">
-                <div className="p-3 bg-[#202D38] text-[#22C96B] rounded-2xl border border-[#2D3B47] inline-block group-hover:scale-105 transition-all duration-300 shadow-sm">
+                <div className="p-3 bg-[#E0F2FE] text-[#0284C7] rounded-2xl border border-[#BAE6FD] inline-block group-hover:scale-105 transition-all duration-300 shadow-sm">
                   <FileText className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-display font-extrabold text-base text-[#F5F7F8] group-hover:text-[#22C96B] transition-colors flex items-center gap-2">
+                  <h3 className="font-display font-extrabold text-base text-[#0F172A] group-hover:text-[#0284C7] transition-colors flex items-center gap-2">
                     Organizar Páginas
                   </h3>
-                  <p className="text-xs text-[#AEB8C1] mt-2 leading-relaxed font-semibold">
+                  <p className="text-xs text-[#475569] mt-2 leading-relaxed font-semibold">
                     Reordene, mova ou remova páginas de um PDF de forma visual e simples. Exporte o documento formatado.
                   </p>
                 </div>
               </div>
-              <div className="pt-6 border-t border-[#2D3B47] mt-4 flex justify-end text-xs font-bold text-[#22C96B] group-hover:translate-x-1 transition-transform">
+              <div className="pt-6 border-t border-border-main mt-4 flex justify-end text-xs font-bold text-[#0284C7] group-hover:translate-x-1 transition-transform">
                 <span>Reordenar páginas &rarr;</span>
               </div>
             </div>
 
             {/* Tool 5: Excluir/Girar Páginas */}
             <div 
-              className="bg-[#1B2732] border border-[#2D3B47] rounded-[24px] p-6 hover:border-[#22C96B] hover:shadow-lg transition-all duration-300 group flex flex-col justify-between h-full cursor-pointer"
+              className="bg-card-main border border-border-main rounded-[24px] p-6 hover:border-[#0284C7] hover:shadow-lg transition-all duration-300 group flex flex-col justify-between h-full cursor-pointer shadow-sm"
               onClick={() => setActiveTool("deleteRotate")}
             >
               <div className="space-y-4">
-                <div className="p-3 bg-[#202D38] text-[#22C96B] rounded-2xl border border-[#2D3B47] inline-block group-hover:scale-105 transition-all duration-300 shadow-sm">
+                <div className="p-3 bg-[#E0F2FE] text-[#0284C7] rounded-2xl border border-[#BAE6FD] inline-block group-hover:scale-105 transition-all duration-300 shadow-sm">
                   <Scissors className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-display font-extrabold text-base text-[#F5F7F8] group-hover:text-[#22C96B] transition-colors flex items-center gap-2">
+                  <h3 className="font-display font-extrabold text-base text-[#0F172A] group-hover:text-[#0284C7] transition-colors flex items-center gap-2">
                     Excluir / Girar Páginas
                   </h3>
-                  <p className="text-xs text-[#AEB8C1] mt-2 leading-relaxed font-semibold">
+                  <p className="text-xs text-[#475569] mt-2 leading-relaxed font-semibold">
                     Gire páginas desalinhadas em 90°/180° ou descarte páginas indesejadas do seu documento PDF.
                   </p>
                 </div>
               </div>
-              <div className="pt-6 border-t border-[#2D3B47] mt-4 flex justify-end text-xs font-bold text-[#22C96B] group-hover:translate-x-1 transition-transform">
+              <div className="pt-6 border-t border-border-main mt-4 flex justify-end text-xs font-bold text-[#0284C7] group-hover:translate-x-1 transition-transform">
                 <span>Girar & Excluir &rarr;</span>
               </div>
             </div>
 
             {/* SECTION 2 HEADER: CONVERSÃO DE IMAGENS E PDF */}
-            <div className="col-span-full border-t border-[#2D3B47] pt-6 mt-2">
-              <h3 className="font-display font-extrabold text-sm text-[#22C96B] uppercase tracking-wider">
+            <div className="col-span-full border-t border-border-main pt-6 mt-2">
+              <h3 className="font-display font-extrabold text-sm text-[#0284C7] uppercase tracking-wider">
                 Conversão de Imagens e PDF
               </h3>
             </div>
 
             {/* Card 1: Imagens para PDF */}
             <div 
-              className="bg-[#1B2732] border border-[#2D3B47] rounded-[24px] p-6 hover:border-[#22C96B] hover:shadow-lg transition-all duration-300 group flex flex-col justify-between h-full cursor-pointer"
+              className="bg-card-main border border-border-main rounded-[24px] p-6 hover:border-[#0284C7] hover:shadow-lg transition-all duration-300 group flex flex-col justify-between h-full cursor-pointer shadow-sm"
               onClick={() => setActiveTool("imgToPdf")}
             >
               <div className="space-y-4">
-                <div className="p-3 bg-[#202D38] text-[#22C96B] rounded-2xl border border-[#2D3B47] inline-block group-hover:scale-105 transition-all duration-300 shadow-sm">
+                <div className="p-3 bg-[#E0F2FE] text-[#0284C7] rounded-2xl border border-[#BAE6FD] inline-block group-hover:scale-105 transition-all duration-300 shadow-sm">
                   <Image className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-display font-extrabold text-base text-[#F5F7F8] group-hover:text-[#22C96B] transition-colors flex items-center gap-2">
+                  <h3 className="font-display font-extrabold text-base text-[#0F172A] group-hover:text-[#0284C7] transition-colors flex items-center gap-2">
                     Imagens para PDF
                   </h3>
-                  <p className="text-xs text-[#AEB8C1] mt-2 leading-relaxed font-semibold">
+                  <p className="text-xs text-[#475569] mt-2 leading-relaxed font-semibold">
                     Transforme imagens JPG, PNG e WEBP em um único arquivo PDF, organizando a ordem das páginas antes de baixar.
                   </p>
                 </div>
               </div>
-              <div className="pt-6 border-t border-[#2D3B47] mt-4 flex justify-end text-xs font-bold text-[#22C96B] group-hover:translate-x-1 transition-transform">
+              <div className="pt-6 border-t border-border-main mt-4 flex justify-end text-xs font-bold text-[#0284C7] group-hover:translate-x-1 transition-transform">
                 <span>Imagens para PDF &rarr;</span>
               </div>
             </div>
 
             {/* Card 2: PDF para Imagens */}
             <div 
-              className="bg-[#1B2732] border border-[#2D3B47] rounded-[24px] p-6 hover:border-[#22C96B] hover:shadow-lg transition-all duration-300 group flex flex-col justify-between h-full cursor-pointer"
+              className="bg-card-main border border-border-main rounded-[24px] p-6 hover:border-[#0284C7] hover:shadow-lg transition-all duration-300 group flex flex-col justify-between h-full cursor-pointer shadow-sm"
               onClick={() => setActiveTool("pdfToImages")}
             >
               <div className="space-y-4">
-                <div className="p-3 bg-[#202D38] text-[#22C96B] rounded-2xl border border-[#2D3B47] inline-block group-hover:scale-105 transition-all duration-300 shadow-sm">
+                <div className="p-3 bg-[#E0F2FE] text-[#0284C7] rounded-2xl border border-[#BAE6FD] inline-block group-hover:scale-105 transition-all duration-300 shadow-sm">
                   <Image className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-display font-extrabold text-base text-[#F5F7F8] group-hover:text-[#22C96B] transition-colors flex items-center gap-2">
+                  <h3 className="font-display font-extrabold text-base text-[#0F172A] group-hover:text-[#0284C7] transition-colors flex items-center gap-2">
                     PDF para Imagens
                   </h3>
-                  <p className="text-xs text-[#AEB8C1] mt-2 leading-relaxed font-semibold">
+                  <p className="text-xs text-[#475569] mt-2 leading-relaxed font-semibold">
                     Converta cada página de um PDF em imagens JPG ou PNG e baixe individualmente ou em arquivo ZIP.
                   </p>
                 </div>
               </div>
-              <div className="pt-6 border-t border-[#2D3B47] mt-4 flex justify-end text-xs font-bold text-[#22C96B] group-hover:translate-x-1 transition-transform">
+              <div className="pt-6 border-t border-border-main mt-4 flex justify-end text-xs font-bold text-[#0284C7] group-hover:translate-x-1 transition-transform">
                 <span>PDF para Imagens &rarr;</span>
               </div>
             </div>
 
             {/* Card 3: Extrair Texto de PDF */}
             <div 
-              className="bg-[#1B2732] border border-[#2D3B47] rounded-[24px] p-6 hover:border-[#22C96B] hover:shadow-lg transition-all duration-300 group flex flex-col justify-between h-full cursor-pointer"
+              className="bg-card-main border border-border-main rounded-[24px] p-6 hover:border-[#0284C7] hover:shadow-lg transition-all duration-300 group flex flex-col justify-between h-full cursor-pointer shadow-sm"
               onClick={() => {
                 if (onNavigate) {
                   onNavigate("/pdf/extrair-texto");
@@ -1787,40 +1787,38 @@ export default function PdfTools({ activeTool: propActiveTool, setActiveTool: pr
               }}
             >
               <div className="space-y-4">
-                <div className="p-3 bg-[#202D38] text-[#22C96B] rounded-2xl border border-[#2D3B47] inline-block group-hover:scale-105 transition-all duration-300 shadow-sm">
+                <div className="p-3 bg-[#E0F2FE] text-[#0284C7] rounded-2xl border border-[#BAE6FD] inline-block group-hover:scale-105 transition-all duration-300 shadow-sm">
                   <FileText className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-display font-extrabold text-base text-[#F5F7F8] group-hover:text-[#22C96B] transition-colors flex items-center gap-2">
+                  <h3 className="font-display font-extrabold text-base text-[#0F172A] group-hover:text-[#0284C7] transition-colors flex items-center gap-2">
                     Extrair Texto de PDF
                   </h3>
-                  <p className="text-xs text-[#AEB8C1] mt-2 leading-relaxed font-semibold">
+                  <p className="text-xs text-[#475569] mt-2 leading-relaxed font-semibold">
                     Extraia e copie todo o texto contido em arquivos PDF. Baixe em TXT com organização por página.
                   </p>
                 </div>
               </div>
-              <div className="pt-6 border-t border-[#2D3B47] mt-4 flex justify-end text-xs font-bold text-[#22C96B] group-hover:translate-x-1 transition-transform">
+              <div className="pt-6 border-t border-border-main mt-4 flex justify-end text-xs font-bold text-[#0284C7] group-hover:translate-x-1 transition-transform">
                 <span>Extrair Texto &rarr;</span>
               </div>
             </div>
 
             {/* Privacy Promise Info Box */}
-            <div className="bg-[#1B2732] border border-[#2D3B47] rounded-[24px] p-6 flex flex-col justify-between h-full relative overflow-hidden shadow-md">
-              <div className="absolute -right-12 -bottom-12 w-32 h-32 bg-[#22C96B]/10 rounded-full blur-xl pointer-events-none" />
-              
+            <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded-[24px] p-6 flex flex-col justify-between h-full relative overflow-hidden shadow-sm">
               <div className="space-y-3 relative z-10">
-                <span className="text-[9px] bg-[#173A2A] text-[#42E58A] border border-[#22C96B]/30 px-2 py-0.5 rounded-full uppercase font-bold tracking-wider inline-block font-semibold">
+                <span className="text-[10px] bg-[#DCFCE7] text-[#15803D] border border-[#86EFAC] px-2.5 py-0.5 rounded-full uppercase font-bold tracking-wider inline-block">
                   Segurança Máxima
                 </span>
-                <h3 className="font-display font-bold text-sm text-[#F5F7F8]">
+                <h3 className="font-display font-bold text-sm text-[#14532D]">
                   Privacidade Garantida
                 </h3>
-                <p className="text-[11px] text-[#AEB8C1] leading-relaxed font-semibold">
+                <p className="text-[11px] text-[#166534] leading-relaxed font-semibold">
                   Não guardamos seus arquivos. Ao fechar ou atualizar a página, o conteúdo é descartado.
                 </p>
               </div>
-              <div className="pt-6 relative z-10 flex items-center gap-1 text-[11px] font-bold text-[#22C96B]">
-                <ShieldCheck className="h-3.5 w-3.5" />
+              <div className="pt-6 relative z-10 flex items-center gap-1.5 text-[11px] font-bold text-[#15803D]">
+                <ShieldCheck className="h-4 w-4" />
                 <span>Não salvamos nenhum arquivo.</span>
               </div>
             </div>

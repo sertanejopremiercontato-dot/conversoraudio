@@ -1,27 +1,28 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
+@import "./v2/styles/tokens.css";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Space Grotesk", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  --color-bg-main: #262C32;
-  --color-bg-sec: #2D343B;
-  --color-header-main: #30373F;
-  --color-card-main: #353D46;
-  --color-card-inner: #3B454F;
-  --color-card-elevated: #424D58;
-  --color-card-selected: #25C86A1A;
-  --color-border-main: #53606C;
-  --color-text-main: #F4F6F8;
-  --color-text-sec: #C1C8CE;
-  --color-text-muted: #939DA6;
-  --color-green-primary: #25C86A;
-  --color-green-dark: #188F4C;
-  --color-green-light: #25C86A;
-  --color-quality-high: #EAB84C;
-  --color-quality-max: #EAB84C;
+  --color-bg-main: #F1F5F9;
+  --color-bg-sec: #F8FAFC;
+  --color-header-main: #0B132A;
+  --color-card-main: #FFFFFF;
+  --color-card-inner: #F8FAFC;
+  --color-card-elevated: #FFFFFF;
+  --color-card-selected: #0284C71A;
+  --color-border-main: #E2E8F0;
+  --color-text-main: #0F172A;
+  --color-text-sec: #475569;
+  --color-text-muted: #64748B;
+  --color-green-primary: #10B981;
+  --color-green-dark: #059669;
+  --color-green-light: #10B981;
+  --color-quality-high: #0284C7;
+  --color-quality-max: #0284C7;
 }
 
 /* Print CSS for Word Document Native Printing */

@@ -230,31 +230,31 @@ export default function VideoToAudio({ onBack, onNavigateTab }: VideoToAudioProp
             <button
               type="button"
               onClick={() => onNavigateTab("audio")}
-              className="p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 bg-card-inner border-border-main text-text-sec hover:border-green-primary/50 hover:text-text-main text-left group"
+              className="p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 bg-white border-[#E2E8F0] text-[#475569] hover:border-[#0284C7]/50 hover:text-[#0F172A] text-left group shadow-sm"
             >
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-card-main border border-border-main text-green-primary group-hover:scale-105 transition-transform">
+                <div className="p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[#0284C7] group-hover:scale-105 transition-transform">
                   <FileAudio className="h-5 w-5" />
                 </div>
                 <div>
-                  <h4 className="font-extrabold text-sm text-text-main group-hover:text-green-light">CONVERSOR DE ÁUDIO</h4>
-                  <p className="text-[11px] text-text-sec font-medium">Arquivos de áudio para MP3, WAV, AAC, etc.</p>
+                  <h4 className="font-extrabold text-sm text-[#0F172A] group-hover:text-[#0284C7]">CONVERSOR DE ÁUDIO</h4>
+                  <p className="text-[11px] text-[#475569] font-medium">Arquivos de áudio para MP3, WAV, AAC, etc.</p>
                 </div>
               </div>
             </button>
 
             {/* Video to Audio Card Option (ACTIVE) */}
-            <div className="p-4 rounded-2xl border transition-all flex items-center justify-between gap-3 bg-green-primary border-green-primary text-bg-main shadow-lg shadow-green-primary/20 text-left relative overflow-hidden">
+            <div className="p-4 rounded-2xl border transition-all flex items-center justify-between gap-3 bg-[#0B132A] border-[#0B132A] text-white shadow-md text-left relative overflow-hidden">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-bg-main text-green-primary border border-green-primary/30 shrink-0">
+                <div className="p-2.5 rounded-xl bg-white/10 text-[#38BDF8] border border-white/20 shrink-0">
                   <Film className="h-5 w-5" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h4 className="font-extrabold text-sm text-bg-main">VÍDEO PARA ÁUDIO</h4>
-                    <span className="text-[9px] font-black uppercase tracking-wider bg-bg-main text-green-primary px-2 py-0.5 rounded-full">ATIVO</span>
+                    <h4 className="font-extrabold text-sm text-white">VÍDEO PARA ÁUDIO</h4>
+                    <span className="text-[9px] font-black uppercase tracking-wider bg-[#38BDF8] text-[#0B132A] px-2 py-0.5 rounded-full">ATIVO</span>
                   </div>
-                  <p className="text-[11px] text-bg-main/80 font-bold">Extraia áudio de vídeos no computador</p>
+                  <p className="text-[11px] text-white/80 font-bold">Extraia áudio de vídeos no computador</p>
                 </div>
               </div>
             </div>
@@ -263,23 +263,23 @@ export default function VideoToAudio({ onBack, onNavigateTab }: VideoToAudioProp
 
         {/* Main Title & Subtitle */}
         <div className="text-center space-y-2 max-w-2xl mx-auto pt-2">
-          <h1 className="text-2xl md:text-3xl font-black text-text-main font-display uppercase tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-black text-[#0F172A] font-display uppercase tracking-tight">
             VÍDEO PARA ÁUDIO
           </h1>
-          <p className="text-xs md:text-sm text-text-sec font-semibold leading-relaxed">
+          <p className="text-xs md:text-sm text-[#475569] font-semibold leading-relaxed">
             Extraia o áudio de vídeos MP4, MOV, M4V e WebM e baixe o resultado em MP3 ou WAV.
           </p>
         </div>
 
         {/* Card de Destaque Horizontal com Benefícios */}
-        <div className="bg-card-main border border-border-main rounded-[24px] p-6 md:p-8 space-y-4 shadow-xl max-w-3xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border-main pb-4">
+        <div className="bg-white border border-[#E2E8F0] rounded-[24px] p-6 md:p-8 space-y-4 shadow-sm max-w-3xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E2E8F0] pb-4">
             <div className="space-y-1">
-              <h2 className="font-extrabold text-base md:text-lg text-text-main flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-green-primary" />
+              <h2 className="font-extrabold text-base md:text-lg text-[#0F172A] flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-[#0284C7]" />
                 Extraia o áudio com facilidade
               </h2>
-              <p className="text-xs text-text-sec font-medium">
+              <p className="text-xs text-[#475569] font-medium">
                 Transforme vídeos em arquivos de áudio MP3 ou WAV com alta qualidade e rapidez.
               </p>
             </div>
@@ -287,24 +287,24 @@ export default function VideoToAudio({ onBack, onNavigateTab }: VideoToAudioProp
 
           {/* Benefícios visíveis */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-1 text-xs">
-            <div className="flex items-center gap-2 bg-card-inner border border-border-main px-3 py-2 rounded-xl text-text-sec font-semibold">
-              <ShieldCheck className="h-4 w-4 text-green-primary shrink-0" />
+            <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-2 rounded-xl text-[#475569] font-semibold">
+              <ShieldCheck className="h-4 w-4 text-[#0284C7] shrink-0" />
               <span>MP3 ou WAV</span>
             </div>
-            <div className="flex items-center gap-2 bg-card-inner border border-border-main px-3 py-2 rounded-xl text-text-sec font-semibold">
-              <FileAudio className="h-4 w-4 text-green-primary shrink-0" />
+            <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-2 rounded-xl text-[#475569] font-semibold">
+              <FileAudio className="h-4 w-4 text-[#0284C7] shrink-0" />
               <span>Escolha de qualidade</span>
             </div>
-            <div className="flex items-center gap-2 bg-card-inner border border-border-main px-3 py-2 rounded-xl text-text-sec font-semibold">
-              <Monitor className="h-4 w-4 text-green-primary shrink-0" />
+            <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-2 rounded-xl text-[#475569] font-semibold">
+              <Monitor className="h-4 w-4 text-[#0284C7] shrink-0" />
               <span>Processo rápido</span>
             </div>
-            <div className="flex items-center gap-2 bg-card-inner border border-border-main px-3 py-2 rounded-xl text-text-sec font-semibold">
-              <Film className="h-4 w-4 text-green-primary shrink-0" />
+            <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-2 rounded-xl text-[#475569] font-semibold">
+              <Film className="h-4 w-4 text-[#0284C7] shrink-0" />
               <span>Download na hora</span>
             </div>
           </div>
-          <p className="text-[11px] text-green-primary font-semibold text-center pt-1">
+          <p className="text-[11px] text-[#0284C7] font-semibold text-center pt-1">
             🔒 Seus arquivos não ficam salvos.
           </p>
         </div>

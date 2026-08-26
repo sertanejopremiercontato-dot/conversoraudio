@@ -1,0 +1,39 @@
+/**
+ * Conversor Audio V2 - Design Tokens & Styles
+ * 
+ * Filosofia: Claro, moderno, legível, organizado e leve.
+ * Sem fundos pretos pesados, sem gradientes cansativos.
+ */
+
+:root {
+  --v2-bg-main: #F8FAFC;
+  --v2-bg-surface: #FFFFFF;
+  --v2-bg-subtle: #F1F5F9;
+  
+  --v2-border-light: #E2E8F0;
+  --v2-border-focus: #0284C7;
+  
+  --v2-text-primary: #0F172A;
+  --v2-text-secondary: #475569;
+  --v2-text-muted: #94A3B8;
+  
+  --v2-brand-primary: #0284C7;
+  --v2-brand-hover: #0369A1;
+  --v2-brand-light: #E0F2FE;
+  
+  --v2-accent-green: #10B981;
+  --v2-accent-amber: #F59E0B;
+}
+
+.v2-card-clean {
+  background-color: var(--v2-bg-surface);
+  border: 1px solid var(--v2-border-light);
+  border-radius: 1.25rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.v2-card-clean:hover {
+  border-color: #CBD5E1;
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+}

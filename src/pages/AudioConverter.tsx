@@ -107,7 +107,62 @@ const workerCode = `
   };
 `;
 
-// Helper functions to check for video tracks
+// Helper functions to check for video tracks and magic bytes
+async function checkAudioMagicBytes(file: File): Promise<boolean> {
+  try {
+    const slice = file.slice(0, 65536);
+    const arrayBuffer = await slice.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    if (bytes.length < 4) return false;
+
+    // 1. MP3 ID3 header: 'ID3' (0x49 0x44 0x33)
+    if (bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33) return true;
+
+    // 2. MP3 frame header sync (0xFF 0xFB, 0xFF 0xF3, 0xFF 0xF2, etc.)
+    for (let i = 0; i < Math.min(bytes.length - 2, 8192); i++) {
+      if (bytes[i] === 0xFF && (bytes[i + 1] & 0xE0) === 0xE0) return true;
+    }
+
+    // 3. RIFF WAV / AVI: 'RIFF'
+    if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46) return true;
+
+    // 4. OGG / Opus / Vorbis: 'OggS'
+    if (bytes[0] === 0x4F && bytes[1] === 0x67 && bytes[2] === 0x67 && bytes[3] === 0x53) return true;
+
+    // 5. FLAC: 'fLaC'
+    if (bytes[0] === 0x66 && bytes[1] === 0x4C && bytes[2] === 0x61 && bytes[3] === 0x43) return true;
+
+    // 6. MP4 / M4A / 3GP / MOV / M4V / AAC: 'ftyp' box at offset 4 or within first 1024 bytes
+    for (let i = 0; i < Math.min(bytes.length - 8, 1024); i++) {
+      if (bytes[i + 4] === 0x66 && bytes[i + 5] === 0x74 && bytes[i + 6] === 0x79 && bytes[i + 7] === 0x70) {
+        return true;
+      }
+    }
+
+    // 7. Raw AAC ADTS syncword (0xFF 0xF1 or 0xFF 0xF9)
+    if (bytes[0] === 0xFF && (bytes[1] === 0xF1 || bytes[1] === 0xF9)) return true;
+
+    // 8. WebM / MKV EBML header: 0x1A 0x45 0xDF 0xA3
+    if (bytes[0] === 0x1A && bytes[1] === 0x45 && bytes[2] === 0xDF && bytes[3] === 0xA3) return true;
+
+    // 9. AIFF: 'FORM'
+    if (bytes[0] === 0x46 && bytes[1] === 0x4F && bytes[2] === 0x52 && bytes[3] === 0x4D) return true;
+
+    // 10. CAF: 'caff'
+    if (bytes[0] === 0x63 && bytes[1] === 0x61 && bytes[2] === 0x66 && bytes[3] === 0x66) return true;
+
+    // 11. AMR: '#!AMR'
+    if (bytes[0] === 0x23 && bytes[1] === 0x21 && bytes[2] === 0x41 && bytes[3] === 0x4D && bytes[4] === 0x52) return true;
+
+    // 12. WMA / ASF header: 0x30 0x26 0xB2 0x75
+    if (bytes[0] === 0x30 && bytes[1] === 0x26 && bytes[2] === 0xB2 && bytes[3] === 0x75) return true;
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 function checkMp4Audio(arrayBuffer: ArrayBuffer): { hasAudio: boolean; hasVideo: boolean } {
   const view = new DataView(arrayBuffer);
   let hasAudio = false;
@@ -128,7 +183,7 @@ function checkMp4Audio(arrayBuffer: ArrayBuffer): { hasAudio: boolean; hasVideo:
         boxSize = end - pos;
       }
       
-      if (boxSize < headerSize) break;
+      if (boxSize < headerSize || boxSize > (end - pos)) break;
       
       const typeBytes = [
         view.getUint8(pos + 4),
@@ -138,7 +193,7 @@ function checkMp4Audio(arrayBuffer: ArrayBuffer): { hasAudio: boolean; hasVideo:
       ];
       const boxType = String.fromCharCode(...typeBytes);
       
-      if (boxType === "moov" || boxType === "trak" || boxType === "mdia") {
+      if (boxType === "moov" || boxType === "trak" || boxType === "mdia" || boxType === "minf" || boxType === "stbl") {
         parseBoxes(pos + headerSize, Math.min(pos + boxSize, end));
       } else if (boxType === "hdlr") {
         if (pos + headerSize + 12 <= end) {
@@ -238,7 +293,8 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
 
   // Supported extensions
   const allowedExtensions = [
-    "mp3", "wav", "m4a", "aac", "flac", "ogg", "opus", "wma", "amr", "aiff", "aif", "caf", "ac3", "mp2", "mp1", "pcm", "au", "snd"
+    "mp3", "wav", "m4a", "aac", "flac", "ogg", "oga", "opus", "wma", "amr", "aiff", "aif", "caf", "ac3", "mp2", "mp1", "pcm", "au", "snd",
+    "mp4", "webm", "3gp", "3gpp", "mov", "m4v", "ogv", "mkv"
   ];
 
   // Limits (Desktop users get up to 700MB per file, mobile gets 100MB)
@@ -322,18 +378,60 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
 
   const readAudioMetadata = async (file: File): Promise<{ duration: number; channels: number }> => {
     const arrayBuffer = await file.arrayBuffer();
+
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    const isVideoContainer = ["mp4", "webm", "3gp", "3gpp", "mov", "m4v", "mkv", "ogv"].includes(ext) || file.type.startsWith("video/");
+    
+    if (isVideoContainer && (ext === "mp4" || file.type.includes("mp4"))) {
+      const mp4Info = checkMp4Audio(arrayBuffer);
+      if (!mp4Info.hasAudio && mp4Info.hasVideo) {
+        throw new Error("O arquivo MP4 contém apenas vídeo sem faixa de áudio.");
+      }
+    }
+
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextClass) {
-      throw new Error("Web Audio API não suportada.");
+      throw new Error("Web Audio API não suportada neste navegador.");
     }
     const audioCtx = new AudioContextClass();
-    const buffer = await audioCtx.decodeAudioData(arrayBuffer);
-    const metadata = {
-      duration: buffer.duration,
-      channels: buffer.numberOfChannels
-    };
-    audioCtx.close();
-    return metadata;
+    try {
+      const buffer = await audioCtx.decodeAudioData(arrayBuffer);
+      if (!buffer || buffer.duration === 0) {
+        throw new Error("Nenhuma faixa de áudio utilizável foi encontrada no arquivo.");
+      }
+      const metadata = {
+        duration: buffer.duration,
+        channels: buffer.numberOfChannels
+      };
+      audioCtx.close();
+      return metadata;
+    } catch (err: any) {
+      audioCtx.close();
+      if (err.message && (err.message.includes("vídeo") || err.message.includes("faixa de áudio"))) {
+        throw err;
+      }
+
+      // Layer 7: Inspect container for specific unsupported codec messages
+      const bytes = new Uint8Array(arrayBuffer.slice(0, 32));
+      const isAmrHeader = bytes[0] === 0x23 && bytes[1] === 0x21 && bytes[2] === 0x41 && bytes[3] === 0x4D && bytes[4] === 0x52;
+      if (isAmrHeader || ext === "amr") {
+        throw new Error("O formato AMR (utilizado em áudios antigos de celular) não é suportado nativamente pelo navegador.");
+      }
+
+      if (ext === "3gp" || ext === "3gpp") {
+        throw new Error("O arquivo 3GP contém um codec de áudio (como AMR) não suportado pelo navegador.");
+      }
+
+      if (ext === "wma") {
+        throw new Error("O formato WMA (Windows Media Audio) é proprietário e não é suportado pelo navegador.");
+      }
+
+      if (ext === "ac3") {
+        throw new Error("O formato AC3 (Dolby Digital) não é suportado pelo navegador.");
+      }
+
+      throw new Error(`Não foi possível decodificar o áudio. O codec do arquivo (${ext.toUpperCase() || "MÍDIA"}) não é suportado pelo navegador.`);
+    }
   };
 
   const handleSelectedFiles = async (selectedFiles: FileList) => {
@@ -351,10 +449,22 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
     for (const file of filesArray) {
       const ext = file.name.split(".").pop()?.toLowerCase() || "";
       const isAllowedExt = allowedExtensions.includes(ext);
-      const isMediaMime = file.type.startsWith("audio/") || file.type === "";
+      const mime = file.type.toLowerCase();
+      const isMediaMime = 
+        mime.startsWith("audio/") || 
+        mime.startsWith("video/") || 
+        mime === "" || 
+        mime === "application/octet-stream" || 
+        mime.includes("ogg") || 
+        mime.includes("mpeg");
+
+      let isValidCandidate = isAllowedExt || isMediaMime;
+      if (!isValidCandidate) {
+        isValidCandidate = await checkAudioMagicBytes(file);
+      }
       
-      if (!isAllowedExt && !isMediaMime) {
-        setGlobalError(`O arquivo "${file.name}" não pôde ser adicionado por não parecer um formato de áudio compatível.`);
+      if (!isValidCandidate) {
+        setGlobalError(`O arquivo "${file.name}" não pôde ser adicionado por não parecer um formato de áudio ou mídia compatível.`);
         continue;
       }
 
@@ -376,7 +486,7 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
         file,
         name: file.name,
         originalSize: file.size,
-        format: ext.toUpperCase(),
+        format: ext.toUpperCase() || "AUDIO",
         duration: null,
         channels: null,
         status: "aguardando",
@@ -395,8 +505,10 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
       newItems.forEach((item) => {
         readAudioMetadata(item.file).then((meta) => {
           setQueue((prev) => prev.map((q) => q.id === item.id ? { ...q, duration: meta.duration, channels: meta.channels } : q));
-        }).catch(() => {
-          // Quiet fail
+        }).catch((err: any) => {
+          console.warn("Erro ao ler metadados de áudio:", item.name, err);
+          const errMsg = err?.message || "Incapaz de ler metadados de áudio do arquivo.";
+          setQueue((prev) => prev.map((q) => q.id === item.id ? { ...q, errorMessage: errMsg } : q));
         });
       });
     }
@@ -651,11 +763,51 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
 
       try {
         const arrayBuffer = await currentItem.file.arrayBuffer();
+
+        const ext = currentItem.file.name.split(".").pop()?.toLowerCase() || "";
+        const isVideoContainer = ["mp4", "webm", "3gp", "3gpp", "mov", "m4v", "mkv", "ogv"].includes(ext) || currentItem.file.type.startsWith("video/");
+
+        if (isVideoContainer && (ext === "mp4" || currentItem.file.type.includes("mp4"))) {
+          const mp4Info = checkMp4Audio(arrayBuffer);
+          if (!mp4Info.hasAudio && mp4Info.hasVideo) {
+            throw new Error("O arquivo MP4 contém apenas vídeo sem faixa de áudio.");
+          }
+        }
+
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContextClass) {
+          throw new Error("Web Audio API não é suportada neste navegador.");
+        }
+
         const audioCtx = new AudioContextClass();
         
         setQueue((prev) => prev.map((q, idx) => idx === i ? { ...q, status: "preparando", progress: 30 } : q));
-        const decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+        let decodedBuffer: AudioBuffer;
+        try {
+          decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        } catch (decodeErr: any) {
+          audioCtx.close();
+          const bytes = new Uint8Array(arrayBuffer.slice(0, 32));
+          const isAmrHeader = bytes[0] === 0x23 && bytes[1] === 0x21 && bytes[2] === 0x41 && bytes[3] === 0x4D && bytes[4] === 0x52;
+          if (isAmrHeader || ext === "amr") {
+            throw new Error("O formato AMR (utilizado em áudios antigos de celular) não é suportado nativamente pelo navegador.");
+          }
+          if (ext === "3gp" || ext === "3gpp") {
+            throw new Error("O arquivo 3GP contém um codec de áudio (como AMR) não suportado pelo navegador.");
+          }
+          if (ext === "wma") {
+            throw new Error("O formato WMA (Windows Media Audio) é proprietário e não é suportado pelo navegador.");
+          }
+          if (ext === "ac3") {
+            throw new Error("O formato AC3 (Dolby Digital) não é suportado pelo navegador.");
+          }
+          if (isVideoContainer) {
+            throw new Error(`Não foi possível extrair/decodificar a faixa de áudio deste arquivo (${ext.toUpperCase() || "de vídeo"}). O codec de áudio utilizado pode não ser suportado pelo navegador.`);
+          } else {
+            throw new Error(`Não foi possível decodificar o arquivo de áudio (${ext.toUpperCase() || "mídia"}). O codec ou contêiner não é suportado pelo navegador.`);
+          }
+        }
         audioCtx.close();
 
         setQueue((prev) => prev.map((q, idx) => idx === i ? { ...q, status: "preparando", progress: 50 } : q));
@@ -826,7 +978,7 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
 
       } catch (err: any) {
         console.error("Erro ao converter arquivo: ", currentItem.name, err);
-        let customMessage = "Não foi possível interpretar o áudio deste arquivo. O codec ou conteúdo pode não ser compatível com o navegador.";
+        const customMessage = err.message || "Não foi possível interpretar o áudio deste arquivo. O codec ou conteúdo pode não ser compatível com o navegador.";
         
         setQueue((prev) => prev.map((q, idx) => idx === i ? { 
           ...q, 
@@ -1028,8 +1180,8 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
             onClick={triggerFileInput}
             className={`border-2 border-dashed rounded-2xl p-8 md:p-12 text-center cursor-pointer transition-all duration-300 flex flex-col items-center justify-center space-y-4 group ${
               dragActive 
-                ? "border-[#22C96B] bg-[#173A2A]/50 scale-[0.99]" 
-                : "border-[#2D3B47] bg-[#1B2732] hover:border-[#22C96B] hover:bg-[#202D38]"
+                ? "border-[#0284C7] bg-[#E0F2FE] scale-[0.99]" 
+                : "border-[#CBD5E1] bg-[#F8FAFC] hover:border-[#0284C7] hover:bg-white"
             }`}
             id="upload-dropzone"
           >
@@ -1038,22 +1190,22 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
               type="file" 
               multiple
               className="hidden" 
-              accept=".mp3,.wav,.m4a,.aac,.flac,.ogg,.opus,.wma,.amr,.aiff,.aif,.caf,.ac3,.mp2,.mp1,.pcm,.au,.snd,audio/*"
+              accept=".mp3,.wav,.m4a,.aac,.flac,.ogg,.oga,.opus,.wma,.amr,.aiff,.aif,.caf,.ac3,.mp2,.mp1,.pcm,.au,.snd,.mp4,.webm,.3gp,.3gpp,.mov,.m4v,.ogv,.mkv,audio/*,video/mp4,video/webm,video/3gpp,video/*,application/octet-stream"
               onChange={handleChange}
             />
             
-            <div className="p-4 bg-[#202D38] rounded-2xl border border-[#2D3B47] text-[#22C96B] group-hover:scale-105 transition-transform duration-200 shadow-md">
+            <div className="p-4 bg-[#E0F2FE] rounded-2xl border border-[#BAE6FD] text-[#0284C7] group-hover:scale-105 transition-transform duration-200 shadow-sm">
               <Upload className="h-6 w-6" id="upload-icon" />
             </div>
 
             <div className="space-y-1.5">
-              <p className="text-sm font-extrabold text-[#F5F7F8]" id="upload-text-main">
+              <p className="text-sm font-extrabold text-[#0F172A]" id="upload-text-main">
                 Arraste seus arquivos para cá ou clique para selecionar
               </p>
-              <p className="text-xs text-[#AEB8C1]" id="upload-text-sub">
-                Formatos aceitos: MP3, WAV, M4A, FLAC, OGG, AAC, etc.
+              <p className="text-xs text-[#475569]" id="upload-text-sub">
+                Formatos aceitos: MP3, WAV, M4A, Áudios do WhatsApp (.mp4), AAC, OGG, WEBM, FLAC, 3GP, etc.
               </p>
-              <p className="text-xs text-[#22C96B] font-bold mt-1">
+              <p className="text-xs text-[#10B981] font-bold mt-1">
                 Não salvamos nenhum arquivo.
               </p>
             </div>
@@ -1064,7 +1216,7 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                 e.stopPropagation();
                 triggerFileInput();
               }}
-              className="px-5 py-2.5 bg-[#22C96B] hover:bg-[#148A49] text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer shadow-md"
+              className="px-5 py-2.5 bg-[#0284C7] hover:bg-[#0369A1] text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer shadow-sm"
             >
               Selecionar Arquivos
             </button>
@@ -1072,18 +1224,18 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
 
           {/* Queue Statistics Header Banner */}
           {queueLength > 0 && (
-            <div className="grid grid-cols-3 gap-3 py-4 text-center border border-[#2D3B47] bg-[#1B2732] rounded-xl px-4 shadow-md" id="stats-banner">
+            <div className="grid grid-cols-3 gap-3 py-4 text-center border border-[#E2E8F0] bg-white rounded-xl px-4 shadow-sm" id="stats-banner">
               <div className="space-y-0.5">
-                <p className="text-[10px] text-[#AEB8C1] uppercase font-bold tracking-wider">Arquivos</p>
-                <p className="text-base font-extrabold text-[#22C96B]">{completedCount} / {queueLength}</p>
+                <p className="text-[10px] text-[#64748B] uppercase font-bold tracking-wider">Arquivos</p>
+                <p className="text-base font-extrabold text-[#0284C7]">{completedCount} / {queueLength}</p>
               </div>
               <div className="space-y-0.5">
-                <p className="text-[10px] text-[#AEB8C1] uppercase font-bold tracking-wider">Original</p>
-                <p className="text-base font-extrabold text-[#F5F7F8] font-mono">{formatBytes(totalOriginalBytes, 1)}</p>
+                <p className="text-[10px] text-[#64748B] uppercase font-bold tracking-wider">Original</p>
+                <p className="text-base font-extrabold text-[#0F172A] font-mono">{formatBytes(totalOriginalBytes, 1)}</p>
               </div>
               <div className="space-y-0.5">
-                <p className="text-[10px] text-[#AEB8C1] uppercase font-bold tracking-wider">Economia</p>
-                <p className="text-base font-extrabold text-[#22C96B] font-mono">{spaceSavings > 0 ? `${spaceSavings}%` : "0%"}</p>
+                <p className="text-[10px] text-[#64748B] uppercase font-bold tracking-wider">Economia</p>
+                <p className="text-base font-extrabold text-[#10B981] font-mono">{spaceSavings > 0 ? `${spaceSavings}%` : "0%"}</p>
               </div>
             </div>
           )}
@@ -1091,10 +1243,10 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
           {/* Queue Files List Section */}
           <div className="space-y-3" id="queue-list-container">
             {queue.length === 0 ? (
-              <div className="text-center py-10 text-[#AEB8C1] border border-dashed border-[#2D3B47] rounded-2xl bg-[#1B2732]/50" id="empty-queue-message">
-                <FileAudio className="h-10 w-10 mx-auto text-[#7A8995] mb-2.5 opacity-60" />
-                <p className="text-xs font-extrabold">Nenhum arquivo na fila de conversão</p>
-                <p className="text-[11px] text-[#7A8995] mt-1">Adicione arquivos acima para configurá-los e convertê-los.</p>
+              <div className="text-center py-10 text-[#64748B] border border-dashed border-[#CBD5E1] rounded-2xl bg-white/60" id="empty-queue-message">
+                <FileAudio className="h-10 w-10 mx-auto text-[#0284C7] mb-2.5 opacity-60" />
+                <p className="text-xs font-extrabold text-[#0F172A]">Nenhum arquivo na fila de conversão</p>
+                <p className="text-[11px] text-[#64748B] mt-1">Adicione arquivos acima para configurá-los e convertê-los.</p>
               </div>
             ) : (
               <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
@@ -1112,33 +1264,33 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                       key={item.id}
                       className={`p-4 rounded-xl border transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative ${
                         isCurrent 
-                          ? "bg-[#173A2A]/40 border-[#22C96B]" 
+                          ? "bg-[#E0F2FE] border-[#0284C7]" 
                           : item.status === "concluido" 
-                          ? "bg-[#173A2A]/20 border-[#22C96B]/30" 
+                          ? "bg-[#ECFDF5] border-[#10B981]/40" 
                           : item.status === "erro"
-                          ? "bg-[#E96574]/5 border-[#E96574]/40"
-                          : "bg-[#1B2732] border-[#2D3B47] hover:border-[#22C96B]/40"
+                          ? "bg-red-50 border-red-200"
+                          : "bg-white border-[#E2E8F0] hover:border-[#0284C7]/50"
                       }`}
                       id={`queue-item-${item.id}`}
                     >
                       <div className="flex items-center space-x-3 min-w-0 flex-1">
                         <div className={`p-2.5 rounded-xl border shrink-0 ${
                           item.status === "concluido"
-                            ? "bg-[#173A2A] border-[#22C96B]/30 text-[#22C96B]"
+                            ? "bg-[#D1FAE5] border-[#10B981]/30 text-[#10B981]"
                             : item.status === "erro"
-                            ? "bg-[#E96574]/10 border-[#E96574]/30 text-[#E96574]"
-                            : "bg-[#202D38] border-[#2D3B47] text-[#AEB8C1]"
+                            ? "bg-red-100 border-red-300 text-red-600"
+                            : "bg-[#E0F2FE] border-[#BAE6FD] text-[#0284C7]"
                         }`}>
                           <FileAudio className="h-5 w-5" />
                         </div>
                         
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-[#F5F7F8] truncate" id={`name-${item.id}`}>
+                          <p className="text-xs font-bold text-[#0F172A] truncate" id={`name-${item.id}`}>
                             {item.name}
                           </p>
                           
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[11px] text-[#AEB8C1] font-semibold">
-                            <span className="font-mono text-[#F5F7F8] uppercase bg-[#202D38] px-1.5 py-0.5 rounded text-[10px]">{item.format}</span>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[11px] text-[#475569] font-semibold">
+                            <span className="font-mono text-[#0284C7] uppercase bg-[#E0F2FE] px-1.5 py-0.5 rounded text-[10px]">{item.format}</span>
                             <span>•</span>
                             <span>{formatBytes(item.originalSize)}</span>
                             {item.duration !== null && (
@@ -1153,16 +1305,16 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                             {item.convertedSize && (
                               <>
                                 <span>•</span>
-                                <span className="text-[#22C96B] font-bold font-mono">Convertido: {formatBytes(item.convertedSize)}</span>
+                                <span className="text-[#10B981] font-bold font-mono">Convertido: {formatBytes(item.convertedSize)}</span>
                                 {itemSavings && (
-                                  <span className="text-[#22C96B] font-bold font-mono">({itemSavings}% menor)</span>
+                                  <span className="text-[#10B981] font-bold font-mono">({itemSavings}% menor)</span>
                                 )}
                               </>
                             )}
                           </div>
 
                           {/* Media Controls */}
-                          <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-[#2D3B47]/40">
+                          <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-[#E2E8F0]">
                             {item.originalBlobUrl && (
                               <button
                                 onClick={() => {
@@ -1171,8 +1323,8 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                                 }}
                                 className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center space-x-1 transition-all cursor-pointer ${
                                   isPlayingOriginal
-                                    ? "bg-[#22C96B] text-white"
-                                    : "bg-[#202D38] border border-[#2D3B47] text-[#AEB8C1] hover:text-[#F5F7F8]"
+                                    ? "bg-[#0284C7] text-white"
+                                    : "bg-[#F8FAFC] border border-[#CBD5E1] text-[#334155] hover:text-[#0F172A]"
                                 }`}
                                 title="Ouvir original"
                               >
@@ -1183,7 +1335,7 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                                   </>
                                 ) : (
                                   <>
-                                    <Play className="h-3 w-3 text-[#AEB8C1]" />
+                                    <Play className="h-3 w-3 text-[#475569]" />
                                     <span>Ouvir Original</span>
                                   </>
                                 )}
@@ -1198,8 +1350,8 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                                 }}
                                 className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center space-x-1 transition-all cursor-pointer ${
                                   isPlayingConverted
-                                    ? "bg-[#22C96B] text-white"
-                                    : "bg-[#22C96B]/10 border border-[#22C96B]/20 text-[#22C96B] hover:bg-[#22C96B]/20"
+                                    ? "bg-[#10B981] text-white"
+                                    : "bg-[#ECFDF5] border border-[#10B981]/30 text-[#10B981] hover:bg-[#D1FAE5]"
                                 }`}
                                 title="Ouvir convertido"
                               >
@@ -1210,7 +1362,7 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                                   </>
                                 ) : (
                                   <>
-                                    <Play className="h-3 w-3 text-[#22C96B]" />
+                                    <Play className="h-3 w-3 text-[#10B981]" />
                                     <span>Ouvir Convertido</span>
                                   </>
                                 )}
@@ -1224,31 +1376,31 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                       <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 self-end sm:self-center">
                         <div className="text-right">
                           {item.status === "aguardando" && (
-                            <span className="text-[10px] text-[#AEB8C1] font-bold uppercase tracking-wide">Aguardando</span>
+                            <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wide">Aguardando</span>
                           )}
                           {item.status === "preparando" && (
-                            <span className="text-[10px] text-[#22C96B] font-bold uppercase tracking-wide flex items-center space-x-1">
+                            <span className="text-[10px] text-[#0284C7] font-bold uppercase tracking-wide flex items-center space-x-1">
                               <RefreshCw className="h-3 w-3 animate-spin" />
                               <span>Processando...</span>
                             </span>
                           )}
                           {item.status === "convertendo" && (
-                            <span className="text-[10px] text-[#22C96B] font-bold uppercase tracking-wide flex items-center space-x-1">
+                            <span className="text-[10px] text-[#0284C7] font-bold uppercase tracking-wide flex items-center space-x-1">
                               <RefreshCw className="h-3 w-3 animate-spin" />
                               <span>{item.progress}%</span>
                             </span>
                           )}
                           {item.status === "concluido" && (
-                            <span className="text-[10px] text-[#22C96B] font-bold uppercase tracking-wide flex items-center space-x-1 bg-[#173A2A] px-2 py-0.5 rounded border border-[#22C96B]/20">
+                            <span className="text-[10px] text-[#10B981] font-bold uppercase tracking-wide flex items-center space-x-1 bg-[#ECFDF5] px-2 py-0.5 rounded border border-[#10B981]/30">
                               <CheckCircle2 className="h-3 w-3" />
                               <span>Pronto</span>
                             </span>
                           )}
                           {item.status === "cancelado" && (
-                            <span className="text-[10px] text-[#7A8995] font-bold uppercase tracking-wide">Cancelado</span>
+                            <span className="text-[10px] text-[#64748B] font-bold uppercase tracking-wide">Cancelado</span>
                           )}
                           {item.status === "erro" && (
-                            <span className="text-[10px] text-[#E96574] font-bold uppercase tracking-wide flex items-center space-x-1" title={item.errorMessage || "Erro"}>
+                            <span className="text-[10px] text-red-600 font-bold uppercase tracking-wide flex items-center space-x-1" title={item.errorMessage || "Erro"}>
                               <AlertCircle className="h-3 w-3" />
                               <span>Erro</span>
                             </span>
@@ -1260,7 +1412,7 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                             <a
                               href={item.convertedBlobUrl}
                               download={item.convertedFileName || `convertido.${selectedFormat}`}
-                              className="p-2 bg-[#22C96B]/10 hover:bg-[#22C96B]/20 border border-[#22C96B]/20 hover:border-[#22C96B]/50 text-[#22C96B] rounded-lg transition-colors"
+                              className="p-2 bg-[#ECFDF5] hover:bg-[#D1FAE5] border border-[#10B981]/30 text-[#10B981] rounded-lg transition-colors"
                               title="Baixar arquivo convertido"
                               id={`dl-${item.id}`}
                             >
@@ -1271,7 +1423,7 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                           {!isProcessing && (
                             <button
                               onClick={() => removeItem(item.id)}
-                              className="p-2 bg-[#202D38] hover:bg-[#E96574]/10 border border-[#2D3B47] hover:border-[#E96574]/30 text-[#AEB8C1] hover:text-[#E96574] rounded-lg transition-colors cursor-pointer"
+                              className="p-2 bg-[#F8FAFC] hover:bg-red-50 border border-[#CBD5E1] hover:border-red-300 text-[#64748B] hover:text-red-600 rounded-lg transition-colors cursor-pointer"
                               title="Remover"
                               id={`rm-${item.id}`}
                             >
@@ -1281,9 +1433,10 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                         </div>
                       </div>
 
-                      {item.status === "erro" && item.errorMessage && (
-                        <div className="w-full text-[10px] text-[#E96574] font-semibold pt-1 mt-1 border-t border-[#E96574]/20 leading-normal sm:hidden">
-                          * {item.errorMessage}
+                      {item.errorMessage && (
+                        <div className="w-full text-[11px] text-red-600 font-semibold pt-2 mt-1 border-t border-red-200 leading-normal flex items-start gap-1.5">
+                          <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                          <span>{item.errorMessage}</span>
                         </div>
                       )}
                     </div>
@@ -1296,24 +1449,24 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
         </div>
 
         {/* Right Side Settings Panel (55%) */}
-        <div className="space-y-6 w-full bg-[#1B2732] p-6 md:p-8 rounded-[24px] border border-[#2D3B47] shadow-lg">
+        <div className="space-y-6 w-full bg-white p-6 md:p-8 rounded-[24px] border border-[#E2E8F0] shadow-sm">
           
           <div className="space-y-2">
-            <h3 className="font-display font-extrabold text-[#F5F7F8] text-sm flex items-center gap-1.5 uppercase tracking-wider">
-              <span className="w-1.5 h-3.5 bg-[#22C96B] rounded-full inline-block"></span>
+            <h3 className="font-display font-extrabold text-[#0F172A] text-sm flex items-center gap-1.5 uppercase tracking-wider">
+              <span className="w-1.5 h-3.5 bg-[#0284C7] rounded-full inline-block"></span>
               Ajustes de Saída
             </h3>
-            <p className="text-[11px] text-[#AEB8C1] font-semibold leading-normal">
+            <p className="text-[11px] text-[#475569] font-semibold leading-normal">
               Defina as especificações de formato, taxa de amostragem e compressão de áudio.
             </p>
           </div>
 
-          <div className="border-t border-[#2D3B47] my-4"></div>
+          <div className="border-t border-[#E2E8F0] my-4"></div>
 
           {/* Format Selector Tab Buttons */}
           <div className="space-y-3">
             <label className="text-xs font-extrabold text-text-main flex items-center gap-1.5">
-              <Music className="h-4 w-4 text-green-primary" />
+              <Music className="h-4 w-4 text-[#0284C7]" />
               Formato de Saída:
             </label>
             <div className="grid grid-cols-5 gap-2.5" id="format-selector-grid">
@@ -1331,11 +1484,11 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                     disabled={isProcessing}
                     className={`py-3.5 px-1.5 rounded-xl border transition-all duration-200 flex flex-col items-center justify-center gap-2 cursor-pointer ${
                       isSelected
-                        ? "border-green-primary bg-[#173A2A]/40 text-green-primary shadow-sm shadow-green-primary/10 scale-[1.02]"
-                        : "border-[#2D3B47] bg-[#1B2732] text-[#AEB8C1] hover:border-green-primary/50 hover:bg-[#202D38] hover:text-white disabled:opacity-50"
+                        ? "border-[#0284C7] bg-[#E0F2FE] text-[#0284C7] shadow-sm scale-[1.02]"
+                        : "border-[#E2E8F0] bg-white text-[#475569] hover:border-[#0284C7]/50 hover:bg-[#F8FAFC] hover:text-[#0F172A] disabled:opacity-50"
                     }`}
                   >
-                    <IconComponent className={`h-5 w-5 transition-transform ${isSelected ? "scale-110 text-green-primary" : "text-[#7A8995]"}`} />
+                    <IconComponent className={`h-5 w-5 transition-transform ${isSelected ? "scale-110 text-[#0284C7]" : "text-[#64748B]"}`} />
                     <span className="text-xs font-extrabold uppercase tracking-wider">{format}</span>
                   </button>
                 );
@@ -1348,22 +1501,22 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
             
             {/* MP3 Options */}
             {selectedFormat === "mp3" && (
-              <div className="space-y-4 bg-card-inner p-4 rounded-xl border border-border-main">
-                <label className="text-xs font-extrabold text-text-main flex items-center gap-1.5">
-                  <Volume2 className="h-4 w-4 text-green-primary" />
+              <div className="space-y-4 bg-[#F8FAFC] p-4 rounded-xl border border-[#E2E8F0]">
+                <label className="text-xs font-extrabold text-[#0F172A] flex items-center gap-1.5">
+                  <Volume2 className="h-4 w-4 text-[#0284C7]" />
                   Selecione o Bitrate (Qualidade MP3):
                 </label>
                 
                 {/* Wide Grid of Quality Cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3" id="bitrate-selector">
                   {([
-                    { value: 64, label: "64 kbps", desc: "Muito leve", badge: "Econômico", colorClass: "text-green-primary bg-[#173A2A]/40 border-green-primary/25" },
-                    { value: 96, label: "96 kbps", desc: "Econômico", badge: "Compacto", colorClass: "text-green-primary bg-[#173A2A]/40 border-green-primary/25" },
-                    { value: 112, label: "112 kbps", desc: "Equilíbrio", badge: "Leve", colorClass: "text-green-primary bg-[#173A2A]/40 border-green-primary/25" },
-                    { value: 128, label: "128 kbps", desc: "Recomendado", badge: "Padrão", colorClass: "text-green-primary bg-[#173A2A]/40 border-green-primary/25" },
-                    { value: 192, label: "192 kbps", desc: "Alta qualidade", badge: "Fidelidade", colorClass: "text-quality-high bg-quality-high/10 border-quality-high/25" },
-                    { value: 256, label: "256 kbps", desc: "Superior", badge: "Estúdio", colorClass: "text-quality-high bg-quality-high/10 border-quality-high/25" },
-                    { value: 320, label: "320 kbps", desc: "Máxima qualidade", badge: "Máxima", colorClass: "text-quality-max bg-quality-max/10 border-quality-max/25" }
+                    { value: 64, label: "64 kbps", desc: "Muito leve", badge: "Econômico" },
+                    { value: 96, label: "96 kbps", desc: "Econômico", badge: "Compacto" },
+                    { value: 112, label: "112 kbps", desc: "Equilíbrio", badge: "Leve" },
+                    { value: 128, label: "128 kbps", desc: "Recomendado", badge: "Padrão" },
+                    { value: 192, label: "192 kbps", desc: "Alta qualidade", badge: "Fidelidade" },
+                    { value: 256, label: "256 kbps", desc: "Superior", badge: "Estúdio" },
+                    { value: 320, label: "320 kbps", desc: "Máxima qualidade", badge: "Máxima" }
                   ] as const).map((opt) => (
                     <button
                       key={opt.value}
@@ -1372,15 +1525,15 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                       type="button"
                       className={`w-full min-w-[120px] min-h-[115px] p-3 rounded-xl border text-center transition-all duration-200 cursor-pointer flex flex-col items-center justify-between shadow-sm relative overflow-hidden ${
                         selectedKbps === opt.value
-                          ? "border-green-primary bg-[#173A2A]/40 text-green-primary scale-[1.02] shadow-sm shadow-green-primary/10"
-                          : "border-[#2D3B47] bg-[#1B2732] hover:border-green-primary/50 text-[#AEB8C1] hover:text-white disabled:opacity-50"
+                          ? "border-[#0284C7] bg-[#E0F2FE] text-[#0284C7] scale-[1.02]"
+                          : "border-[#E2E8F0] bg-white hover:border-[#0284C7]/50 text-[#475569] hover:text-[#0F172A] disabled:opacity-50"
                       }`}
                     >
                       {/* Quality Badge - Top */}
                       <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider border shrink-0 ${
                         selectedKbps === opt.value 
-                          ? "text-green-primary border-green-primary/30 bg-green-primary/10" 
-                          : opt.colorClass
+                          ? "text-[#0284C7] border-[#0284C7]/30 bg-[#0284C7]/10" 
+                          : "text-[#64748B] border-[#E2E8F0] bg-[#F1F5F9]"
                       }`}>
                         {opt.badge}
                       </span>
@@ -1392,7 +1545,7 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                       </div>
                       
                       {/* Active Indicator Dot - Bottom */}
-                      <div className={`w-1.5 h-1.5 rounded-full transition-all shrink-0 ${selectedKbps === opt.value ? "bg-green-primary scale-110" : "bg-transparent"}`}></div>
+                      <div className={`w-1.5 h-1.5 rounded-full transition-all shrink-0 ${selectedKbps === opt.value ? "bg-[#0284C7] scale-110" : "bg-transparent"}`}></div>
                     </button>
                   ))}
                 </div>
@@ -1401,14 +1554,14 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
 
             {/* WAV Options */}
             {selectedFormat === "wav" && (
-              <div className="space-y-4 bg-card-inner p-4 rounded-xl border border-border-main">
+              <div className="space-y-4 bg-[#F8FAFC] p-4 rounded-xl border border-[#E2E8F0]">
                 
                 {/* WAV sample rate */}
                 <div className="space-y-2">
-                  <label className="text-xs font-extrabold text-text-main block">
+                  <label className="text-xs font-extrabold text-[#0F172A] block">
                     Taxa de Amostragem (Frequência):
                   </label>
-                  <div className="grid grid-cols-3 gap-1.5 bg-card-main p-1 rounded-lg border border-border-main">
+                  <div className="grid grid-cols-3 gap-1.5 bg-white p-1 rounded-lg border border-[#E2E8F0]">
                     {([
                       { value: "original", label: "Manter Original" },
                       { value: "44100", label: "44.100 Hz" },
@@ -1421,7 +1574,7 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                           onClick={() => setWavSampleRate(opt.value)}
                           disabled={isProcessing}
                           className={`py-2 text-[10px] font-bold rounded transition-all cursor-pointer border ${
-                            isSel ? "bg-card-selected text-green-primary border-green-primary/25" : "border-transparent text-text-sec hover:text-text-main"
+                            isSel ? "bg-[#E0F2FE] text-[#0284C7] border-[#0284C7]/30" : "border-transparent text-[#475569] hover:text-[#0F172A]"
                           }`}
                         >
                           {opt.label}
@@ -1433,10 +1586,10 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
 
                 {/* WAV channels */}
                 <div className="space-y-2">
-                  <label className="text-xs font-extrabold text-text-main block">
+                  <label className="text-xs font-extrabold text-[#0F172A] block">
                     Canais de Áudio:
                   </label>
-                  <div className="grid grid-cols-3 gap-1.5 bg-card-main p-1 rounded-lg border border-border-main">
+                  <div className="grid grid-cols-3 gap-1.5 bg-white p-1 rounded-lg border border-[#E2E8F0]">
                     {([
                       { value: "original", label: "Manter Original" },
                       { value: "mono", label: "Mono" },
@@ -1449,7 +1602,7 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                           onClick={() => setWavChannels(opt.value)}
                           disabled={isProcessing}
                           className={`py-2 text-[10px] font-bold rounded transition-all cursor-pointer border ${
-                            isSel ? "bg-card-selected text-green-primary border-green-primary/25" : "border-transparent text-text-sec hover:text-text-main"
+                            isSel ? "bg-[#E0F2FE] text-[#0284C7] border-[#0284C7]/30" : "border-transparent text-[#475569] hover:text-[#0F172A]"
                           }`}
                         >
                           {opt.label}
@@ -1459,19 +1612,19 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                   </div>
                 </div>
 
-                <div className="text-[10px] text-text-sec border-l-2 border-green-primary/40 pl-2 leading-relaxed">
+                <div className="text-[10px] text-[#475569] border-l-2 border-[#0284C7] pl-2 leading-relaxed">
                   O arquivo WAV gerado utilizará codificação linear PCM de 16 bits sem qualquer compressão destrutiva de dados.
                 </div>
               </div>
             )}
             {/* AAC Settings */}
             {selectedFormat === "aac" && (
-              <div className="space-y-4 bg-card-inner p-4 rounded-xl border border-border-main animate-fade-in">
+              <div className="space-y-4 bg-[#F8FAFC] p-4 rounded-xl border border-[#E2E8F0] animate-fade-in">
                 <div className="space-y-2">
-                  <label className="text-xs font-extrabold text-text-main block">
+                  <label className="text-xs font-extrabold text-[#0F172A] block">
                     Taxa de Bits (Bitrate):
                   </label>
-                  <div className="grid grid-cols-4 gap-1.5 bg-card-main p-1 rounded-lg border border-border-main">
+                  <div className="grid grid-cols-4 gap-1.5 bg-white p-1 rounded-lg border border-[#E2E8F0]">
                     {([96, 128, 192, 256] as const).map((kbps) => (
                       <button
                         key={kbps}
@@ -1480,8 +1633,8 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                         type="button"
                         className={`py-2 text-[10px] font-bold rounded transition-all cursor-pointer border ${
                           aacKbps === kbps 
-                            ? "bg-card-selected text-green-primary border-green-primary/25" 
-                            : "border-transparent text-text-sec hover:text-text-main"
+                            ? "bg-[#E0F2FE] text-[#0284C7] border-[#0284C7]/30" 
+                            : "border-transparent text-[#475569] hover:text-[#0F172A]"
                         }`}
                       >
                         {kbps}k
@@ -1489,7 +1642,7 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                     ))}
                   </div>
                 </div>
-                <div className="text-[10px] text-text-sec border-l-2 border-green-primary/40 pl-2 leading-relaxed">
+                <div className="text-[10px] text-[#475569] border-l-2 border-[#0284C7] pl-2 leading-relaxed">
                   O formato AAC fornece alta eficiência de compressão de áudio, ideal para reprodução moderna.
                 </div>
               </div>
@@ -1497,12 +1650,12 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
 
             {/* FLAC Settings */}
             {selectedFormat === "flac" && (
-              <div className="space-y-4 bg-card-inner p-4 rounded-xl border border-border-main animate-fade-in">
-                <div className="p-3 bg-card-main border border-green-primary/20 rounded-xl flex items-start space-x-2">
-                  <ShieldCheck className="h-4 w-4 text-green-primary mt-0.5 shrink-0" />
+              <div className="space-y-4 bg-[#F8FAFC] p-4 rounded-xl border border-[#E2E8F0] animate-fade-in">
+                <div className="p-3 bg-white border border-[#0284C7]/20 rounded-xl flex items-start space-x-2">
+                  <ShieldCheck className="h-4 w-4 text-[#0284C7] mt-0.5 shrink-0" />
                   <div>
-                    <h4 className="text-[11px] font-bold text-green-primary">Qualidade Lossless Estúdio</h4>
-                    <p className="text-[10px] text-text-sec leading-relaxed mt-0.5 font-semibold">
+                    <h4 className="text-[11px] font-bold text-[#0284C7]">Qualidade Lossless Estúdio</h4>
+                    <p className="text-[10px] text-[#475569] leading-relaxed mt-0.5 font-semibold">
                       O formato FLAC mantém a qualidade máxima de estúdio com compressão sem perdas.
                     </p>
                   </div>
@@ -1512,12 +1665,12 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
 
             {/* OGG Settings */}
             {selectedFormat === "ogg" && (
-              <div className="space-y-4 bg-card-inner p-4 rounded-xl border border-border-main animate-fade-in">
+              <div className="space-y-4 bg-[#F8FAFC] p-4 rounded-xl border border-[#E2E8F0] animate-fade-in">
                 <div className="space-y-2">
-                  <label className="text-xs font-extrabold text-text-main block">
+                  <label className="text-xs font-extrabold text-[#0F172A] block">
                     Qualidade de Áudio (Opus):
                   </label>
-                  <div className="grid grid-cols-3 gap-1.5 bg-card-main p-1 rounded-lg border border-border-main">
+                  <div className="grid grid-cols-3 gap-1.5 bg-white p-1 rounded-lg border border-[#E2E8F0]">
                     {(["low", "medium", "high"] as const).map((lvl) => (
                       <button
                         key={lvl}
@@ -1526,8 +1679,8 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                         type="button"
                         className={`py-2 text-[10px] font-bold rounded transition-all cursor-pointer border capitalize ${
                           oggQuality === lvl 
-                            ? "bg-card-selected text-green-primary border-green-primary/25" 
-                            : "border-transparent text-text-sec hover:text-text-main"
+                            ? "bg-[#E0F2FE] text-[#0284C7] border-[#0284C7]/30" 
+                            : "border-transparent text-[#475569] hover:text-[#0F172A]"
                         }`}
                       >
                         {lvl === "low" ? "Baixa (96k)" : lvl === "medium" ? "Média (160k)" : "Alta (256k)"}
@@ -1535,7 +1688,7 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                     ))}
                   </div>
                 </div>
-                <div className="text-[10px] text-text-sec border-l-2 border-green-primary/40 pl-2 leading-relaxed">
+                <div className="text-[10px] text-[#475569] border-l-2 border-[#0284C7] pl-2 leading-relaxed">
                   O contêiner Ogg/Opus oferece uma alternativa livre de alta eficiência para web e streaming profissional.
                 </div>
               </div>
@@ -1546,26 +1699,26 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
           {/* Action Trigger Buttons */}
           <div className="pt-2 space-y-3">
             {isProcessing ? (
-              <div className="space-y-3 bg-[#202D38] p-4 rounded-2xl border border-dashed border-[#22C96B]/30 shadow-md">
-                <div className="flex items-center justify-between text-xs font-extrabold text-[#AEB8C1]">
+              <div className="space-y-3 bg-[#F8FAFC] p-4 rounded-2xl border border-dashed border-[#0284C7]/30 shadow-sm">
+                <div className="flex items-center justify-between text-xs font-extrabold text-[#475569]">
                   <span className="flex items-center space-x-2">
-                    <RefreshCw className="h-4 w-4 animate-spin text-[#22C96B]" />
+                    <RefreshCw className="h-4 w-4 animate-spin text-[#0284C7]" />
                     <span>Processando {currentProcessingIndex + 1} de {queueLength}...</span>
                   </span>
-                  <span className="text-[#22C96B] font-mono font-extrabold text-sm">{queue[currentProcessingIndex]?.progress || 0}%</span>
+                  <span className="text-[#0284C7] font-mono font-extrabold text-sm">{queue[currentProcessingIndex]?.progress || 0}%</span>
                 </div>
                 
                 {/* Visual Progress Bar */}
-                <div className="w-full h-2 bg-[#1B2732] rounded-full overflow-hidden border border-[#2D3B47]">
+                <div className="w-full h-2 bg-[#E2E8F0] rounded-full overflow-hidden border border-[#CBD5E1]">
                   <div 
-                    className="h-full bg-gradient-to-r from-[#22C96B] to-[#148A49] transition-all duration-300 rounded-full" 
+                    className="h-full bg-[#0284C7] transition-all duration-300 rounded-full" 
                     style={{ width: `${queue[currentProcessingIndex]?.progress || 0}%` }}
                   />
                 </div>
 
                 <button
                   onClick={cancelQueue}
-                  className="w-full py-3 px-4 text-xs font-bold rounded-xl bg-[#E96574]/10 border border-[#E96574]/30 hover:bg-[#E96574]/20 text-[#E96574] transition-all flex items-center justify-center space-x-1.5 cursor-pointer shadow-sm active:scale-95 duration-200"
+                  className="w-full py-3 px-4 text-xs font-bold rounded-xl bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 transition-all flex items-center justify-center space-x-1.5 cursor-pointer shadow-sm active:scale-95 duration-200"
                   id="btn-cancel-conversion"
                 >
                   <X className="h-4 w-4" />
@@ -1573,11 +1726,11 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                 </button>
               </div>
             ) : completedCount >= 2 ? (
-              <div className="space-y-3 bg-[#202D38] p-4 rounded-2xl border border-[#2D3B47] shadow-sm">
+              <div className="space-y-3 bg-[#ECFDF5] p-4 rounded-2xl border border-[#10B981]/30 shadow-sm">
                 <button
                   onClick={() => handleDownloadAllZip()}
                   disabled={isGeneratingZip}
-                  className="w-full py-3.5 px-4 text-xs font-extrabold rounded-xl bg-[#22C96B] hover:bg-[#148A49] text-white shadow-md flex items-center justify-center space-x-2 hover:translate-y-[-1px] active:translate-y-[1px] transition-all duration-200 cursor-pointer disabled:opacity-50"
+                  className="w-full py-3.5 px-4 text-xs font-extrabold rounded-xl bg-[#10B981] hover:bg-[#059669] text-white shadow-md flex items-center justify-center space-x-2 transition-all duration-200 cursor-pointer disabled:opacity-50"
                   id="btn-download-all-zip"
                 >
                   {isGeneratingZip ? (
@@ -1594,7 +1747,7 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
                 </button>
                 <button
                   onClick={clearQueue}
-                  className="w-full py-3 px-4 text-xs font-bold rounded-xl bg-[#1B2732] border border-[#2D3B47] hover:bg-[#202D38] text-[#F5F7F8] transition-all flex items-center justify-center space-x-1.5 cursor-pointer shadow-sm"
+                  className="w-full py-3 px-4 text-xs font-bold rounded-xl bg-white border border-[#E2E8F0] hover:bg-[#F8FAFC] text-[#0F172A] transition-all flex items-center justify-center space-x-1.5 cursor-pointer shadow-sm"
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
                   <span>Iniciar Novo Lote</span>
@@ -1604,10 +1757,10 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
               <button
                 onClick={startBatchConversion}
                 disabled={queueLength === 0}
-                className={`w-full min-h-[54px] py-4 px-6 text-sm font-extrabold rounded-xl text-white shadow-lg transition-all flex items-center justify-center space-x-2.5 duration-300 uppercase tracking-wider ${
+                className={`w-full min-h-[54px] py-4 px-6 text-sm font-extrabold rounded-xl text-white shadow-md transition-all flex items-center justify-center space-x-2.5 duration-300 uppercase tracking-wider ${
                   queueLength > 0
-                    ? "bg-[#22C96B] hover:bg-[#1bb85f] hover:translate-y-[-1px] active:translate-y-[1px] cursor-pointer shadow-green-primary/20 hover:shadow-green-primary/40"
-                    : "bg-[#22C96B]/50 text-white/70 border border-green-primary/20 cursor-not-allowed opacity-65 shadow-none"
+                    ? "bg-[#0284C7] hover:bg-[#0369A1] cursor-pointer"
+                    : "bg-[#0284C7]/50 text-white/70 border border-[#0284C7]/20 cursor-not-allowed opacity-65 shadow-none"
                 }`}
                 id="btn-start-batch"
               >
@@ -1623,15 +1776,15 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
 
       {/* Global Error Alert block */}
       {globalError && (
-        <div className="p-5 bg-[#E96574]/10 border border-[#E96574]/30 rounded-2xl flex items-start space-x-3.5 text-left animate-shake" id="global-error-alert">
-          <AlertCircle className="h-5.5 w-5.5 text-[#E96574] mt-0.5 shrink-0 animate-bounce" id="error-icon" />
+        <div className="p-5 bg-red-50 border border-red-200 rounded-2xl flex items-start space-x-3.5 text-left animate-shake" id="global-error-alert">
+          <AlertCircle className="h-5.5 w-5.5 text-red-600 mt-0.5 shrink-0" id="error-icon" />
           <div className="min-w-0 flex-1">
-            <h4 className="text-[13px] font-extrabold text-[#E96574] uppercase tracking-wider">Aviso de Limitação</h4>
-            <p className="text-[14px] text-[#E96574]/90 leading-relaxed mt-1 font-semibold" id="global-error-message">
+            <h4 className="text-[13px] font-extrabold text-red-700 uppercase tracking-wider">Aviso de Limitação</h4>
+            <p className="text-[14px] text-red-600 leading-relaxed mt-1 font-semibold" id="global-error-message">
               {globalError}
             </p>
           </div>
-          <button onClick={() => setGlobalError(null)} className="text-[#AEB8C1] hover:text-[#F5F7F8] shrink-0 cursor-pointer">
+          <button onClick={() => setGlobalError(null)} className="text-[#64748B] hover:text-[#0F172A] shrink-0 cursor-pointer">
             <X className="h-4.5 w-4.5" />
           </button>
         </div>
@@ -1639,16 +1792,16 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
 
       {/* Safety Size Warning Modal */}
       {zipWarningType !== "none" && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" id="zip-warning-modal">
-          <div className="bg-[#1B2732] border border-[#2D3B47] rounded-2xl max-w-md w-full p-6 shadow-2xl relative space-y-4" id="zip-warning-content">
-            <div className="flex items-center space-x-3 text-[#22C96B]">
-              <AlertCircle className="h-6 w-6 text-[#F2B84B] animate-bounce" />
-              <h3 className="font-display font-extrabold text-base text-[#F5F7F8]">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in" id="zip-warning-modal">
+          <div className="bg-white border border-[#E2E8F0] rounded-2xl max-w-md w-full p-6 shadow-2xl relative space-y-4" id="zip-warning-content">
+            <div className="flex items-center space-x-3 text-[#0284C7]">
+              <AlertCircle className="h-6 w-6 text-amber-500 animate-bounce" />
+              <h3 className="font-display font-extrabold text-base text-[#0F172A]">
                 {zipWarningType === "warning-100" ? "Consumo de Memória Elevado" : "Aviso de Tamanho de Arquivo"}
               </h3>
             </div>
             
-            <p className="text-xs text-[#AEB8C1] leading-relaxed font-semibold">
+            <p className="text-xs text-[#475569] leading-relaxed font-semibold">
               {zipWarningType === "warning-100" ? (
                 <>
                   O tamanho total dos arquivos convertidos é elevado (<strong>{formatBytes(queue.filter(item => item.status === "concluido").reduce((sum, item) => sum + (item.convertedSize || 0), 0))}</strong>). Recomendamos baixar os arquivos individualmente para maior rapidez. Se preferir, você ainda pode tentar gerar o arquivo ZIP.
@@ -1663,14 +1816,14 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
             <div className="flex flex-col gap-2 pt-2">
               <button
                 onClick={() => handleDownloadAllZip(true)}
-                className="w-full px-4 py-2.5 text-xs font-bold bg-[#22C96B] hover:bg-[#148A49] text-white rounded-xl transition-colors cursor-pointer shadow-sm"
+                className="w-full px-4 py-2.5 text-xs font-bold bg-[#10B981] hover:bg-[#059669] text-white rounded-xl transition-colors cursor-pointer shadow-sm"
                 id="btn-confirm-zip"
               >
                 {zipWarningType === "warning-100" ? "Gerar ZIP mesmo assim" : "Sim, gerar ZIP"}
               </button>
               <button
                 onClick={() => setZipWarningType("none")}
-                className="w-full px-4 py-2.5 text-xs font-bold bg-[#202D38] border border-[#2D3B47] text-[#AEB8C1] hover:text-[#F5F7F8] rounded-xl transition-colors cursor-pointer"
+                className="w-full px-4 py-2.5 text-xs font-bold bg-[#F8FAFC] border border-[#CBD5E1] text-[#475569] hover:text-[#0F172A] rounded-xl transition-colors cursor-pointer"
                 id="btn-cancel-zip"
               >
                 {zipWarningType === "warning-100" ? "Baixar arquivos individualmente" : "Cancelar"}

@@ -56,6 +56,73 @@
         }
       },
       "required": ["title", "imageUrl", "destinationUrl", "altText", "position", "active", "startDate"]
+    },
+    "HomeBanner": {
+      "title": "HomeBanner",
+      "description": "A featured promotional or informative banner displayed on the home page carousel",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name or title of the banner"
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "Image URL or data URI of the banner (1320x480 standard)"
+        },
+        "linkUrl": {
+          "type": "string",
+          "description": "Optional destination link or internal route"
+        },
+        "order": {
+          "type": "number",
+          "description": "Display order index"
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether the banner is active"
+        },
+        "altText": {
+          "type": "string",
+          "description": "Accessibility alt text"
+        }
+      },
+      "required": ["name", "imageUrl", "order", "active"]
+    },
+    "SeoConfig": {
+      "title": "SeoConfig",
+      "description": "SEO metadata overrides per route",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "canonicalPath": { "type": "string" },
+        "h1": { "type": "string" },
+        "keywords": { "type": "array", "items": { "type": "string" } },
+        "robots": { "type": "string" },
+        "ogType": { "type": "string" },
+        "ogTitle": { "type": "string" },
+        "ogDescription": { "type": "string" },
+        "ogImage": { "type": "string" },
+        "twitterCard": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "SiteMetric": {
+      "title": "SiteMetric",
+      "description": "Aggregated privacy-safe site metrics and tool events",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "pageViews": { "type": "number" },
+        "conversions": { "type": "number" },
+        "downloads": { "type": "number" },
+        "routes": { "type": "object" },
+        "tools": { "type": "object" },
+        "toolConversions": { "type": "object" },
+        "toolDownloads": { "type": "object" },
+        "updatedAt": { "type": "string" }
+      }
     }
   },
   "firestore": {
@@ -66,6 +133,18 @@
     "ads/{adId}": {
       "schema": "Ad",
       "description": "Advertisements managed by administrators and displayed to users"
+    },
+    "home_banners/{bannerId}": {
+      "schema": "HomeBanner",
+      "description": "Featured home carousel banners"
+    },
+    "seo_configs/{routeKey}": {
+      "schema": "SeoConfig",
+      "description": "SEO metadata overrides per route"
+    },
+    "site_metrics/{docId}": {
+      "schema": "SiteMetric",
+      "description": "Aggregated daily and total site metrics"
     }
   }
 }

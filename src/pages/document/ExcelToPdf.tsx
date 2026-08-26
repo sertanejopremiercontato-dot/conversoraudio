@@ -231,16 +231,16 @@ export default function ExcelToPdf({ onNavigate }: ExcelToPdfProps) {
     <div className="space-y-10 py-4 max-w-5xl mx-auto">
       {/* Top Banner Header */}
       <div className="text-center space-y-4 max-w-3xl mx-auto">
-        <div className="inline-flex items-center space-x-2 bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-1.5 rounded-full text-xs font-semibold text-emerald-400">
+        <div className="inline-flex items-center space-x-2 bg-[#E0F2FE] border border-[#BAE6FD] px-3.5 py-1.5 rounded-full text-xs font-semibold text-[#0284C7]">
           <FileSpreadsheet className="h-3.5 w-3.5" />
           <span>Ferramenta de Documentos • 100% Grátis</span>
         </div>
 
-        <h1 className="font-display text-3xl md:text-4xl font-extrabold tracking-tight text-slate-100" id="excel-to-pdf-title">
+        <h1 className="font-display text-3xl md:text-4xl font-extrabold tracking-tight text-[#0F172A]" id="excel-to-pdf-title">
           Converter Excel para PDF Grátis
         </h1>
 
-        <p className="text-xs md:text-sm text-slate-400 leading-relaxed max-w-2xl mx-auto">
+        <p className="text-xs md:text-sm text-[#475569] leading-relaxed max-w-2xl mx-auto">
           Converta suas planilhas <strong>XLSX</strong>, <strong>XLS</strong> e <strong>CSV</strong> em documentos PDF de alta qualidade. Escolha as abas, configure orientação, margens e ajuste automático de colunas.
         </p>
 
@@ -254,7 +254,7 @@ export default function ExcelToPdf({ onNavigate }: ExcelToPdfProps) {
             "Processamento 100% local",
             "Sem cadastro"
           ].map((item, idx) => (
-            <span key={idx} className="bg-slate-900 border border-slate-800 text-slate-300 text-[11px] font-semibold px-3 py-1 rounded-full">
+            <span key={idx} className="bg-white border border-[#E2E8F0] text-[#475569] text-[11px] font-semibold px-3 py-1 rounded-full shadow-xs">
               ✓ {item}
             </span>
           ))}
@@ -297,8 +297,8 @@ export default function ExcelToPdf({ onNavigate }: ExcelToPdfProps) {
             )}
 
             {/* Action Bar */}
-            <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 sticky bottom-4 backdrop-blur-md shadow-2xl">
-              <div className="text-xs text-slate-400">
+            <div className="bg-white/95 border border-[#E2E8F0] p-6 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 sticky bottom-4 backdrop-blur-md shadow-xl">
+              <div className="text-xs text-[#475569]">
                 <span>
                   Pronto para converter <strong>{fileData.sheets.filter((s) => s.selected).length}</strong> de {fileData.sheets.length} abas
                 </span>
@@ -308,7 +308,7 @@ export default function ExcelToPdf({ onNavigate }: ExcelToPdfProps) {
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                  className="px-4 py-3 bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#475569] font-bold text-xs rounded-xl transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
@@ -317,7 +317,7 @@ export default function ExcelToPdf({ onNavigate }: ExcelToPdfProps) {
                   type="button"
                   onClick={handleStartConversion}
                   disabled={fileData.sheets.filter((s) => s.selected).length === 0}
-                  className="px-8 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-sm rounded-xl shadow-lg shadow-emerald-500/20 transition-all inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 flex-1 sm:flex-initial"
+                  className="px-8 py-3.5 bg-[#0284C7] hover:bg-[#0369A1] text-white font-extrabold text-sm rounded-xl shadow-lg shadow-[#0284C7]/20 transition-all inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 flex-1 sm:flex-initial"
                 >
                   <span>Gerar PDF Agora</span>
                   <ArrowRight className="h-4 w-4" />
@@ -357,38 +357,38 @@ export default function ExcelToPdf({ onNavigate }: ExcelToPdfProps) {
       </div>
 
       {/* FAQ Section */}
-      <div className="bg-slate-900/40 border border-slate-900 rounded-3xl p-6 md:p-8 space-y-6">
+      <div className="bg-white border border-[#E2E8F0] rounded-3xl p-6 md:p-8 space-y-6 shadow-sm">
         <div className="flex items-center gap-2.5">
-          <HelpCircle className="h-5 w-5 text-emerald-400" />
-          <h3 className="font-display font-bold text-lg text-slate-100">
+          <HelpCircle className="h-5 w-5 text-[#0284C7]" />
+          <h3 className="font-display font-bold text-lg text-[#0F172A]">
             Perguntas Frequentes sobre a Conversão de Excel para PDF
           </h3>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs leading-relaxed text-slate-400">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs leading-relaxed text-[#475569]">
           <div className="space-y-1.5">
-            <h4 className="font-bold text-slate-200 text-sm">Como converter uma planilha Excel em PDF sem cortar colunas?</h4>
+            <h4 className="font-bold text-[#0F172A] text-sm">Como converter uma planilha Excel em PDF sem cortar colunas?</h4>
             <p>
               Nossa ferramenta inclui o recurso de <strong>Ajuste Inteligente</strong>. Por padrão, a opção &quot;Ajustar colunas na largura da página&quot; dimensiona automaticamente todas as colunas da planilha para que caibam perfeitamente na página, trocando para orientação Paisagem se houver muitas colunas.
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <h4 className="font-bold text-slate-200 text-sm">É seguro enviar minhas planilhas financeiras?</h4>
+            <h4 className="font-bold text-[#0F172A] text-sm">É seguro enviar minhas planilhas financeiras?</h4>
             <p>
               Sim! Todo o processamento do Excel ocorre 100% diretamente no seu próprio navegador de internet. Seu arquivo nunca é enviado para servidores externos nem armazenado.
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <h4 className="font-bold text-slate-200 text-sm">Posso escolher quais abas do Excel serão convertidas?</h4>
+            <h4 className="font-bold text-[#0F172A] text-sm">Posso escolher quais abas do Excel serão convertidas?</h4>
             <p>
               Sim, ao carregar o arquivo você pode selecionar exatamente quais planilhas (abas) deseja incluir no PDF e até renomeá-las individualmente.
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <h4 className="font-bold text-slate-200 text-sm">Suporta fórmulas, cores e células mescladas?</h4>
+            <h4 className="font-bold text-[#0F172A] text-sm">Suporta fórmulas, cores e células mescladas?</h4>
             <p>
               Sim! A ferramenta reconhece valores formatados (moedas R$, datas, porcentagens), cores de fundo, texto em negrito/itálico, bordas de tabela e células mescladas.
             </p>
@@ -397,37 +397,37 @@ export default function ExcelToPdf({ onNavigate }: ExcelToPdfProps) {
       </div>
 
       {/* Related Tools Links */}
-      <div className="bg-slate-950/60 border border-slate-900 rounded-2xl p-6 space-y-4">
-        <h4 className="font-display font-bold text-sm text-slate-200 flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-emerald-400" />
+      <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 space-y-4 shadow-sm">
+        <h4 className="font-display font-bold text-sm text-[#0F172A] flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-[#0284C7]" />
           <span>Outras Ferramentas de Documentos e PDF do MultiConverte</span>
         </h4>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div
             onClick={() => onNavigate?.("/pdf/extrair-texto")}
-            className="p-3.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl flex items-center justify-between cursor-pointer group transition-all"
+            className="p-3.5 bg-[#F8FAFC] hover:bg-white border border-[#E2E8F0] hover:border-[#0284C7] rounded-xl flex items-center justify-between cursor-pointer group transition-all shadow-xs"
           >
             <div className="flex items-center gap-2.5">
-              <FileText className="h-4 w-4 text-emerald-400" />
-              <span className="text-xs font-bold text-slate-200 group-hover:text-emerald-400 transition-colors">
+              <FileText className="h-4 w-4 text-[#0284C7]" />
+              <span className="text-xs font-bold text-[#0F172A] group-hover:text-[#0284C7] transition-colors">
                 Extrair Texto de PDF
               </span>
             </div>
-            <ChevronRight className="h-4 w-4 text-slate-500 group-hover:translate-x-1 transition-transform" />
+            <ChevronRight className="h-4 w-4 text-[#64748B] group-hover:translate-x-1 transition-transform" />
           </div>
 
           <div
             onClick={() => onNavigate?.("/documento")}
-            className="p-3.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl flex items-center justify-between cursor-pointer group transition-all"
+            className="p-3.5 bg-[#F8FAFC] hover:bg-white border border-[#E2E8F0] hover:border-[#0284C7] rounded-xl flex items-center justify-between cursor-pointer group transition-all shadow-xs"
           >
             <div className="flex items-center gap-2.5">
-              <FileSpreadsheet className="h-4 w-4 text-emerald-400" />
-              <span className="text-xs font-bold text-slate-200 group-hover:text-emerald-400 transition-colors">
+              <FileSpreadsheet className="h-4 w-4 text-[#0284C7]" />
+              <span className="text-xs font-bold text-[#0F172A] group-hover:text-[#0284C7] transition-colors">
                 Hub de Documentos
               </span>
             </div>
-            <ChevronRight className="h-4 w-4 text-slate-500 group-hover:translate-x-1 transition-transform" />
+            <ChevronRight className="h-4 w-4 text-[#64748B] group-hover:translate-x-1 transition-transform" />
           </div>
         </div>
       </div>

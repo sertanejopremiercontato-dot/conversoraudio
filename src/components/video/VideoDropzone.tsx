@@ -70,8 +70,8 @@ export default function VideoDropzone({ onFileSelect, disabled = false }: VideoD
         onClick={() => !disabled && fileInputRef.current?.click()}
         className={`relative border-2 border-dashed rounded-[24px] p-8 md:p-12 text-center transition-all cursor-pointer ${
           dragActive
-            ? "border-green-primary bg-green-primary/10 scale-[1.01]"
-            : "border-border-main hover:border-green-primary/50 bg-card-main/60 hover:bg-card-main/80"
+            ? "border-[#0284C7] bg-[#E0F2FE] scale-[1.01]"
+            : "border-[#CBD5E1] hover:border-[#0284C7]/50 bg-white hover:bg-[#F8FAFC] shadow-sm"
         } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       >
         <input
@@ -84,37 +84,37 @@ export default function VideoDropzone({ onFileSelect, disabled = false }: VideoD
         />
 
         <div className="max-w-md mx-auto space-y-4 pointer-events-none">
-          <div className="p-4 bg-green-primary/10 border border-green-primary/20 text-green-primary rounded-2xl w-fit mx-auto shadow-inner">
+          <div className="p-4 bg-[#E0F2FE] border border-[#0284C7]/20 text-[#0284C7] rounded-2xl w-fit mx-auto shadow-sm">
             <Film className="h-10 w-10" />
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-lg md:text-xl font-bold text-text-main font-display">
+            <h3 className="text-lg md:text-xl font-bold text-[#0F172A] font-display">
               Selecione ou arraste seu arquivo de vídeo
             </h3>
-            <p className="text-xs md:text-sm text-text-sec font-medium">
+            <p className="text-xs md:text-sm text-[#475569] font-medium">
               Transforme o áudio do seu vídeo em MP3 ou WAV diretamente no seu navegador.
             </p>
           </div>
 
           <div className="pt-2">
-            <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-primary hover:bg-green-light text-bg-main font-extrabold text-xs md:text-sm rounded-xl transition-all shadow-lg shadow-green-primary/20">
+            <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0284C7] hover:bg-[#0369A1] text-white font-extrabold text-xs md:text-sm rounded-xl transition-all shadow-md">
               <Upload className="h-4 w-4" />
               <span>Escolher Vídeo no Computador</span>
             </span>
           </div>
 
-          <div className="pt-3 border-t border-border-main/50 text-[12px] text-text-sec/80 flex flex-wrap justify-center gap-3">
-            <span>Formatos aceitos: <strong className="text-text-main">MP4, MOV, M4V, WebM</strong></span>
+          <div className="pt-3 border-t border-[#E2E8F0] text-[12px] text-[#64748B] flex flex-wrap justify-center gap-3">
+            <span>Formatos aceitos: <strong className="text-[#0F172A]">MP4, MOV, M4V, WebM</strong></span>
             <span>•</span>
-            <span>Limite máximo: <strong className="text-text-main">Até 1 GB</strong></span>
+            <span>Limite máximo: <strong className="text-[#0F172A]">Até 1 GB</strong></span>
           </div>
         </div>
       </div>
 
       {errorMessage && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-xs md:text-sm font-medium flex items-center gap-3 animate-fadeIn">
-          <AlertCircle className="h-5 w-5 shrink-0 text-red-500" />
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-600 text-xs md:text-sm font-medium flex items-center gap-3 animate-fadeIn">
+          <AlertCircle className="h-5 w-5 shrink-0 text-red-600" />
           <span>{errorMessage}</span>
         </div>
       )}

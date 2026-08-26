@@ -2,7 +2,7 @@ import React from "react";
 import { Ad, resolveAdImageSrc } from "../types";
 import { trackEvent } from "../lib/gtag";
 import { handleAdClick } from "../lib/adClickTracker";
-import { Image as ImageIcon } from "lucide-react";
+import { Image as ImageIcon, ArrowRight, ExternalLink } from "lucide-react";
 
 interface PublicAdCardProps {
   key?: React.Key;
@@ -91,6 +91,36 @@ export default function PublicAdCard({ ad, position, onImageError, isAdminPrevie
 
   const isWideBanner = format === "wide_banner" || (widthVal === 970 && heightVal === 250) || (ad.imageUrl && (ad.imageUrl.includes("970_por_250") || ad.imageUrl.includes("970x250") || ad.imageUrl.includes("970-250")));
 
+  const isSpotify = destinationUrl.toLowerCase().includes("spotify") || 
+                    publicTitle.toLowerCase().includes("spotify") || 
+                    buttonText.toLowerCase().includes("spotify");
+
+  const buttonGradientClass = isSpotify
+    ? "bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#059669] hover:to-[#047857] shadow-emerald-600/20"
+    : "bg-gradient-to-r from-[#0284C7] to-[#2563EB] hover:from-[#0369A1] hover:to-[#1D4ED8] shadow-sky-600/25";
+
+  const renderAdButton = (isFullWidth = false) => {
+    if (!destinationUrl) return null;
+    return (
+      <a
+        href={destinationUrl}
+        target={isExternal ? "_blank" : "_self"}
+        rel="noopener noreferrer"
+        onClick={handleClick}
+        className={isFullWidth ? "block w-full mt-auto" : "inline-block"}
+      >
+        <button
+          className={`${
+            isFullWidth ? "w-full" : "w-full sm:w-auto"
+          } min-h-[48px] px-6 py-3.5 ${buttonGradientClass} text-white font-extrabold text-xs md:text-[13px] uppercase tracking-wider rounded-xl cursor-pointer transition-all duration-200 shadow-md hover:shadow-lg hover:scale-[1.015] active:scale-[0.985] flex items-center justify-center gap-2`}
+        >
+          <span>{buttonText}</span>
+          <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" />
+        </button>
+      </a>
+    );
+  };
+
   // Shared Image Element with strict styling specifications (prevents stretching/distortion)
   const ImageElement = hasImage ? (
     <img
@@ -140,7 +170,7 @@ export default function PublicAdCard({ ad, position, onImageError, isAdminPrevie
     return (
       <div 
         style={customStyle}
-        className="w-full bg-[#0a0d12] border border-border-main hover:border-green-primary rounded-[20px] overflow-hidden transition-all duration-300 shadow-md relative group flex items-center justify-center"
+        className="w-full bg-[#F8FAFC] border border-border-main hover:border-green-primary rounded-[20px] overflow-hidden transition-all duration-300 shadow-md relative group flex items-center justify-center"
       >
         {destinationUrl ? (
           <a
@@ -173,7 +203,7 @@ export default function PublicAdCard({ ad, position, onImageError, isAdminPrevie
         >
           <div 
             style={{ aspectRatio: calculatedAspect }}
-            className="w-full bg-[#0a0d12] rounded-xl overflow-hidden flex items-center justify-center"
+            className="w-full bg-[#F8FAFC] border border-border-main rounded-xl overflow-hidden flex items-center justify-center"
           >
             {destinationUrl ? (
               <a
@@ -205,16 +235,7 @@ export default function PublicAdCard({ ad, position, onImageError, isAdminPrevie
             </div>
             {destinationUrl && (
               <div className="shrink-0">
-                <a
-                  href={destinationUrl}
-                  target={isExternal ? "_blank" : "_self"}
-                  rel="noopener noreferrer"
-                  onClick={handleClick}
-                >
-                  <button className="w-full sm:w-auto bg-green-primary hover:bg-green-dark text-bg-main font-bold text-xs py-2.5 px-5 rounded-xl cursor-pointer transition-all duration-200 shadow-sm hover:scale-[1.01]">
-                    {buttonText}
-                  </button>
-                </a>
+                {renderAdButton(false)}
               </div>
             )}
           </div>
@@ -229,7 +250,7 @@ export default function PublicAdCard({ ad, position, onImageError, isAdminPrevie
         >
           <div 
             style={{ aspectRatio: calculatedAspect }}
-            className="w-full bg-[#0a0d12] rounded-xl overflow-hidden flex items-center justify-center"
+            className="w-full bg-[#F8FAFC] border border-border-main rounded-xl overflow-hidden flex items-center justify-center"
           >
             {destinationUrl ? (
               <a
@@ -261,19 +282,7 @@ export default function PublicAdCard({ ad, position, onImageError, isAdminPrevie
             </div>
           )}
 
-          {destinationUrl && (
-            <a
-              href={destinationUrl}
-              target={isExternal ? "_blank" : "_self"}
-              rel="noopener noreferrer"
-              className="block w-full mt-auto"
-              onClick={handleClick}
-            >
-              <button className="w-full bg-green-primary hover:bg-green-dark text-bg-main font-bold text-xs py-2.5 px-4 rounded-xl cursor-pointer transition-colors duration-200 shadow-sm hover:scale-[1.01]">
-                {buttonText}
-              </button>
-            </a>
-          )}
+          {renderAdButton(true)}
         </div>
       );
     }
@@ -283,7 +292,7 @@ export default function PublicAdCard({ ad, position, onImageError, isAdminPrevie
   if (format === "horizontal_card") {
     return (
       <div className="w-full bg-card-main border border-border-main hover:border-green-primary rounded-[20px] p-5 flex flex-col md:flex-row gap-5 transition-all duration-300 shadow-md relative group">
-        <div className="w-full md:w-2/5 shrink-0 bg-[#0a0d12] rounded-xl overflow-hidden flex items-center justify-center aspect-[300/200] max-h-[220px]">
+        <div className="w-full md:w-2/5 shrink-0 bg-[#F8FAFC] border border-border-main rounded-xl overflow-hidden flex items-center justify-center aspect-[300/200] max-h-[220px]">
           {destinationUrl ? (
             <a
               href={destinationUrl}
@@ -312,17 +321,9 @@ export default function PublicAdCard({ ad, position, onImageError, isAdminPrevie
             )}
           </div>
           {destinationUrl && (
-            <a
-              href={destinationUrl}
-              target={isExternal ? "_blank" : "_self"}
-              rel="noopener noreferrer"
-              className="inline-block mt-4 w-full md:w-auto"
-              onClick={handleClick}
-            >
-              <button className="w-full md:w-auto bg-green-primary hover:bg-green-dark text-bg-main font-bold text-xs py-2.5 px-6 rounded-xl cursor-pointer transition-colors duration-200 shadow-sm">
-                {buttonText}
-              </button>
-            </a>
+            <div className="pt-4">
+              {renderAdButton(false)}
+            </div>
           )}
         </div>
       </div>
@@ -334,7 +335,7 @@ export default function PublicAdCard({ ad, position, onImageError, isAdminPrevie
     return (
       <div className="w-full max-w-[970px] bg-card-main border border-border-main hover:border-green-primary rounded-[20px] p-5 flex flex-col gap-4 transition-all duration-300 shadow-md relative group">
         {/* Banner image container with precise 970/250 aspect ratio */}
-        <div className="w-full aspect-[970/250] bg-[#0a0d12] rounded-xl overflow-hidden flex items-center justify-center">
+        <div className="w-full aspect-[970/250] bg-[#F8FAFC] border border-border-main rounded-xl overflow-hidden flex items-center justify-center">
           {destinationUrl ? (
             <a
               href={destinationUrl}
@@ -366,16 +367,7 @@ export default function PublicAdCard({ ad, position, onImageError, isAdminPrevie
           </div>
           {destinationUrl && (
             <div className="shrink-0">
-              <a
-                href={destinationUrl}
-                target={isExternal ? "_blank" : "_self"}
-                rel="noopener noreferrer"
-                onClick={handleClick}
-              >
-                <button className="w-full sm:w-auto bg-green-primary hover:bg-green-dark text-bg-main font-bold text-xs md:text-sm py-2.5 px-6 rounded-xl cursor-pointer transition-all duration-200 shadow-sm hover:scale-[1.01]">
-                  {buttonText}
-                </button>
-              </a>
+              {renderAdButton(false)}
             </div>
           )}
         </div>
@@ -387,7 +379,7 @@ export default function PublicAdCard({ ad, position, onImageError, isAdminPrevie
     return (
       <div className="w-full max-w-[728px] bg-card-main border border-border-main hover:border-green-primary rounded-[20px] p-5 flex flex-col gap-4 transition-all duration-300 shadow-md relative group">
         {/* Banner image container with precise 728/90 aspect ratio */}
-        <div className="w-full aspect-[728/90] bg-[#0a0d12] rounded-xl overflow-hidden flex items-center justify-center">
+        <div className="w-full aspect-[728/90] bg-[#F8FAFC] border border-border-main rounded-xl overflow-hidden flex items-center justify-center">
           {destinationUrl ? (
             <a
               href={destinationUrl}
@@ -419,16 +411,7 @@ export default function PublicAdCard({ ad, position, onImageError, isAdminPrevie
           </div>
           {destinationUrl && (
             <div className="shrink-0">
-              <a
-                href={destinationUrl}
-                target={isExternal ? "_blank" : "_self"}
-                rel="noopener noreferrer"
-                onClick={handleClick}
-              >
-                <button className="w-full sm:w-auto bg-green-primary hover:bg-green-dark text-bg-main font-bold text-xs py-2.5 px-5 rounded-xl cursor-pointer transition-all duration-200 shadow-sm hover:scale-[1.01]">
-                  {buttonText}
-                </button>
-              </a>
+              {renderAdButton(false)}
             </div>
           )}
         </div>
@@ -440,7 +423,7 @@ export default function PublicAdCard({ ad, position, onImageError, isAdminPrevie
     return (
       <div className="w-full max-w-[970px] bg-card-main border border-border-main hover:border-green-primary rounded-[20px] p-5 flex flex-col gap-4 transition-all duration-300 shadow-md relative group mx-auto">
         {/* Banner image container with auto aspect ratio and auto height */}
-        <div className="w-full bg-[#0a0d12] rounded-xl overflow-hidden flex items-center justify-center h-auto">
+        <div className="w-full bg-[#F8FAFC] border border-border-main rounded-xl overflow-hidden flex items-center justify-center h-auto">
           {destinationUrl ? (
             <a
               href={destinationUrl}
@@ -473,16 +456,7 @@ export default function PublicAdCard({ ad, position, onImageError, isAdminPrevie
             </div>
             {destinationUrl && (
               <div className="shrink-0">
-                <a
-                  href={destinationUrl}
-                  target={isExternal ? "_blank" : "_self"}
-                  rel="noopener noreferrer"
-                  onClick={handleClick}
-                >
-                  <button className="w-full sm:w-auto bg-green-primary hover:bg-green-dark text-bg-main font-bold text-xs md:text-sm py-2.5 px-6 rounded-xl cursor-pointer transition-all duration-200 shadow-sm hover:scale-[1.01]">
-                    {buttonText}
-                  </button>
-                </a>
+                {renderAdButton(false)}
               </div>
             )}
           </div>
@@ -506,7 +480,7 @@ export default function PublicAdCard({ ad, position, onImageError, isAdminPrevie
     <div className={`bg-card-main border border-border-main hover:border-green-primary rounded-[20px] p-5 flex flex-col gap-4 transition-all duration-300 shadow-md relative group ${containerWidthClass}`}>
       <div 
         style={imageContainerStyle}
-        className="w-full bg-[#0a0d12] rounded-xl overflow-hidden flex items-center justify-center"
+        className="w-full bg-[#F8FAFC] border border-border-main rounded-xl overflow-hidden flex items-center justify-center"
       >
         {destinationUrl ? (
           <a
@@ -538,19 +512,7 @@ export default function PublicAdCard({ ad, position, onImageError, isAdminPrevie
         </div>
       )}
 
-      {destinationUrl && (
-        <a
-          href={destinationUrl}
-          target={isExternal ? "_blank" : "_self"}
-          rel="noopener noreferrer"
-          className="block w-full mt-auto"
-          onClick={handleClick}
-        >
-          <button className="w-full bg-green-primary hover:bg-green-dark text-bg-main font-bold text-xs py-2.5 px-4 rounded-xl cursor-pointer transition-colors duration-200 shadow-sm hover:scale-[1.01]">
-            {buttonText}
-          </button>
-        </a>
-      )}
+      {renderAdButton(true)}
     </div>
   );
 }

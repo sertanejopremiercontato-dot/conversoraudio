@@ -1,33 +1,27 @@
 User-agent: *
 Allow: /
 Allow: /audio
+Allow: /audio/editor-metadados
 Allow: /video-para-audio
 Allow: /pdf
-Allow: /pdf/juntar-pdf
-Allow: /pdf/comprimir-pdf
-Allow: /pdf/organizar-pdf
-Allow: /pdf/girar-pdf
-Allow: /pdf/excluir-paginas
-Allow: /pdf/imagens-para-pdf
-Allow: /pdf/pdf-para-imagens
-Allow: /pdf/extrair-texto
+Allow: /pdf/juntar
+Allow: /pdf/comprimir
+Allow: /imagem
 Allow: /imagem/converter
 Allow: /imagem/comprimir
 Allow: /imagem/redimensionar
 Allow: /imagem/cortar
-Allow: /imagem/girar-espelhar
-Allow: /imagem/marca-dagua
+Allow: /imagem/metadados
 Allow: /documento
 
 User-agent: Mediapartners-Google
 Allow: /
 
-# Bloquear áreas administrativas, rotas ocultas e prévias técnicas
+# Bloquear rotas administrativas e APIs internas
 Disallow: /admin
-Disallow: /admin-login
-Disallow: /imagem/remover-fundo
-Disallow: /documento/excel-para-pdf
-Disallow: /document/word-to-pdf
+Disallow: /admin/*
+Disallow: /v2/admin
+Disallow: /api/
+Disallow: /api/*
 
-Sitemap: https://www.multiconverte.com.br/sitemap.xml
-
+Sitemap: https://www.conversoraudio.com.br/sitemap.xml

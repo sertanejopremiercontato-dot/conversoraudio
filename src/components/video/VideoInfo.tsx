@@ -28,60 +28,60 @@ export default function VideoInfo({ metadata }: VideoInfoProps) {
   };
 
   return (
-    <div className="bg-card-main border border-border-main rounded-[20px] p-5 md:p-6 space-y-4">
-      <div className="flex items-center gap-3 border-b border-border-main pb-3">
-        <div className="p-2 bg-green-primary/10 border border-green-primary/20 text-green-primary rounded-xl">
+    <div className="bg-white border border-[#E2E8F0] rounded-[20px] p-5 md:p-6 space-y-4 shadow-sm">
+      <div className="flex items-center gap-3 border-b border-[#E2E8F0] pb-3">
+        <div className="p-2 bg-[#E0F2FE] border border-[#0284C7]/20 text-[#0284C7] rounded-xl">
           <Film className="h-5 w-5" />
         </div>
         <div className="overflow-hidden">
-          <h4 className="font-bold text-text-main text-sm md:text-base truncate" title={metadata.name}>
+          <h4 className="font-bold text-[#0F172A] text-sm md:text-base truncate" title={metadata.name}>
             {metadata.name}
           </h4>
-          <p className="text-xs text-text-sec">Vídeo selecionado para extração</p>
+          <p className="text-xs text-[#475569]">Vídeo selecionado para extração</p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs md:text-sm">
-        <div className="bg-card-inner border border-border-main/60 rounded-xl p-3 space-y-1">
-          <div className="flex items-center gap-1.5 text-text-sec text-[11px]">
-            <FileText className="h-3.5 w-3.5 text-green-primary" />
+        <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3 space-y-1">
+          <div className="flex items-center gap-1.5 text-[#475569] text-[11px]">
+            <FileText className="h-3.5 w-3.5 text-[#0284C7]" />
             <span>Formato</span>
           </div>
-          <p className="font-bold text-text-main">{metadata.format}</p>
+          <p className="font-bold text-[#0F172A]">{metadata.format}</p>
         </div>
 
-        <div className="bg-card-inner border border-border-main/60 rounded-xl p-3 space-y-1">
-          <div className="flex items-center gap-1.5 text-text-sec text-[11px]">
-            <HardDrive className="h-3.5 w-3.5 text-green-primary" />
+        <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3 space-y-1">
+          <div className="flex items-center gap-1.5 text-[#475569] text-[11px]">
+            <HardDrive className="h-3.5 w-3.5 text-[#0284C7]" />
             <span>Tamanho</span>
           </div>
-          <p className="font-bold text-text-main">{formatBytes(metadata.size)}</p>
+          <p className="font-bold text-[#0F172A]">{formatBytes(metadata.size)}</p>
         </div>
 
-        <div className="bg-card-inner border border-border-main/60 rounded-xl p-3 space-y-1">
-          <div className="flex items-center gap-1.5 text-text-sec text-[11px]">
-            <Clock className="h-3.5 w-3.5 text-green-primary" />
+        <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3 space-y-1">
+          <div className="flex items-center gap-1.5 text-[#475569] text-[11px]">
+            <Clock className="h-3.5 w-3.5 text-[#0284C7]" />
             <span>Duração</span>
           </div>
-          <p className="font-bold text-text-main">{formatDuration(metadata.duration)}</p>
+          <p className="font-bold text-[#0F172A]">{formatDuration(metadata.duration)}</p>
         </div>
 
-        <div className="bg-card-inner border border-border-main/60 rounded-xl p-3 space-y-1">
-          <div className="flex items-center gap-1.5 text-text-sec text-[11px]">
-            <Monitor className="h-3.5 w-3.5 text-green-primary" />
+        <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3 space-y-1">
+          <div className="flex items-center gap-1.5 text-[#475569] text-[11px]">
+            <Monitor className="h-3.5 w-3.5 text-[#0284C7]" />
             <span>Resolução</span>
           </div>
-          <p className="font-bold text-text-main">
+          <p className="font-bold text-[#0F172A]">
             {metadata.width && metadata.height ? `${metadata.width}x${metadata.height}` : 'N/D'}
           </p>
         </div>
 
-        <div className="bg-card-inner border border-border-main/60 rounded-xl p-3 space-y-1 col-span-2 md:col-span-2">
-          <div className="flex items-center gap-1.5 text-text-sec text-[11px]">
-            <Volume2 className="h-3.5 w-3.5 text-green-primary" />
+        <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3 space-y-1 col-span-2 md:col-span-2">
+          <div className="flex items-center gap-1.5 text-[#475569] text-[11px]">
+            <Volume2 className="h-3.5 w-3.5 text-[#0284C7]" />
             <span>Faixa de Áudio Detectada</span>
           </div>
-          <p className="font-bold text-text-main flex items-center gap-2">
+          <p className="font-bold text-[#0F172A] flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span>Detectada (AAC/MP3/PCM) - Pronta para extração</span>
           </p>

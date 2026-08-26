@@ -263,26 +263,28 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
   };
 
   return (
-    <div className="space-y-6 text-[#F5F7F8]" id="images-to-pdf-wrapper">
+    <div className="space-y-6 text-[#0F172A]" id="images-to-pdf-wrapper">
       
       {/* Top Breadcrumb & Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2D3B47] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-main pb-4">
         <div className="flex items-center gap-3">
           {onBack && (
             <button
               onClick={onBack}
-              className="p-2 bg-[#202D38] hover:bg-[#2B3945] text-[#AEB8C1] hover:text-white rounded-xl border border-[#2D3B47] transition-colors cursor-pointer"
+              className="p-2 bg-card-inner hover:bg-[#E2E8F0] text-[#475569] hover:text-[#0F172A] rounded-xl border border-border-main transition-colors cursor-pointer"
               title="Voltar às Ferramentas PDF"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
           )}
           <div>
-            <h2 className="font-display font-extrabold text-xl md:text-2xl text-white flex items-center gap-2">
-              <ImageIcon className="h-6 w-6 text-[#22C96B]" />
+            <h2 className="font-display font-extrabold text-xl md:text-2xl text-[#0F172A] flex items-center gap-2">
+              <div className="p-2 bg-[#E0F2FE] text-[#0284C7] rounded-xl border border-[#BAE6FD]">
+                <ImageIcon className="h-5 w-5" />
+              </div>
               Imagens para PDF
             </h2>
-            <p className="text-xs md:text-sm text-[#AEB8C1] font-medium mt-0.5">
+            <p className="text-xs md:text-sm text-[#475569] font-medium mt-0.5">
               Transforme JPG, PNG e WEBP em um único arquivo PDF organizado.
             </p>
           </div>
@@ -291,7 +293,7 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
         {images.length > 0 && !resultPdfBlob && !isProcessing && (
           <button
             onClick={handleClearAll}
-            className="px-3.5 py-2 bg-[#202D38] hover:bg-red-950/40 text-red-400 border border-[#2D3B47] hover:border-red-800/50 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-colors cursor-pointer self-start sm:self-auto"
+            className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-colors cursor-pointer self-start sm:self-auto"
           >
             <Trash2 className="h-4 w-4" />
             Limpar tudo
@@ -301,13 +303,13 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
 
       {/* Global Error Alert */}
       {globalError && (
-        <div className="bg-red-950/40 border border-red-800/50 rounded-2xl p-4 text-red-300 text-xs font-semibold flex items-start gap-3 animate-fade-in" id="error-alert">
-          <AlertTriangle className="h-5 w-5 shrink-0 text-red-400 mt-0.5" />
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-red-800 text-xs font-semibold flex items-start gap-3 animate-fade-in" id="error-alert">
+          <AlertTriangle className="h-5 w-5 shrink-0 text-red-600 mt-0.5" />
           <div className="flex-1 space-y-1">
-            <p className="font-bold text-red-200">Atenção ao processar imagens:</p>
+            <p className="font-bold text-red-900">Atenção ao processar imagens:</p>
             <p>{globalError}</p>
           </div>
-          <button onClick={() => setGlobalError(null)} className="text-red-400 hover:text-red-200 cursor-pointer">
+          <button onClick={() => setGlobalError(null)} className="text-red-500 hover:text-red-800 cursor-pointer">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -318,44 +320,44 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-[#1B2732] border border-[#22C96B] rounded-[28px] p-6 md:p-8 space-y-6 shadow-2xl"
+          className="bg-card-main border border-[#0284C7] rounded-[28px] p-6 md:p-8 space-y-6 shadow-xl"
           id="result-view"
         >
-          <div className="flex items-center gap-4 text-[#22C96B]">
-            <div className="p-3 bg-[#173A2A] rounded-2xl border border-[#22C96B]/30 shrink-0">
-              <CheckCircle2 className="h-8 w-8 text-[#22C96B]" />
+          <div className="flex items-center gap-4 text-[#0284C7]">
+            <div className="p-3 bg-[#E0F2FE] rounded-2xl border border-[#BAE6FD] shrink-0">
+              <CheckCircle2 className="h-8 w-8 text-[#0284C7]" />
             </div>
             <div>
-              <h3 className="font-display font-extrabold text-xl text-white">PDF Gerado com Sucesso!</h3>
-              <p className="text-xs text-[#AEB8C1] font-semibold mt-1">
+              <h3 className="font-display font-extrabold text-xl text-[#0F172A]">PDF Gerado com Sucesso!</h3>
+              <p className="text-xs text-[#475569] font-semibold mt-1">
                 Seu documento está pronto para ser baixado.
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#202D38] p-5 rounded-2xl border border-[#2D3B47]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-card-inner p-5 rounded-2xl border border-border-main">
             <div className="space-y-3">
               <div>
-                <label className="text-[11px] font-extrabold text-[#AEB8C1] uppercase tracking-wider block mb-1">
+                <label className="text-[11px] font-extrabold text-[#475569] uppercase tracking-wider block mb-1">
                   Nome do Arquivo PDF:
                 </label>
                 <input
                   type="text"
                   value={resultFileName}
                   onChange={(e) => setResultFileName(e.target.value)}
-                  className="w-full bg-[#1B2732] border border-[#2D3B47] focus:border-[#22C96B] rounded-xl px-3.5 py-2.5 text-sm font-bold text-white outline-none transition-colors"
+                  className="w-full bg-card-main border border-border-main focus:border-[#0284C7] rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#0F172A] outline-none transition-colors"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs font-semibold">
-              <div className="bg-[#1B2732] p-3 rounded-xl border border-[#2D3B47]">
-                <span className="text-[#AEB8C1] text-[10px] block font-bold uppercase">Páginas:</span>
-                <span className="text-white font-extrabold text-base">{resultPageCount}</span>
+              <div className="bg-card-main p-3 rounded-xl border border-border-main">
+                <span className="text-[#64748B] text-[10px] block font-bold uppercase">Páginas:</span>
+                <span className="text-[#0F172A] font-extrabold text-base">{resultPageCount}</span>
               </div>
-              <div className="bg-[#1B2732] p-3 rounded-xl border border-[#2D3B47]">
-                <span className="text-[#AEB8C1] text-[10px] block font-bold uppercase">Tamanho Final:</span>
-                <span className="text-[#22C96B] font-extrabold text-base">{formatFileSize(resultSize)}</span>
+              <div className="bg-card-main p-3 rounded-xl border border-border-main">
+                <span className="text-[#64748B] text-[10px] block font-bold uppercase">Tamanho Final:</span>
+                <span className="text-[#0284C7] font-extrabold text-base">{formatFileSize(resultSize)}</span>
               </div>
             </div>
           </div>
@@ -363,7 +365,7 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <button
               onClick={handleDownload}
-              className="flex-1 py-4 bg-[#22C96B] hover:bg-[#1eb860] text-[#10171D] rounded-xl font-extrabold text-base flex items-center justify-center gap-2 shadow-lg shadow-[#22C96B]/20 transition-all cursor-pointer active:scale-[0.99]"
+              className="flex-1 py-4 bg-gradient-to-r from-[#0284C7] to-[#2563EB] hover:from-[#0369A1] hover:to-[#1D4ED8] text-white rounded-xl font-extrabold text-base flex items-center justify-center gap-2 shadow-lg shadow-sky-500/20 transition-all cursor-pointer active:scale-[0.99]"
               id="btn-download-pdf"
             >
               <Download className="h-5 w-5" />
@@ -371,7 +373,7 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
             </button>
             <button
               onClick={handleReset}
-              className="py-4 px-6 bg-[#202D38] hover:bg-[#2B3945] text-white border border-[#2D3B47] rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              className="py-4 px-6 bg-card-inner hover:bg-[#E2E8F0] text-[#0F172A] border border-border-main rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
               <RotateCcw className="h-4 w-4" />
               Criar Outro PDF
@@ -380,32 +382,32 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
         </motion.div>
       ) : isProcessing ? (
         /* PROCESSING VIEW */
-        <div className="bg-[#1B2732] border border-[#2D3B47] rounded-[28px] p-8 text-center space-y-6 shadow-xl" id="processing-view">
-          <div className="p-4 bg-[#202D38] border border-[#2D3B47] rounded-full inline-block animate-bounce">
-            <Sparkles className="h-8 w-8 text-[#22C96B]" />
+        <div className="bg-card-main border border-border-main rounded-[28px] p-8 text-center space-y-6 shadow-xl" id="processing-view">
+          <div className="p-4 bg-[#E0F2FE] border border-[#BAE6FD] rounded-full inline-block animate-bounce text-[#0284C7]">
+            <Sparkles className="h-8 w-8 text-[#0284C7]" />
           </div>
 
           <div className="space-y-2 max-w-md mx-auto">
-            <h3 className="font-display font-extrabold text-lg text-white">{progressStep}</h3>
-            <p className="text-xs text-[#AEB8C1] font-semibold">
+            <h3 className="font-display font-extrabold text-lg text-[#0F172A]">{progressStep}</h3>
+            <p className="text-xs text-[#475569] font-semibold">
               Processando imagem {processedCount} de {images.length}...
             </p>
           </div>
 
           <div className="max-w-md mx-auto space-y-2">
-            <div className="w-full bg-[#202D38] rounded-full h-3 overflow-hidden border border-[#2D3B47]">
+            <div className="w-full bg-[#E2E8F0] rounded-full h-3 overflow-hidden border border-border-main">
               <div 
-                className="bg-[#22C96B] h-full transition-all duration-300 rounded-full"
+                className="bg-gradient-to-r from-[#0284C7] to-[#2563EB] h-full transition-all duration-300 rounded-full"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <span className="text-xs font-bold text-[#22C96B]">{progressPercent}%</span>
+            <span className="text-xs font-bold text-[#0284C7]">{progressPercent}%</span>
           </div>
 
           <div>
             <button
               onClick={handleCancel}
-              className="px-5 py-2.5 bg-[#202D38] hover:bg-red-950/40 text-red-400 border border-[#2D3B47] hover:border-red-800/50 rounded-xl text-xs font-extrabold transition-colors cursor-pointer"
+              className="px-5 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl text-xs font-extrabold transition-colors cursor-pointer"
             >
               Cancelar
             </button>
@@ -423,8 +425,8 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-[28px] p-8 md:p-12 text-center cursor-pointer transition-all duration-300 ${
               dragActive 
-                ? "border-[#22C96B] bg-[#173A2A]/40 scale-[1.01]" 
-                : "border-[#2D3B47] bg-[#1B2732] hover:border-[#22C96B]/60 hover:bg-[#202D38]"
+                ? "border-[#0284C7] bg-[#E0F2FE]/50 scale-[1.01]" 
+                : "border-border-main bg-card-main hover:border-[#0284C7] hover:bg-[#F8FAFC] shadow-sm"
             }`}
             id="dropzone-images"
           >
@@ -438,14 +440,14 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
             />
 
             <div className="flex flex-col items-center justify-center space-y-4">
-              <div className="p-4 bg-[#202D38] text-[#22C96B] rounded-2xl border border-[#2D3B47] shadow-inner">
+              <div className="p-4 bg-[#E0F2FE] text-[#0284C7] rounded-2xl border border-[#BAE6FD] shadow-sm">
                 <Upload className="h-8 w-8" />
               </div>
               <div className="space-y-1">
-                <p className="font-display font-extrabold text-base md:text-lg text-white">
-                  Arraste suas imagens aqui ou <span className="text-[#22C96B] underline underline-offset-4">clique para selecionar</span>
+                <p className="font-display font-extrabold text-base md:text-lg text-[#0F172A]">
+                  Arraste suas imagens aqui ou <span className="text-[#0284C7] underline underline-offset-4">clique para selecionar</span>
                 </p>
-                <p className="text-xs text-[#AEB8C1] font-semibold">
+                <p className="text-xs text-[#475569] font-semibold">
                   Suporta JPG, PNG, WEBP e BMP (Até 100 imagens, máximo 25 MB por foto)
                 </p>
               </div>
@@ -459,12 +461,12 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
               {/* LEFT 2 COLS: IMAGES LIST WITH REORDER */}
               <div className="lg:col-span-2 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-display font-extrabold text-base text-white flex items-center gap-2">
+                  <h3 className="font-display font-extrabold text-base text-[#0F172A] flex items-center gap-2">
                     <span>Imagens Selecionadas ({images.length})</span>
                   </h3>
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="text-xs font-extrabold text-[#22C96B] hover:text-[#1eb860] flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-extrabold text-[#0284C7] hover:text-[#0369A1] flex items-center gap-1 cursor-pointer"
                   >
                     + Adicionar mais fotos
                   </button>
@@ -478,13 +480,13 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95 }}
-                      className="bg-[#1B2732] border border-[#2D3B47] hover:border-[#22C96B]/50 rounded-2xl p-3.5 flex items-center gap-4 transition-all shadow-sm"
+                      className="bg-card-main border border-border-main hover:border-[#0284C7] rounded-2xl p-3.5 flex items-center gap-4 transition-all shadow-sm"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-[#202D38] border border-[#2D3B47] flex items-center justify-center font-extrabold text-xs text-[#22C96B] shrink-0">
+                      <div className="w-8 h-8 rounded-lg bg-[#E0F2FE] border border-[#BAE6FD] flex items-center justify-center font-extrabold text-xs text-[#0284C7] shrink-0">
                         {idx + 1}
                       </div>
 
-                      <div className="w-14 h-14 bg-[#202D38] rounded-xl border border-[#2D3B47] overflow-hidden shrink-0 flex items-center justify-center p-0.5">
+                      <div className="w-14 h-14 bg-card-inner rounded-xl border border-border-main overflow-hidden shrink-0 flex items-center justify-center p-0.5">
                         <img 
                           src={img.previewUrl} 
                           alt={img.name} 
@@ -493,13 +495,13 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
                       </div>
 
                       <div className="flex-1 min-w-0 space-y-1">
-                        <h4 className="text-xs font-extrabold text-white truncate">{img.name}</h4>
-                        <div className="flex items-center gap-3 text-[11px] text-[#AEB8C1] font-semibold">
+                        <h4 className="text-xs font-extrabold text-[#0F172A] truncate">{img.name}</h4>
+                        <div className="flex items-center gap-3 text-[11px] text-[#475569] font-semibold">
                           <span>{formatFileSize(img.size)}</span>
                           <span>•</span>
                           <span>{img.width}x{img.height} px</span>
                           <span>•</span>
-                          <span className="uppercase text-[#22C96B] font-extrabold">{img.format}</span>
+                          <span className="uppercase text-[#0284C7] font-extrabold">{img.format}</span>
                         </div>
                       </div>
 
@@ -508,7 +510,7 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
                         <button
                           onClick={() => handleMoveUp(idx)}
                           disabled={idx === 0}
-                          className="p-1 bg-[#202D38] hover:bg-[#2B3945] disabled:opacity-30 disabled:hover:bg-[#202D38] text-white rounded-lg border border-[#2D3B47] transition-colors cursor-pointer"
+                          className="p-1 bg-card-inner hover:bg-[#E2E8F0] disabled:opacity-30 disabled:hover:bg-card-inner text-[#0F172A] rounded-lg border border-border-main transition-colors cursor-pointer"
                           title="Subir página"
                         >
                           <ChevronUp className="h-3.5 w-3.5" />
@@ -516,7 +518,7 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
                         <button
                           onClick={() => handleMoveDown(idx)}
                           disabled={idx === images.length - 1}
-                          className="p-1 bg-[#202D38] hover:bg-[#2B3945] disabled:opacity-30 disabled:hover:bg-[#202D38] text-white rounded-lg border border-[#2D3B47] transition-colors cursor-pointer"
+                          className="p-1 bg-card-inner hover:bg-[#E2E8F0] disabled:opacity-30 disabled:hover:bg-card-inner text-[#0F172A] rounded-lg border border-border-main transition-colors cursor-pointer"
                           title="Descer página"
                         >
                           <ChevronDown className="h-3.5 w-3.5" />
@@ -526,7 +528,7 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
                       {/* Remove Button */}
                       <button
                         onClick={() => handleRemoveImage(idx)}
-                        className="p-2 bg-[#202D38] hover:bg-red-950/40 text-[#AEB8C1] hover:text-red-400 rounded-xl border border-[#2D3B47] hover:border-red-800/40 transition-colors cursor-pointer shrink-0"
+                        className="p-2 bg-card-inner hover:bg-red-50 text-[#64748B] hover:text-red-500 rounded-xl border border-border-main hover:border-red-200 transition-colors cursor-pointer shrink-0"
                         title="Remover imagem"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -537,20 +539,20 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
               </div>
 
               {/* RIGHT COL: PDF SETTINGS CARD */}
-              <div className="bg-[#1B2732] border border-[#2D3B47] rounded-[24px] p-6 space-y-6 shadow-md">
-                <h3 className="font-display font-extrabold text-base text-white border-b border-[#2D3B47] pb-3">
+              <div className="bg-card-main border border-border-main rounded-[24px] p-6 space-y-6 shadow-sm">
+                <h3 className="font-display font-extrabold text-base text-[#0F172A] border-b border-border-main pb-3">
                   Configurações do PDF
                 </h3>
 
                 {/* Page Size */}
                 <div className="space-y-2">
-                  <label className="text-xs font-extrabold text-[#AEB8C1] uppercase tracking-wider block">
+                  <label className="text-xs font-extrabold text-[#475569] uppercase tracking-wider block">
                     Tamanho da Página:
                   </label>
                   <select
                     value={pageSize}
                     onChange={(e) => setPageSize(e.target.value as PageSizeOption)}
-                    className="w-full bg-[#202D38] border border-[#2D3B47] focus:border-[#22C96B] rounded-xl px-3.5 py-2.5 text-xs font-bold text-white outline-none cursor-pointer"
+                    className="w-full bg-card-inner border border-border-main focus:border-[#0284C7] rounded-xl px-3.5 py-2.5 text-xs font-bold text-[#0F172A] outline-none cursor-pointer"
                   >
                     <option value="a4">A4 (Padrão Recomendado)</option>
                     <option value="auto">Automático (Ajustar à imagem)</option>
@@ -560,13 +562,13 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
 
                 {/* Orientation */}
                 <div className="space-y-2">
-                  <label className="text-xs font-extrabold text-[#AEB8C1] uppercase tracking-wider block">
+                  <label className="text-xs font-extrabold text-[#475569] uppercase tracking-wider block">
                     Orientação:
                   </label>
                   <select
                     value={orientation}
                     onChange={(e) => setOrientation(e.target.value as OrientationOption)}
-                    className="w-full bg-[#202D38] border border-[#2D3B47] focus:border-[#22C96B] rounded-xl px-3.5 py-2.5 text-xs font-bold text-white outline-none cursor-pointer"
+                    className="w-full bg-card-inner border border-border-main focus:border-[#0284C7] rounded-xl px-3.5 py-2.5 text-xs font-bold text-[#0F172A] outline-none cursor-pointer"
                   >
                     <option value="auto">Automática (Ajustar por foto)</option>
                     <option value="portrait">Retrato (Vertical)</option>
@@ -576,13 +578,13 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
 
                 {/* Margins */}
                 <div className="space-y-2">
-                  <label className="text-xs font-extrabold text-[#AEB8C1] uppercase tracking-wider block">
+                  <label className="text-xs font-extrabold text-[#475569] uppercase tracking-wider block">
                     Margens:
                   </label>
                   <select
                     value={margin}
                     onChange={(e) => setMargin(e.target.value as MarginOption)}
-                    className="w-full bg-[#202D38] border border-[#2D3B47] focus:border-[#22C96B] rounded-xl px-3.5 py-2.5 text-xs font-bold text-white outline-none cursor-pointer"
+                    className="w-full bg-card-inner border border-border-main focus:border-[#0284C7] rounded-xl px-3.5 py-2.5 text-xs font-bold text-[#0F172A] outline-none cursor-pointer"
                   >
                     <option value="none">Sem margem (0pt)</option>
                     <option value="small">Pequena (15pt - Padrão)</option>
@@ -593,13 +595,13 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
 
                 {/* Fit Mode */}
                 <div className="space-y-2">
-                  <label className="text-xs font-extrabold text-[#AEB8C1] uppercase tracking-wider block">
+                  <label className="text-xs font-extrabold text-[#475569] uppercase tracking-wider block">
                     Ajuste da Imagem:
                   </label>
                   <select
                     value={fitMode}
                     onChange={(e) => setFitMode(e.target.value as ImageFitOption)}
-                    className="w-full bg-[#202D38] border border-[#2D3B47] focus:border-[#22C96B] rounded-xl px-3.5 py-2.5 text-xs font-bold text-white outline-none cursor-pointer"
+                    className="w-full bg-card-inner border border-border-main focus:border-[#0284C7] rounded-xl px-3.5 py-2.5 text-xs font-bold text-[#0F172A] outline-none cursor-pointer"
                   >
                     <option value="contain">Conter imagem inteira (Sem cortes)</option>
                     <option value="fill">Preencher página</option>
@@ -608,13 +610,13 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
 
                 {/* Quality & Compression */}
                 <div className="space-y-2">
-                  <label className="text-xs font-extrabold text-[#AEB8C1] uppercase tracking-wider block">
+                  <label className="text-xs font-extrabold text-[#475569] uppercase tracking-wider block">
                     Qualidade / Compactação:
                   </label>
                   <select
                     value={quality}
                     onChange={(e) => setQuality(e.target.value as ImageQualityOption)}
-                    className="w-full bg-[#202D38] border border-[#2D3B47] focus:border-[#22C96B] rounded-xl px-3.5 py-2.5 text-xs font-bold text-white outline-none cursor-pointer"
+                    className="w-full bg-card-inner border border-border-main focus:border-[#0284C7] rounded-xl px-3.5 py-2.5 text-xs font-bold text-[#0F172A] outline-none cursor-pointer"
                   >
                     <option value="high">Alta Qualidade (Otimizada - Padrão)</option>
                     <option value="maximum">Qualidade Máxima (HD)</option>
@@ -625,13 +627,13 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
                 </div>
 
                 {/* Checkboxes */}
-                <div className="space-y-3 pt-2 border-t border-[#2D3B47] text-xs font-semibold">
+                <div className="space-y-3 pt-2 border-t border-border-main text-xs font-semibold text-[#0F172A]">
                   <label className="flex items-center gap-2 cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={centerImage}
                       onChange={(e) => setCenterImage(e.target.checked)}
-                      className="rounded accent-[#22C96B] w-4 h-4 cursor-pointer"
+                      className="rounded accent-[#0284C7] w-4 h-4 cursor-pointer"
                     />
                     <span>Centralizar imagem na página</span>
                   </label>
@@ -641,7 +643,7 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
                       type="checkbox"
                       checked={whiteBackground}
                       onChange={(e) => setWhiteBackground(e.target.checked)}
-                      className="rounded accent-[#22C96B] w-4 h-4 cursor-pointer"
+                      className="rounded accent-[#0284C7] w-4 h-4 cursor-pointer"
                     />
                     <span>Fundo branco na página</span>
                   </label>
@@ -650,7 +652,7 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
                 {/* Action button */}
                 <button
                   onClick={handleGeneratePdf}
-                  className="w-full py-4 bg-[#22C96B] hover:bg-[#1eb860] text-[#10171D] rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#22C96B]/20 transition-all cursor-pointer active:scale-[0.99]"
+                  className="w-full py-4 bg-gradient-to-r from-[#0284C7] to-[#2563EB] hover:from-[#0369A1] hover:to-[#1D4ED8] text-white rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-sky-500/20 transition-all cursor-pointer active:scale-[0.99]"
                   id="btn-generate-pdf"
                 >
                   <FileText className="h-5 w-5" />
@@ -662,8 +664,8 @@ export default function ImagesToPdf({ onBack }: ImagesToPdfProps) {
           )}
 
           {/* Privacy Note */}
-          <div className="bg-[#1B2732] border border-[#2D3B47] rounded-2xl p-4 text-center">
-            <p className="text-xs text-[#AEB8C1] font-bold">
+          <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded-2xl p-4 text-center">
+            <p className="text-xs text-[#15803D] font-bold">
               🔒 Seus arquivos não ficam salvos.
             </p>
           </div>

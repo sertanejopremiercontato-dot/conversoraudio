@@ -44,12 +44,12 @@ export default function VideoPreview({ file }: VideoPreviewProps) {
   };
 
   return (
-    <div className="bg-card-main border border-border-main rounded-[20px] p-4 md:p-5 space-y-3">
-      <h5 className="text-xs font-bold text-text-sec uppercase tracking-wider flex items-center gap-2">
+    <div className="bg-white border border-[#E2E8F0] rounded-[20px] p-4 md:p-5 space-y-3 shadow-sm">
+      <h5 className="text-xs font-bold text-[#475569] uppercase tracking-wider flex items-center gap-2">
         <span>Prévia do Vídeo</span>
       </h5>
 
-      <div className="relative rounded-xl overflow-hidden bg-black/60 border border-border-main/80 aspect-video max-h-56 mx-auto flex items-center justify-center">
+      <div className="relative rounded-xl overflow-hidden bg-black/90 border border-[#E2E8F0] aspect-video max-h-56 mx-auto flex items-center justify-center">
         {videoUrl && (
           <video
             ref={videoRef}

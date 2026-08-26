@@ -31,10 +31,12 @@ import {
   Check,
   Sliders,
   Maximize2,
-  RotateCw
+  RotateCw,
+  Tag
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import AudioConverter from "./pages/AudioConverter";
+import AudioMetadataStudio from "./pages/AudioMetadataStudio";
 import VideoToAudio from "./pages/VideoToAudio";
 import PdfTools from "./pages/PdfTools";
 import ImageConverter from "./pages/image/ImageConverter";
@@ -50,6 +52,7 @@ import WordToPdf from "./pages/document/WordToPdf";
 import DocumentHub from "./pages/document/DocumentHub";
 import AdminPanel from "./pages/AdminPanel";
 import AdminLogin from "./pages/AdminLogin";
+import { AppV2 } from "./v2/app/AppV2";
 import { Ad, SeoConfig } from "./types";
 import { collection, getDocs, query, where, doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "./firebase";
@@ -59,7 +62,7 @@ import PublicAdCard from "./components/PublicAdCard";
 import useSeoHead, { DEFAULT_SEO_CONFIG, sanitizeSeoConfig } from "./lib/useSeoHead";
 
 
-type TabType = "inicio" | "audio" | "pdf" | "pdfExtractText" | "excelToPdf" | "wordToPdf" | "documentHub" | "videoToAudio" | "imageConverter" | "imageCompressor" | "imageResizer" | "imageCropper" | "imageRotateFlip" | "imageWatermark" | "imageBackgroundRemover";
+type TabType = "inicio" | "audio" | "audioMetadataStudio" | "pdf" | "pdfExtractText" | "excelToPdf" | "wordToPdf" | "documentHub" | "videoToAudio" | "imageConverter" | "imageCompressor" | "imageResizer" | "imageCropper" | "imageRotateFlip" | "imageWatermark" | "imageBackgroundRemover";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>("inicio");
@@ -340,7 +343,9 @@ export default function App() {
     loadConfigAndAds();
     loadPublicAds();
 
-    if (window.location.pathname === "/video-para-audio") {
+    if (window.location.pathname === "/audio/editor-metadados") {
+      setActiveTab("audioMetadataStudio");
+    } else if (window.location.pathname === "/video-para-audio") {
       setActiveTab("videoToAudio");
     } else if (window.location.pathname === "/audio") {
       setActiveTab("audio");
@@ -373,7 +378,9 @@ export default function App() {
 
     const handlePopState = () => {
       setCurrentPath(window.location.pathname);
-      if (window.location.pathname === "/video-para-audio") {
+      if (window.location.pathname === "/audio/editor-metadados") {
+        setActiveTab("audioMetadataStudio");
+      } else if (window.location.pathname === "/video-para-audio") {
         setActiveTab("videoToAudio");
       } else if (window.location.pathname === "/audio") {
         setActiveTab("audio");
@@ -506,8 +513,24 @@ export default function App() {
   };
 
 
-  // Update SEO Head tags dynamically based on active tab and tools
+  // Update SEO Head tags dynamically based on active tab and tools (only for legacy v1 views)
   useEffect(() => {
+    // V2 handles all SEO via isolated useSeoV2 hook
+    if (
+      currentPath === "/" ||
+      currentPath.startsWith("/v2") ||
+      currentPath.startsWith("/audio") ||
+      currentPath.startsWith("/converter-audio") ||
+      currentPath.startsWith("/video-para-audio") ||
+      currentPath.startsWith("/pdf") ||
+      currentPath.startsWith("/imagem") ||
+      currentPath.startsWith("/documento") ||
+      currentPath.startsWith("/documentos") ||
+      currentPath.startsWith("/admin")
+    ) {
+      return;
+    }
+
     let currentPageTitle = seoConfig.title;
     let currentPageDesc = seoConfig.description;
 
@@ -630,8 +653,10 @@ export default function App() {
       ? "/"
       : tab === "audio"
         ? "/audio"
-        : tab === "videoToAudio"
-          ? "/video-para-audio"
+        : tab === "audioMetadataStudio"
+          ? "/audio/editor-metadados"
+          : tab === "videoToAudio"
+            ? "/video-para-audio"
           : tab === "imageConverter"
             ? "/imagem/converter"
             : tab === "imageCompressor"
@@ -694,6 +719,8 @@ export default function App() {
       handleNavigate("imageBackgroundRemover");
     } else if (path === "/audio") {
       handleNavigate("audio");
+    } else if (path === "/audio/editor-metadados") {
+      handleNavigate("audioMetadataStudio");
     } else if (path === "/video-para-audio") {
       handleNavigate("videoToAudio");
     } else if (path === "/pdf/imagens-para-pdf") {
@@ -722,12 +749,65 @@ export default function App() {
     }
   };
 
-  if (currentPath === "/admin-login" || currentPath.startsWith("/admin-login")) {
-    return <AdminLogin onNavigate={navigateTo} />;
+  // Rotas Primárias e Aliases V2 (V2 assume a interface principal)
+  if (
+    currentPath === "/" ||
+    currentPath === "/audio" ||
+    currentPath === "/converter-audio" ||
+    currentPath === "/v2/converter-audio" ||
+    currentPath === "/audio/editor-metadados" ||
+    currentPath === "/video-para-audio" ||
+    currentPath === "/pdf" ||
+    currentPath.startsWith("/pdf/") ||
+    currentPath === "/imagem" ||
+    currentPath.startsWith("/imagem/") ||
+    currentPath === "/documento" ||
+    currentPath.startsWith("/documento/") ||
+    currentPath === "/documentos" ||
+    currentPath.startsWith("/documentos/") ||
+    currentPath === "/v2" ||
+    currentPath.startsWith("/v2/") ||
+    currentPath.startsWith("/v2#")
+  ) {
+    const routeMode = 
+      currentPath === "/audio" || currentPath === "/v2/audio" || currentPath === "/converter-audio" || currentPath === "/v2/converter-audio"
+        ? "audio" 
+        : currentPath === "/audio/editor-metadados" || currentPath === "/v2/audio/editor-metadados" || currentPath === "/v2/metadados"
+          ? "audioMetadata"
+          : currentPath === "/video-para-audio" || currentPath === "/v2/video-para-audio"
+            ? "videoToAudio"
+            : currentPath.startsWith("/pdf") || currentPath.startsWith("/v2/pdf")
+              ? "pdf"
+              : currentPath.startsWith("/imagem") || currentPath.startsWith("/v2/imagem")
+                ? "image"
+                : currentPath.startsWith("/documento") || currentPath.startsWith("/v2/documento") || currentPath.startsWith("/documentos") || currentPath.startsWith("/v2/documentos")
+                  ? "document"
+                  : "home";
+
+    return (
+      <AppV2
+        initialRoute={routeMode}
+        onNavigateToV1={() => navigateTo("/documento")}
+        onNavigateToAdmin={() => navigateTo("/admin")}
+        onNavigateUnmigrated={(path) => navigateTo(path)}
+      />
+    );
   }
 
-  if (currentPath === "/admin" || currentPath.startsWith("/admin/")) {
-    return <AdminPanel onNavigate={navigateTo} />;
+  if (
+    currentPath === "/admin" ||
+    currentPath.startsWith("/admin/") ||
+    currentPath === "/admin-login" ||
+    currentPath.startsWith("/admin-login")
+  ) {
+    return (
+      <AppV2
+        initialRoute="admin"
+        onNavigateToV1={() => navigateTo("/")}
+        onNavigateToAdmin={() => navigateTo("/admin")}
+        onNavigateUnmigrated={(path) => navigateTo(path)}
+      />
+    );
   }
 
   return (
@@ -800,7 +880,7 @@ export default function App() {
       </AnimatePresence>
       
       {/* Top Header */}
-      <header data-ads-exclude="true" className="bg-bg-sec border-b border-border-main sticky top-0 z-50 px-4 py-4 md:px-8 shadow-md backdrop-blur-md">
+      <header data-ads-exclude="true" className="bg-white/95 backdrop-blur-md border-b border-[#E2E8F0] sticky top-0 z-50 px-4 py-3.5 md:px-8 shadow-sm">
         <div className="max-w-[1220px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div 
             className="flex items-center cursor-pointer group py-1"
@@ -835,52 +915,70 @@ export default function App() {
           </div>
           
           {/* Navigation Links */}
-          <nav className="flex items-center space-x-6 text-[13px] md:text-[14px] font-extrabold uppercase tracking-wider text-text-sec" id="header-nav">
+          <nav className="flex flex-wrap items-center justify-center gap-1.5 md:gap-2 text-[12px] md:text-[13px] font-bold tracking-wide" id="header-nav">
             <button 
               onClick={() => handleNavigate("inicio")} 
-              className={`hover:text-green-light transition-colors cursor-pointer relative py-1 ${activeTab === "inicio" ? "text-green-light" : ""}`}
+              className={`transition-all cursor-pointer px-3.5 py-1.5 rounded-full ${
+                activeTab === "inicio" 
+                  ? "bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white shadow-sm font-extrabold" 
+                  : "text-[#475569] hover:text-[#0F172A] hover:bg-[#F1F5F9]"
+              }`}
             >
               Início
-              {activeTab === "inicio" && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-green-primary rounded-full" />}
             </button>
             <button 
               onClick={() => handleNavigate("audio")} 
-              className={`hover:text-green-light transition-colors cursor-pointer relative py-1 ${activeTab === "audio" ? "text-green-light" : ""}`}
+              className={`transition-all cursor-pointer px-3.5 py-1.5 rounded-full ${
+                activeTab === "audio" 
+                  ? "bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white shadow-sm font-extrabold" 
+                  : "text-[#475569] hover:text-[#0F172A] hover:bg-[#F1F5F9]"
+              }`}
             >
               Converter Áudio
-              {activeTab === "audio" && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-green-primary rounded-full" />}
             </button>
             <button 
               onClick={() => handleNavigate("videoToAudio")} 
-              className={`hover:text-green-light transition-colors cursor-pointer relative py-1 ${activeTab === "videoToAudio" ? "text-green-light" : ""}`}
+              className={`transition-all cursor-pointer px-3.5 py-1.5 rounded-full ${
+                activeTab === "videoToAudio" 
+                  ? "bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white shadow-sm font-extrabold" 
+                  : "text-[#475569] hover:text-[#0F172A] hover:bg-[#F1F5F9]"
+              }`}
             >
               Vídeo para Áudio
-              {activeTab === "videoToAudio" && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-green-primary rounded-full" />}
             </button>
             <button 
               onClick={() => handleNavigate("pdf")} 
-              className={`hover:text-green-light transition-colors cursor-pointer relative py-1 ${activeTab === "pdf" ? "text-green-light" : ""}`}
+              className={`transition-all cursor-pointer px-3.5 py-1.5 rounded-full ${
+                activeTab === "pdf" 
+                  ? "bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white shadow-sm font-extrabold" 
+                  : "text-[#475569] hover:text-[#0F172A] hover:bg-[#F1F5F9]"
+              }`}
             >
               Ferramentas PDF
-              {activeTab === "pdf" && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-green-primary rounded-full" />}
             </button>
             <button 
               onClick={() => handleNavigate("imageConverter")} 
-              className={`hover:text-green-light transition-colors cursor-pointer relative py-1 ${["imageConverter", "imageCompressor", "imageResizer", "imageCropper", "imageRotateFlip", "imageWatermark"].includes(activeTab) ? "text-green-light" : ""}`}
+              className={`transition-all cursor-pointer px-3.5 py-1.5 rounded-full ${
+                ["imageConverter", "imageCompressor", "imageResizer", "imageCropper", "imageRotateFlip", "imageWatermark"].includes(activeTab) 
+                  ? "bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white shadow-sm font-extrabold" 
+                  : "text-[#475569] hover:text-[#0F172A] hover:bg-[#F1F5F9]"
+              }`}
             >
               Ferramentas de Imagem
-              {["imageConverter", "imageCompressor", "imageResizer", "imageCropper", "imageRotateFlip", "imageWatermark"].includes(activeTab) && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-green-primary rounded-full" />}
             </button>
             <button 
               onClick={() => handleNavigate("documentHub")} 
-              className={`hover:text-green-light transition-colors cursor-pointer relative py-1 ${["excelToPdf", "documentHub"].includes(activeTab) ? "text-green-light" : ""}`}
+              className={`transition-all cursor-pointer px-3.5 py-1.5 rounded-full ${
+                ["excelToPdf", "documentHub"].includes(activeTab) 
+                  ? "bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white shadow-sm font-extrabold" 
+                  : "text-[#475569] hover:text-[#0F172A] hover:bg-[#F1F5F9]"
+              }`}
             >
               Documentos
-              {["excelToPdf", "documentHub"].includes(activeTab) && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-green-primary rounded-full" />}
             </button>
             <button 
               onClick={() => handleScrollToSection("como-funciona")}
-              className="hover:text-green-light transition-colors cursor-pointer uppercase py-1"
+              className="text-[#475569] hover:text-[#0F172A] transition-colors cursor-pointer px-3 py-1.5 hover:bg-[#F1F5F9] rounded-full"
             >
               Como funciona
             </button>
@@ -922,16 +1020,16 @@ export default function App() {
 
                   {/* Hero Welcome Banner */}
                   <div className="text-center max-w-2xl mx-auto space-y-4 py-4">
-                    <div className="inline-flex items-center space-x-2 bg-[#2B333B] border border-border-main px-4 py-1.5 rounded-full text-xs font-semibold text-[#39D977]">
-                      <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+                    <div className="inline-flex items-center space-x-2 bg-[#E0F2FE] border border-[#BAE6FD] px-4 py-1.5 rounded-full text-xs font-bold text-[#0284C7] shadow-sm">
+                      <Sparkles className="h-3.5 w-3.5 text-[#0284C7] animate-pulse" />
                       <span>Ferramentas de Conversão</span>
                     </div>
                     
-                    <h2 className="font-display text-3xl md:text-4xl font-extrabold tracking-tight text-text-main" id="home-title">
+                    <h2 className="font-display text-3xl md:text-4xl font-extrabold tracking-tight text-[#0F172A]" id="home-title">
                       Conversor de Áudio, PDF e Imagens
                     </h2>
                     
-                    <p className="text-sm text-text-sec leading-relaxed max-w-xl mx-auto font-semibold" id="home-subtitle">
+                    <p className="text-sm text-[#475569] leading-relaxed max-w-xl mx-auto font-semibold" id="home-subtitle">
                       Seus arquivos são processados 100% localmente no seu próprio navegador para total privacidade.
                     </p>
                   </div>
@@ -941,25 +1039,25 @@ export default function App() {
                     
                     {/* Card 1: Audio Converter */}
                     <div
-                      className="bg-card-main rounded-[28px] border border-border-main p-6 md:p-8 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-green-primary transition-all duration-300 group cursor-pointer relative"
+                      className="bg-card-main rounded-[24px] border border-border-main p-6 md:p-8 flex flex-col justify-between shadow-sm hover:shadow-lg hover:border-[#38BDF8] transition-all duration-300 group cursor-pointer relative"
                       onClick={() => handleNavigate("audio")}
                       id="card-audio-converter"
                     >
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <div className="p-3.5 bg-[#303943] rounded-2xl border border-border-main text-[#39D977] inline-block group-hover:scale-105 transition-all shadow-inner">
+                          <div className="p-3.5 bg-[#E0F2FE] rounded-2xl border border-[#BAE6FD] text-[#0284C7] inline-block group-hover:scale-105 transition-all shadow-sm">
                             <Music className="h-6 w-6" />
                           </div>
                           <button
                             type="button"
                             onClick={(e) => handleShareTool(e, "/audio")}
                             title="Compartilhar link do Conversor de Áudio"
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-green-primary/50 text-text-sec hover:text-green-light text-xs font-bold transition-all"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-[#0284C7]/50 text-text-sec hover:text-[#0284C7] text-xs font-bold transition-all"
                           >
                             {copiedPath === "/audio" ? (
                               <>
-                                <Check className="h-3.5 w-3.5 text-green-primary" />
-                                <span className="text-green-primary">Copiado!</span>
+                                <Check className="h-3.5 w-3.5 text-[#0284C7]" />
+                                <span className="text-[#0284C7]">Copiado!</span>
                               </>
                             ) : (
                               <>
@@ -970,30 +1068,30 @@ export default function App() {
                           </button>
                         </div>
                         <div>
-                          <h3 className="font-display text-lg font-bold text-text-main group-hover:text-green-light transition-colors leading-tight">
+                          <h3 className="font-display text-lg font-bold text-[#0F172A] group-hover:text-[#0284C7] transition-colors leading-tight">
                             Conversor de Áudio
                           </h3>
-                          <p className="text-xs text-text-sec mt-2 leading-relaxed font-semibold">
+                          <p className="text-xs text-[#475569] mt-2 leading-relaxed font-semibold">
                             Converta seus arquivos de som para MP3 com economia inteligente de tamanho e total controle da qualidade (64kbps até 320kbps).
                           </p>
                         </div>
-                        <ul className="text-[11px] text-text-muted space-y-1.5 pt-2 font-semibold">
+                        <ul className="text-[11px] text-[#64748B] space-y-1.5 pt-2 font-semibold">
                           <li className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                            <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                             Conversão em lote ultra-rápida
                           </li>
                           <li className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                            <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                             Ajuste de bitrate (64k a 320k)
                           </li>
                           <li className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                            <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                             Escute o original e o convertido na hora
                           </li>
                         </ul>
                       </div>
 
-                      <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#39D977] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
+                      <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#0284C7] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
                         <span>Acessar Conversor</span>
                         <ArrowRight className="h-4 w-4" />
                       </div>
@@ -1001,25 +1099,25 @@ export default function App() {
 
                     {/* Card 2: PDF Tools */}
                     <div
-                      className="bg-card-main rounded-[28px] border border-border-main p-6 md:p-8 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-green-primary transition-all duration-300 group cursor-pointer relative"
+                      className="bg-card-main rounded-[24px] border border-border-main p-6 md:p-8 flex flex-col justify-between shadow-sm hover:shadow-lg hover:border-[#38BDF8] transition-all duration-300 group cursor-pointer relative"
                       onClick={() => handleNavigate("pdf")}
                       id="card-pdf-tools"
                     >
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <div className="p-3.5 bg-[#303943] rounded-2xl border border-border-main text-[#39D977] inline-block group-hover:scale-105 transition-all shadow-inner">
+                          <div className="p-3.5 bg-[#E0F2FE] rounded-2xl border border-[#BAE6FD] text-[#0284C7] inline-block group-hover:scale-105 transition-all shadow-sm">
                             <FileText className="h-6 w-6" />
                           </div>
                           <button
                             type="button"
                             onClick={(e) => handleShareTool(e, "/pdf")}
                             title="Compartilhar link das Ferramentas PDF"
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-green-primary/50 text-text-sec hover:text-green-light text-xs font-bold transition-all"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-[#0284C7]/50 text-text-sec hover:text-[#0284C7] text-xs font-bold transition-all"
                           >
                             {copiedPath === "/pdf" ? (
                               <>
-                                <Check className="h-3.5 w-3.5 text-green-primary" />
-                                <span className="text-green-primary">Copiado!</span>
+                                <Check className="h-3.5 w-3.5 text-[#0284C7]" />
+                                <span className="text-[#0284C7]">Copiado!</span>
                               </>
                             ) : (
                               <>
@@ -1030,30 +1128,30 @@ export default function App() {
                           </button>
                         </div>
                         <div>
-                          <h3 className="font-display text-lg font-bold text-text-main group-hover:text-green-light transition-colors leading-tight">
+                          <h3 className="font-display text-lg font-bold text-[#0F172A] group-hover:text-[#0284C7] transition-colors leading-tight">
                             Ferramentas PDF
                           </h3>
-                          <p className="text-xs text-text-sec mt-2 leading-relaxed font-semibold">
+                          <p className="text-xs text-[#475569] mt-2 leading-relaxed font-semibold">
                             Reordene, junte, comprima, gire ou descarte páginas de documentos PDF em uma interface prática e 100% segura.
                           </p>
                         </div>
-                        <ul className="text-[11px] text-text-muted space-y-1.5 pt-2 font-semibold">
+                        <ul className="text-[11px] text-[#64748B] space-y-1.5 pt-2 font-semibold">
                           <li className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                            <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                             Mesclagem e junção de múltiplos PDFs
                           </li>
                           <li className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                            <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                             Otimização de tamanho (Comprimir)
                           </li>
                           <li className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                            <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                             Girar, deletar e reorganizar páginas visualmente
                           </li>
                         </ul>
                       </div>
 
-                      <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#39D977] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
+                      <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#0284C7] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
                         <span>Acessar Ferramentas PDF</span>
                         <ArrowRight className="h-4 w-4" />
                       </div>
@@ -1065,24 +1163,24 @@ export default function App() {
                   <div className="space-y-6 max-w-6xl mx-auto pt-6 border-t border-border-main/50" id="document-tools-section">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <div className="p-2.5 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 text-emerald-400">
+                        <div className="p-2.5 bg-[#E0F2FE] rounded-2xl border border-[#BAE6FD] text-[#0284C7]">
                           <FileSpreadsheet className="h-5 w-5" />
                         </div>
                         <div>
-                          <h3 className="font-display text-xl font-extrabold text-text-main flex items-center gap-2">
+                          <h3 className="font-display text-xl font-extrabold text-[#0F172A] flex items-center gap-2">
                             <span>Ferramentas de Documentos</span>
-                            <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold rounded-full uppercase tracking-wider">
+                            <span className="px-2 py-0.5 bg-[#E0F2FE] text-[#0284C7] text-[10px] font-bold rounded-full uppercase tracking-wider">
                               Novo
                             </span>
                           </h3>
-                          <p className="text-xs text-text-sec font-semibold">
+                          <p className="text-xs text-[#475569] font-semibold">
                             Converta e gerencie documentos de escritório online com total privacidade
                           </p>
                         </div>
                       </div>
                       <button
                         onClick={() => handleNavigate("documentHub")}
-                        className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 group"
+                        className="text-xs font-bold text-[#0284C7] hover:text-[#0369A1] flex items-center gap-1 group"
                       >
                         <span>Ver Hub de Documentos</span>
                         <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
@@ -1092,29 +1190,29 @@ export default function App() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6" id="document-tools-grid">
                       {/* Card: Extrair Texto de PDF */}
                       <div
-                        className="bg-card-main rounded-[28px] border border-border-main p-6 md:p-8 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-green-primary transition-all duration-300 group cursor-pointer relative"
+                        className="bg-card-main rounded-[24px] border border-border-main p-6 md:p-8 flex flex-col justify-between shadow-sm hover:shadow-lg hover:border-[#38BDF8] transition-all duration-300 group cursor-pointer relative"
                         onClick={() => handleNavigate("pdfExtractText")}
                         id="card-pdf-extract-text-home"
                       >
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
-                            <div className="p-3.5 bg-[#303943] rounded-2xl border border-border-main text-[#39D977] inline-block group-hover:scale-105 transition-all shadow-inner">
+                            <div className="p-3.5 bg-[#E0F2FE] rounded-2xl border border-[#BAE6FD] text-[#0284C7] inline-block group-hover:scale-105 transition-all shadow-sm">
                               <FileText className="h-6 w-6" />
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 font-bold text-[10px] rounded-full uppercase tracking-wider">
+                              <span className="px-2 py-0.5 bg-[#E0F2FE] text-[#0284C7] font-bold text-[10px] rounded-full uppercase tracking-wider">
                                 Ferramenta PDF
                               </span>
                               <button
                                 type="button"
                                 onClick={(e) => handleShareTool(e, "/pdf/extrair-texto")}
                                 title="Compartilhar link da ferramenta Extrair Texto de PDF"
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-green-primary/50 text-text-sec hover:text-green-light text-xs font-bold transition-all"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-[#0284C7]/50 text-text-sec hover:text-[#0284C7] text-xs font-bold transition-all"
                               >
                                 {copiedPath === "/pdf/extrair-texto" ? (
                                   <>
-                                    <Check className="h-3.5 w-3.5 text-green-primary" />
-                                    <span className="text-green-primary">Copiado!</span>
+                                    <Check className="h-3.5 w-3.5 text-[#0284C7]" />
+                                    <span className="text-[#0284C7]">Copiado!</span>
                                   </>
                                 ) : (
                                   <>
@@ -1126,30 +1224,30 @@ export default function App() {
                             </div>
                           </div>
                           <div>
-                            <h3 className="font-display text-lg font-bold text-text-main group-hover:text-green-light transition-colors leading-tight">
+                            <h3 className="font-display text-lg font-bold text-[#0F172A] group-hover:text-[#0284C7] transition-colors leading-tight">
                               Extrair Texto de PDF
                             </h3>
-                            <p className="text-xs text-text-sec mt-2 leading-relaxed font-semibold">
+                            <p className="text-xs text-[#475569] mt-2 leading-relaxed font-semibold">
                               Extraia o texto contido em documentos PDF por página, de forma rápida, com opção de cópia e download em TXT.
                             </p>
                           </div>
-                          <ul className="text-[11px] text-text-muted space-y-1.5 pt-2 font-semibold">
+                          <ul className="text-[11px] text-[#64748B] space-y-1.5 pt-2 font-semibold">
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Visualização organizada por página
                             </li>
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Cópia rápida de trechos de texto
                             </li>
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Download em formato TXT e DOC
                             </li>
                           </ul>
                         </div>
 
-                        <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#39D977] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
+                        <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#0284C7] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
                           <span>Extrair Texto do PDF</span>
                           <ArrowRight className="h-4 w-4" />
                         </div>
@@ -1157,25 +1255,25 @@ export default function App() {
 
                       {/* Card: Hub de Documentos */}
                       <div
-                        className="bg-card-main rounded-[28px] border border-border-main p-6 md:p-8 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-green-primary transition-all duration-300 group cursor-pointer relative"
+                        className="bg-card-main rounded-[24px] border border-border-main p-6 md:p-8 flex flex-col justify-between shadow-sm hover:shadow-lg hover:border-[#38BDF8] transition-all duration-300 group cursor-pointer relative"
                         onClick={() => handleNavigate("documentHub")}
                         id="card-document-hub-home"
                       >
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
-                            <div className="p-3.5 bg-[#303943] rounded-2xl border border-border-main text-[#39D977] inline-block group-hover:scale-105 transition-all shadow-inner">
+                            <div className="p-3.5 bg-[#E0F2FE] rounded-2xl border border-[#BAE6FD] text-[#0284C7] inline-block group-hover:scale-105 transition-all shadow-sm">
                               <FileText className="h-6 w-6" />
                             </div>
                             <button
                               type="button"
                               onClick={(e) => handleShareTool(e, "/documento")}
                               title="Compartilhar link do Hub de Documentos"
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-green-primary/50 text-text-sec hover:text-green-light text-xs font-bold transition-all"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-[#0284C7]/50 text-text-sec hover:text-[#0284C7] text-xs font-bold transition-all"
                             >
                               {copiedPath === "/documento" ? (
                                 <>
-                                  <Check className="h-3.5 w-3.5 text-green-primary" />
-                                  <span className="text-green-primary">Copiado!</span>
+                                  <Check className="h-3.5 w-3.5 text-[#0284C7]" />
+                                  <span className="text-[#0284C7]">Copiado!</span>
                                 </>
                               ) : (
                                 <>
@@ -1186,30 +1284,30 @@ export default function App() {
                             </button>
                           </div>
                           <div>
-                            <h3 className="font-display text-lg font-bold text-text-main group-hover:text-green-light transition-colors leading-tight">
+                            <h3 className="font-display text-lg font-bold text-[#0F172A] group-hover:text-[#0284C7] transition-colors leading-tight">
                               Hub de Ferramentas de Documentos
                             </h3>
-                            <p className="text-xs text-text-sec mt-2 leading-relaxed font-semibold">
+                            <p className="text-xs text-[#475569] mt-2 leading-relaxed font-semibold">
                               Acesse todas as ferramentas de documentos de escritório, incluindo conversão de planilhas e extração de texto.
                             </p>
                           </div>
-                          <ul className="text-[11px] text-text-muted space-y-1.5 pt-2 font-semibold">
+                          <ul className="text-[11px] text-[#64748B] space-y-1.5 pt-2 font-semibold">
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Ferramentas de planilhas e texto
                             </li>
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               100% gratuito e sem necessidade de cadastro
                             </li>
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Privacidade garantida com processamento no navegador
                             </li>
                           </ul>
                         </div>
 
-                        <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#39D977] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
+                        <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#0284C7] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
                           <span>Acessar Hub de Documentos</span>
                           <ArrowRight className="h-4 w-4" />
                         </div>
@@ -1221,14 +1319,14 @@ export default function App() {
                   <div className="space-y-6 max-w-6xl mx-auto pt-6 border-t border-border-main/50" id="image-tools-section">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <div className="p-2.5 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 text-emerald-400">
+                        <div className="p-2.5 bg-[#E0F2FE] rounded-2xl border border-[#BAE6FD] text-[#0284C7]">
                           <Image className="h-5 w-5" />
                         </div>
                         <div>
-                          <h3 className="font-display text-xl font-extrabold text-text-main">
+                          <h3 className="font-display text-xl font-extrabold text-[#0F172A]">
                             Ferramentas de Imagem
                           </h3>
-                          <p className="text-xs text-text-sec font-semibold">
+                          <p className="text-xs text-[#475569] font-semibold">
                             Converta, comprima e redimensione fotos e imagens em lote
                           </p>
                         </div>
@@ -1240,25 +1338,25 @@ export default function App() {
                       
                       {/* Card 1: Conversor de Imagens */}
                       <div
-                        className="bg-card-main rounded-[28px] border border-border-main p-6 md:p-8 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-green-primary transition-all duration-300 group cursor-pointer relative"
+                        className="bg-card-main rounded-[24px] border border-border-main p-6 md:p-8 flex flex-col justify-between shadow-sm hover:shadow-lg hover:border-[#38BDF8] transition-all duration-300 group cursor-pointer relative"
                         onClick={() => handleNavigate("imageConverter")}
                         id="card-image-converter"
                       >
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
-                            <div className="p-3.5 bg-[#303943] rounded-2xl border border-border-main text-[#39D977] inline-block group-hover:scale-105 transition-all shadow-inner">
+                            <div className="p-3.5 bg-[#E0F2FE] rounded-2xl border border-[#BAE6FD] text-[#0284C7] inline-block group-hover:scale-105 transition-all shadow-sm">
                               <Image className="h-6 w-6" />
                             </div>
                             <button
                               type="button"
                               onClick={(e) => handleShareTool(e, "/imagem/converter")}
                               title="Compartilhar link do Conversor de Imagens"
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-green-primary/50 text-text-sec hover:text-green-light text-xs font-bold transition-all"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-[#0284C7]/50 text-text-sec hover:text-[#0284C7] text-xs font-bold transition-all"
                             >
                               {copiedPath === "/imagem/converter" ? (
                                 <>
-                                  <Check className="h-3.5 w-3.5 text-green-primary" />
-                                  <span className="text-green-primary">Copiado!</span>
+                                  <Check className="h-3.5 w-3.5 text-[#0284C7]" />
+                                  <span className="text-[#0284C7]">Copiado!</span>
                                 </>
                               ) : (
                                 <>
@@ -1269,30 +1367,30 @@ export default function App() {
                             </button>
                           </div>
                           <div>
-                            <h3 className="font-display text-lg font-bold text-text-main group-hover:text-green-light transition-colors leading-tight">
+                            <h3 className="font-display text-lg font-bold text-[#0F172A] group-hover:text-[#0284C7] transition-colors leading-tight">
                               Conversor de Imagens
                             </h3>
-                            <p className="text-xs text-text-sec mt-2 leading-relaxed font-semibold">
+                            <p className="text-xs text-[#475569] mt-2 leading-relaxed font-semibold">
                               Converta imagens entre JPG, PNG, WEBP, AVIF e BMP sem perdas de qualidade e com download em lote.
                             </p>
                           </div>
-                          <ul className="text-[11px] text-text-muted space-y-1.5 pt-2 font-semibold">
+                          <ul className="text-[11px] text-[#64748B] space-y-1.5 pt-2 font-semibold">
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Conversão em lote ultra-rápida
                             </li>
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Suporte a JPG, PNG, WEBP, AVIF e BMP
                             </li>
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Ajuste de qualidade e fundo transparente
                             </li>
                           </ul>
                         </div>
 
-                        <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#39D977] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
+                        <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#0284C7] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
                           <span>Converter imagens</span>
                           <ArrowRight className="h-4 w-4" />
                         </div>
@@ -1300,25 +1398,25 @@ export default function App() {
 
                       {/* Card 2: Compressor de Imagens */}
                       <div
-                        className="bg-card-main rounded-[28px] border border-border-main p-6 md:p-8 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-green-primary transition-all duration-300 group cursor-pointer relative"
+                        className="bg-card-main rounded-[24px] border border-border-main p-6 md:p-8 flex flex-col justify-between shadow-sm hover:shadow-lg hover:border-[#38BDF8] transition-all duration-300 group cursor-pointer relative"
                         onClick={() => handleNavigate("imageCompressor")}
                         id="card-image-compressor"
                       >
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
-                            <div className="p-3.5 bg-[#303943] rounded-2xl border border-border-main text-[#39D977] inline-block group-hover:scale-105 transition-all shadow-inner">
+                            <div className="p-3.5 bg-[#E0F2FE] rounded-2xl border border-[#BAE6FD] text-[#0284C7] inline-block group-hover:scale-105 transition-all shadow-sm">
                               <Sliders className="h-6 w-6" />
                             </div>
                             <button
                               type="button"
                               onClick={(e) => handleShareTool(e, "/imagem/comprimir")}
                               title="Compartilhar link do Compressor de Imagens"
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-green-primary/50 text-text-sec hover:text-green-light text-xs font-bold transition-all"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-[#0284C7]/50 text-text-sec hover:text-[#0284C7] text-xs font-bold transition-all"
                             >
                               {copiedPath === "/imagem/comprimir" ? (
                                 <>
-                                  <Check className="h-3.5 w-3.5 text-green-primary" />
-                                  <span className="text-green-primary">Copiado!</span>
+                                  <Check className="h-3.5 w-3.5 text-[#0284C7]" />
+                                  <span className="text-[#0284C7]">Copiado!</span>
                                 </>
                               ) : (
                                 <>
@@ -1329,30 +1427,30 @@ export default function App() {
                             </button>
                           </div>
                           <div>
-                            <h3 className="font-display text-lg font-bold text-text-main group-hover:text-green-light transition-colors leading-tight">
+                            <h3 className="font-display text-lg font-bold text-[#0F172A] group-hover:text-[#0284C7] transition-colors leading-tight">
                               Compressor de Imagens
                             </h3>
-                            <p className="text-xs text-text-sec mt-2 leading-relaxed font-semibold">
+                            <p className="text-xs text-[#475569] mt-2 leading-relaxed font-semibold">
                               Reduza o tamanho das suas imagens em até 80% mantendo a qualidade visual para web e armazenamento.
                             </p>
                           </div>
-                          <ul className="text-[11px] text-text-muted space-y-1.5 pt-2 font-semibold">
+                          <ul className="text-[11px] text-[#64748B] space-y-1.5 pt-2 font-semibold">
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Compressão inteligente e otimizada
                             </li>
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Redução em KB/MB sem perda visual
                             </li>
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Suporte a JPG, PNG e WEBP
                             </li>
                           </ul>
                         </div>
 
-                        <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#39D977] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
+                        <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#0284C7] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
                           <span>Comprimir imagens</span>
                           <ArrowRight className="h-4 w-4" />
                         </div>
@@ -1360,25 +1458,25 @@ export default function App() {
 
                       {/* Card 3: Redimensionador de Imagens */}
                       <div
-                        className="bg-card-main rounded-[28px] border border-border-main p-6 md:p-8 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-green-primary transition-all duration-300 group cursor-pointer relative"
+                        className="bg-card-main rounded-[24px] border border-border-main p-6 md:p-8 flex flex-col justify-between shadow-sm hover:shadow-lg hover:border-[#38BDF8] transition-all duration-300 group cursor-pointer relative"
                         onClick={() => handleNavigate("imageResizer")}
                         id="card-image-resizer"
                       >
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
-                            <div className="p-3.5 bg-[#303943] rounded-2xl border border-border-main text-[#39D977] inline-block group-hover:scale-105 transition-all shadow-inner">
+                            <div className="p-3.5 bg-[#E0F2FE] rounded-2xl border border-[#BAE6FD] text-[#0284C7] inline-block group-hover:scale-105 transition-all shadow-sm">
                               <Maximize2 className="h-6 w-6" />
                             </div>
                             <button
                               type="button"
                               onClick={(e) => handleShareTool(e, "/imagem/redimensionar")}
                               title="Compartilhar link do Redimensionador de Imagens"
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-green-primary/50 text-text-sec hover:text-green-light text-xs font-bold transition-all"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-[#0284C7]/50 text-text-sec hover:text-[#0284C7] text-xs font-bold transition-all"
                             >
                               {copiedPath === "/imagem/redimensionar" ? (
                                 <>
-                                  <Check className="h-3.5 w-3.5 text-green-primary" />
-                                  <span className="text-green-primary">Copiado!</span>
+                                  <Check className="h-3.5 w-3.5 text-[#0284C7]" />
+                                  <span className="text-[#0284C7]">Copiado!</span>
                                 </>
                               ) : (
                                 <>
@@ -1389,30 +1487,30 @@ export default function App() {
                             </button>
                           </div>
                           <div>
-                            <h3 className="font-display text-lg font-bold text-text-main group-hover:text-green-light transition-colors leading-tight">
+                            <h3 className="font-display text-lg font-bold text-[#0F172A] group-hover:text-[#0284C7] transition-colors leading-tight">
                               Redimensionador de Imagens
                             </h3>
-                            <p className="text-xs text-text-sec mt-2 leading-relaxed font-semibold">
+                            <p className="text-xs text-[#475569] mt-2 leading-relaxed font-semibold">
                               Altere a largura e a altura das suas imagens em pixels, porcentagem ou tamanhos prontos.
                             </p>
                           </div>
-                          <ul className="text-[11px] text-text-muted space-y-1.5 pt-2 font-semibold">
+                          <ul className="text-[11px] text-[#64748B] space-y-1.5 pt-2 font-semibold">
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Pixels, porcentagem ou redes sociais
                             </li>
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Manter proporção de aspecto (Aspect Ratio)
                             </li>
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Processamento em lote instantâneo
                             </li>
                           </ul>
                         </div>
 
-                        <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#39D977] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
+                        <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#0284C7] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
                           <span>Redimensionar imagens</span>
                           <ArrowRight className="h-4 w-4" />
                         </div>
@@ -1420,25 +1518,25 @@ export default function App() {
 
                       {/* Card 4: Cortar Imagem */}
                       <div
-                        className="bg-card-main rounded-[28px] border border-border-main p-6 md:p-8 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-green-primary transition-all duration-300 group cursor-pointer relative"
+                        className="bg-card-main rounded-[24px] border border-border-main p-6 md:p-8 flex flex-col justify-between shadow-sm hover:shadow-lg hover:border-[#38BDF8] transition-all duration-300 group cursor-pointer relative"
                         onClick={() => handleNavigate("imageCropper")}
                         id="card-image-cropper"
                       >
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
-                            <div className="p-3.5 bg-[#303943] rounded-2xl border border-border-main text-[#39D977] inline-block group-hover:scale-105 transition-all shadow-inner">
+                            <div className="p-3.5 bg-[#E0F2FE] rounded-2xl border border-[#BAE6FD] text-[#0284C7] inline-block group-hover:scale-105 transition-all shadow-sm">
                               <Scissors className="h-6 w-6" />
                             </div>
                             <button
                               type="button"
                               onClick={(e) => handleShareTool(e, "/imagem/cortar")}
                               title="Compartilhar link do Cortar Imagem"
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-green-primary/50 text-text-sec hover:text-green-light text-xs font-bold transition-all"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-[#0284C7]/50 text-text-sec hover:text-[#0284C7] text-xs font-bold transition-all"
                             >
                               {copiedPath === "/imagem/cortar" ? (
                                 <>
-                                  <Check className="h-3.5 w-3.5 text-green-primary" />
-                                  <span className="text-green-primary">Copiado!</span>
+                                  <Check className="h-3.5 w-3.5 text-[#0284C7]" />
+                                  <span className="text-[#0284C7]">Copiado!</span>
                                 </>
                               ) : (
                                 <>
@@ -1449,30 +1547,30 @@ export default function App() {
                             </button>
                           </div>
                           <div>
-                            <h3 className="font-display text-lg font-bold text-text-main group-hover:text-green-light transition-colors leading-tight">
+                            <h3 className="font-display text-lg font-bold text-[#0F172A] group-hover:text-[#0284C7] transition-colors leading-tight">
                               Cortar Imagem
                             </h3>
-                            <p className="text-xs text-text-sec mt-2 leading-relaxed font-semibold">
+                            <p className="text-xs text-[#475569] mt-2 leading-relaxed font-semibold">
                               Recorte fotos livremente ou gere um Pacote de Cortes em múltiplos tamanhos com ponto principal.
                             </p>
                           </div>
-                          <ul className="text-[11px] text-text-muted space-y-1.5 pt-2 font-semibold">
+                          <ul className="text-[11px] text-[#64748B] space-y-1.5 pt-2 font-semibold">
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Pacote de cortes para redes sociais
                             </li>
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Ponto principal (Focal Point) inteligente
                             </li>
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Exportação em ZIP ou individual
                             </li>
                           </ul>
                         </div>
 
-                        <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#39D977] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
+                        <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#0284C7] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
                           <span>Cortar imagem</span>
                           <ArrowRight className="h-4 w-4" />
                         </div>
@@ -1480,25 +1578,25 @@ export default function App() {
 
                       {/* Card 5: Girar e Espelhar Imagens */}
                       <div
-                        className="bg-card-main rounded-[28px] border border-border-main p-6 md:p-8 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-green-primary transition-all duration-300 group cursor-pointer relative"
+                        className="bg-card-main rounded-[24px] border border-border-main p-6 md:p-8 flex flex-col justify-between shadow-sm hover:shadow-lg hover:border-[#38BDF8] transition-all duration-300 group cursor-pointer relative"
                         onClick={() => handleNavigate("imageRotateFlip")}
                         id="card-image-rotate-flip"
                       >
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
-                            <div className="p-3.5 bg-[#303943] rounded-2xl border border-border-main text-[#39D977] inline-block group-hover:scale-105 transition-all shadow-inner">
+                            <div className="p-3.5 bg-[#E0F2FE] rounded-2xl border border-[#BAE6FD] text-[#0284C7] inline-block group-hover:scale-105 transition-all shadow-sm">
                               <RotateCw className="h-6 w-6" />
                             </div>
                             <button
                               type="button"
                               onClick={(e) => handleShareTool(e, "/imagem/girar-espelhar")}
                               title="Compartilhar link de Girar e Espelhar Imagens"
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-green-primary/50 text-text-sec hover:text-green-light text-xs font-bold transition-all"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-[#0284C7]/50 text-text-sec hover:text-[#0284C7] text-xs font-bold transition-all"
                             >
                               {copiedPath === "/imagem/girar-espelhar" ? (
                                 <>
-                                  <Check className="h-3.5 w-3.5 text-green-primary" />
-                                  <span className="text-green-primary">Copiado!</span>
+                                  <Check className="h-3.5 w-3.5 text-[#0284C7]" />
+                                  <span className="text-[#0284C7]">Copiado!</span>
                                 </>
                               ) : (
                                 <>
@@ -1509,30 +1607,30 @@ export default function App() {
                             </button>
                           </div>
                           <div>
-                            <h3 className="font-display text-lg font-bold text-text-main group-hover:text-green-light transition-colors leading-tight">
+                            <h3 className="font-display text-lg font-bold text-[#0F172A] group-hover:text-[#0284C7] transition-colors leading-tight">
                               Girar e Espelhar
                             </h3>
-                            <p className="text-xs text-text-sec mt-2 leading-relaxed font-semibold">
+                            <p className="text-xs text-[#475569] mt-2 leading-relaxed font-semibold">
                               Corrija a orientação e ajuste a rotação e espelhamento de várias imagens de uma só vez.
                             </p>
                           </div>
-                          <ul className="text-[11px] text-text-muted space-y-1.5 pt-2 font-semibold">
+                          <ul className="text-[11px] text-[#64748B] space-y-1.5 pt-2 font-semibold">
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Correção rápida em lote
                             </li>
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Detecção automática de fotos de celular (EXIF)
                             </li>
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Comparação antes e depois interativa
                             </li>
                           </ul>
                         </div>
 
-                        <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#39D977] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
+                        <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#0284C7] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
                           <span>Ajustar imagens</span>
                           <ArrowRight className="h-4 w-4" />
                         </div>
@@ -1541,23 +1639,23 @@ export default function App() {
                       {/* CARD 6: MARCA D'ÁGUA EM IMAGENS */}
                       <div
                         onClick={() => handleNavigate("imageWatermark")}
-                        className="p-6 md:p-7 rounded-[22px] bg-card-main border border-border-main hover:border-green-primary/50 transition-all cursor-pointer group flex flex-col justify-between shadow-sm relative overflow-hidden"
+                        className="bg-card-main rounded-[24px] border border-border-main p-6 md:p-8 flex flex-col justify-between shadow-sm hover:shadow-lg hover:border-[#38BDF8] transition-all duration-300 group cursor-pointer relative"
                       >
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
-                            <div className="p-3.5 rounded-2xl bg-card-inner border border-border-main text-green-primary group-hover:bg-green-primary group-hover:text-bg-main transition-colors">
+                            <div className="p-3.5 bg-[#E0F2FE] rounded-2xl border border-[#BAE6FD] text-[#0284C7] inline-block group-hover:scale-105 transition-all shadow-sm">
                               <ShieldCheck className="h-6 w-6" />
                             </div>
                             <button
                               type="button"
                               onClick={(e) => handleShareTool(e, "/imagem/marca-dagua")}
                               title="Compartilhar link de Marca d’água em Imagens"
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-green-primary/50 text-text-sec hover:text-green-light text-xs font-bold transition-all"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card-inner border border-border-main hover:border-[#0284C7]/50 text-text-sec hover:text-[#0284C7] text-xs font-bold transition-all"
                             >
                               {copiedPath === "/imagem/marca-dagua" ? (
                                 <>
-                                  <Check className="h-3.5 w-3.5 text-green-primary" />
-                                  <span className="text-green-primary">Copiado!</span>
+                                  <Check className="h-3.5 w-3.5 text-[#0284C7]" />
+                                  <span className="text-[#0284C7]">Copiado!</span>
                                 </>
                               ) : (
                                 <>
@@ -1568,30 +1666,30 @@ export default function App() {
                             </button>
                           </div>
                           <div>
-                            <h3 className="font-display text-lg font-bold text-text-main group-hover:text-green-light transition-colors leading-tight">
+                            <h3 className="font-display text-lg font-bold text-[#0F172A] group-hover:text-[#0284C7] transition-colors leading-tight">
                               Marca d’água
                             </h3>
-                            <p className="text-xs text-text-sec mt-2 leading-relaxed font-semibold">
+                            <p className="text-xs text-[#475569] mt-2 leading-relaxed font-semibold">
                               Adicione texto, logotipo ou proteção repetida às suas fotos e artes em lote.
                             </p>
                           </div>
-                          <ul className="text-[11px] text-text-muted space-y-1.5 pt-2 font-semibold">
+                          <ul className="text-[11px] text-[#64748B] space-y-1.5 pt-2 font-semibold">
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Proteção em lote personalizada
                             </li>
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Presets inteligentes e área de proteção
                             </li>
                             <li className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-primary rounded-full" />
+                              <span className="w-1.5 h-1.5 bg-[#0284C7] rounded-full" />
                               Prévia em tempo real e exportação em ZIP
                             </li>
                           </ul>
                         </div>
 
-                        <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#39D977] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
+                        <div className="pt-6 flex items-center justify-between text-xs font-bold text-[#0284C7] group-hover:translate-x-1 transition-transform border-t border-border-main mt-4">
                           <span>Proteger imagens</span>
                           <ArrowRight className="h-4 w-4" />
                         </div>
@@ -1640,20 +1738,18 @@ export default function App() {
                   className="bg-card-main rounded-[24px] border border-border-main shadow-lg p-6 md:p-10 text-text-main space-y-6"
                 >
                   {/* Tool Switcher Cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto">
                     {/* Audio Converter Card (ACTIVE) */}
-                    <div className="p-4 rounded-2xl border transition-all flex items-center justify-between gap-3 bg-green-primary border-green-primary text-bg-main shadow-lg shadow-green-primary/20 text-left relative overflow-hidden">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-bg-main text-green-primary border border-green-primary/30 shrink-0">
-                          <Music className="h-5 w-5" />
+                    <div className="p-4 rounded-2xl border transition-all flex items-center gap-3 bg-green-primary border-green-primary text-bg-main shadow-lg shadow-green-primary/20 text-left relative overflow-hidden">
+                      <div className="p-2.5 rounded-xl bg-bg-main text-green-primary border border-green-primary/30 shrink-0">
+                        <Music className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-extrabold text-sm text-bg-main">CONVERSOR DE ÁUDIO</h4>
+                          <span className="text-[9px] font-black uppercase tracking-wider bg-bg-main text-green-primary px-2 py-0.5 rounded-full">ATIVO</span>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-extrabold text-sm text-bg-main">CONVERSOR DE ÁUDIO</h4>
-                            <span className="text-[9px] font-black uppercase tracking-wider bg-bg-main text-green-primary px-2 py-0.5 rounded-full">ATIVO</span>
-                          </div>
-                          <p className="text-[11px] text-bg-main/80 font-bold">Converta arquivos de áudio (MP3, WAV, AAC, etc.)</p>
-                        </div>
+                        <p className="text-[11px] text-bg-main/80 font-bold">Converta MP3, WAV, AAC, etc.</p>
                       </div>
                     </div>
 
@@ -1661,21 +1757,94 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => handleNavigate("videoToAudio")}
-                      className="p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 bg-card-inner border-border-main text-text-sec hover:border-green-primary/50 hover:text-text-main text-left group"
+                      className="p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-3 bg-card-inner border-border-main text-text-sec hover:border-green-primary/50 hover:text-text-main text-left group"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-card-main border border-border-main text-green-primary group-hover:scale-105 transition-transform shrink-0">
-                          <Film className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <h4 className="font-extrabold text-sm text-text-main group-hover:text-green-light">VÍDEO PARA ÁUDIO</h4>
-                          <p className="text-[11px] text-text-sec font-medium">Extraia áudio de vídeos MP4, MOV, WebM, etc.</p>
-                        </div>
+                      <div className="p-2.5 rounded-xl bg-card-main border border-border-main text-green-primary group-hover:scale-105 transition-transform shrink-0">
+                        <Film className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-sm text-text-main group-hover:text-green-light">VÍDEO PARA ÁUDIO</h4>
+                        <p className="text-[11px] text-text-sec font-medium">Extraia áudio de MP4, MOV, WebM</p>
+                      </div>
+                    </button>
+
+                    {/* Audio Metadata Studio Card */}
+                    <button
+                      type="button"
+                      onClick={() => handleNavigate("audioMetadataStudio")}
+                      className="p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-3 bg-card-inner border-border-main text-text-sec hover:border-green-primary/50 hover:text-text-main text-left group"
+                    >
+                      <div className="p-2.5 rounded-xl bg-card-main border border-border-main text-green-primary group-hover:scale-105 transition-transform shrink-0">
+                        <Tag className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-sm text-text-main group-hover:text-green-light">EDITOR DE METADADOS</h4>
+                        <p className="text-[11px] text-text-sec font-medium">Edite ID3, capas e tags sem perdas</p>
                       </div>
                     </button>
                   </div>
 
                   <AudioConverter />
+                </motion.div>
+              )}
+
+              {activeTab === "audioMetadataStudio" && (
+                <motion.div
+                  key="audio-metadata-studio-view"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="bg-card-main rounded-[24px] border border-border-main shadow-lg p-6 md:p-10 text-text-main space-y-6"
+                >
+                  {/* Tool Switcher Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto">
+                    {/* Audio Converter Card */}
+                    <button
+                      type="button"
+                      onClick={() => handleNavigate("audio")}
+                      className="p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-3 bg-card-inner border-border-main text-text-sec hover:border-green-primary/50 hover:text-text-main text-left group"
+                    >
+                      <div className="p-2.5 rounded-xl bg-card-main border border-border-main text-green-primary group-hover:scale-105 transition-transform shrink-0">
+                        <Music className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-sm text-text-main group-hover:text-green-light">CONVERSOR DE ÁUDIO</h4>
+                        <p className="text-[11px] text-text-sec font-medium">Converta MP3, WAV, AAC, etc.</p>
+                      </div>
+                    </button>
+
+                    {/* Video to Audio Card */}
+                    <button
+                      type="button"
+                      onClick={() => handleNavigate("videoToAudio")}
+                      className="p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-3 bg-card-inner border-border-main text-text-sec hover:border-green-primary/50 hover:text-text-main text-left group"
+                    >
+                      <div className="p-2.5 rounded-xl bg-card-main border border-border-main text-green-primary group-hover:scale-105 transition-transform shrink-0">
+                        <Film className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-sm text-text-main group-hover:text-green-light">VÍDEO PARA ÁUDIO</h4>
+                        <p className="text-[11px] text-text-sec font-medium">Extraia áudio de MP4, MOV, WebM</p>
+                      </div>
+                    </button>
+
+                    {/* Audio Metadata Studio Card (ACTIVE) */}
+                    <div className="p-4 rounded-2xl border transition-all flex items-center gap-3 bg-green-primary border-green-primary text-bg-main shadow-lg shadow-green-primary/20 text-left relative overflow-hidden">
+                      <div className="p-2.5 rounded-xl bg-bg-main text-green-primary border border-green-primary/30 shrink-0">
+                        <Tag className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-extrabold text-sm text-bg-main">EDITOR METADADOS</h4>
+                          <span className="text-[9px] font-black uppercase tracking-wider bg-bg-main text-green-primary px-2 py-0.5 rounded-full">ATIVO</span>
+                        </div>
+                        <p className="text-[11px] text-bg-main/80 font-bold">Edite ID3, capas e tags sem perdas</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <AudioMetadataStudio />
                 </motion.div>
               )}
 
@@ -1864,14 +2033,14 @@ export default function App() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border-main pb-4">
             <div>
               <h3 className="font-display text-lg font-extrabold text-text-main flex items-center gap-2">
-                <span className="w-2.5 h-2.5 bg-green-primary rounded-full" />
+                <span className="w-2.5 h-2.5 bg-[#0284C7] rounded-full" />
                 Soluções PDF Online Gratuitas
               </h3>
               <p className="text-xs text-text-sec font-semibold mt-0.5">Sem limites de arquivos e sem necessidade de cadastro ou instalação.</p>
             </div>
             <button 
               onClick={() => handleNavigate("pdf")}
-              className="text-xs text-[#39D977] hover:text-[#24C96B] font-extrabold flex items-center gap-1 cursor-pointer transition-colors"
+              className="text-xs text-[#0284C7] hover:text-[#0369A1] font-extrabold flex items-center gap-1 cursor-pointer transition-colors"
             >
               Ver Todas as Ferramentas <ArrowRight className="h-4 w-4" />
             </button>
@@ -1882,13 +2051,13 @@ export default function App() {
             {/* Tool 1: Comprimir PDF */}
             <div 
               onClick={() => handleNavigateToPdfTool("compress")}
-              className="bg-card-inner border border-border-main hover:border-green-primary hover:bg-lime-950/20 p-4 rounded-2xl flex flex-col justify-between space-y-3 cursor-pointer group transition-all"
+              className="bg-card-inner border border-border-main hover:border-[#0284C7] hover:bg-white p-4 rounded-2xl flex flex-col justify-between space-y-3 cursor-pointer group transition-all"
             >
-              <div className="p-2.5 bg-lime-950/40 rounded-xl border border-lime-800/30 text-lime-400 inline-block w-fit">
+              <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-600 inline-block w-fit">
                 <Sparkles className="h-5 w-5" />
               </div>
               <div>
-                <h4 className="font-display font-extrabold text-[13px] text-text-main group-hover:text-green-light transition-colors">Comprimir PDF</h4>
+                <h4 className="font-display font-extrabold text-[13px] text-text-main group-hover:text-[#0284C7] transition-colors">Comprimir PDF</h4>
                 <p className="text-[10px] text-text-sec font-medium mt-1 leading-snug">Reduza o tamanho do arquivo sem perder qualidade.</p>
               </div>
             </div>
@@ -1896,13 +2065,13 @@ export default function App() {
             {/* Tool 2: Juntar PDF */}
             <div 
               onClick={() => handleNavigateToPdfTool("merge")}
-              className="bg-card-inner border border-border-main hover:border-green-primary hover:bg-orange-950/20 p-4 rounded-2xl flex flex-col justify-between space-y-3 cursor-pointer group transition-all"
+              className="bg-card-inner border border-border-main hover:border-[#0284C7] hover:bg-white p-4 rounded-2xl flex flex-col justify-between space-y-3 cursor-pointer group transition-all"
             >
-              <div className="p-2.5 bg-orange-950/40 rounded-xl border border-orange-800/30 text-orange-400 inline-block w-fit">
+              <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-amber-600 inline-block w-fit">
                 <Layers className="h-5 w-5" />
               </div>
               <div>
-                <h4 className="font-display font-extrabold text-[13px] text-text-main group-hover:text-green-light transition-colors">Juntar PDF</h4>
+                <h4 className="font-display font-extrabold text-[13px] text-text-main group-hover:text-[#0284C7] transition-colors">Juntar PDF</h4>
                 <p className="text-[10px] text-text-sec font-medium mt-1 leading-snug">Combine múltiplos PDFs em uma única sequência.</p>
               </div>
             </div>
@@ -1910,13 +2079,13 @@ export default function App() {
             {/* Tool 3: Imagens para PDF */}
             <div 
               onClick={() => handleNavigateToPdfTool("imgToPdf")}
-              className="bg-card-inner border border-border-main hover:border-green-primary hover:bg-purple-950/20 p-4 rounded-2xl flex flex-col justify-between space-y-3 cursor-pointer group transition-all"
+              className="bg-card-inner border border-border-main hover:border-[#0284C7] hover:bg-white p-4 rounded-2xl flex flex-col justify-between space-y-3 cursor-pointer group transition-all"
             >
-              <div className="p-2.5 bg-purple-950/40 rounded-xl border border-purple-800/30 text-purple-400 inline-block w-fit">
+              <div className="p-2.5 bg-purple-50 rounded-xl border border-purple-200 text-purple-600 inline-block w-fit">
                 <Image className="h-5 w-5" />
               </div>
               <div>
-                <h4 className="font-display font-extrabold text-[13px] text-text-main group-hover:text-green-light transition-colors">Imagens para PDF</h4>
+                <h4 className="font-display font-extrabold text-[13px] text-text-main group-hover:text-[#0284C7] transition-colors">Imagens para PDF</h4>
                 <p className="text-[10px] text-text-sec font-medium mt-1 leading-snug">Converta JPG, PNG ou WEBP para PDF em segundos.</p>
               </div>
             </div>
@@ -1924,13 +2093,13 @@ export default function App() {
             {/* Tool 4: Organizar PDF */}
             <div 
               onClick={() => handleNavigateToPdfTool("organize")}
-              className="bg-card-inner border border-border-main hover:border-green-primary hover:bg-sky-950/20 p-4 rounded-2xl flex flex-col justify-between space-y-3 cursor-pointer group transition-all"
+              className="bg-card-inner border border-border-main hover:border-[#0284C7] hover:bg-white p-4 rounded-2xl flex flex-col justify-between space-y-3 cursor-pointer group transition-all"
             >
-              <div className="p-2.5 bg-sky-950/40 rounded-xl border border-sky-800/30 text-sky-400 inline-block w-fit">
+              <div className="p-2.5 bg-sky-50 rounded-xl border border-sky-200 text-sky-600 inline-block w-fit">
                 <FileText className="h-5 w-5" />
               </div>
               <div>
-                <h4 className="font-display font-extrabold text-[13px] text-text-main group-hover:text-green-light transition-colors">Organizar PDF</h4>
+                <h4 className="font-display font-extrabold text-[13px] text-text-main group-hover:text-[#0284C7] transition-colors">Organizar PDF</h4>
                 <p className="text-[10px] text-text-sec font-medium mt-1 leading-snug">Reordene páginas arrastando e soltando.</p>
               </div>
             </div>
@@ -1938,13 +2107,13 @@ export default function App() {
             {/* Tool 5: Excluir Páginas */}
             <div 
               onClick={() => handleNavigateToPdfTool("deleteRotate")}
-              className="bg-card-inner border border-border-main hover:border-green-primary hover:bg-red-950/20 p-4 rounded-2xl flex flex-col justify-between space-y-3 cursor-pointer group transition-all"
+              className="bg-card-inner border border-border-main hover:border-[#0284C7] hover:bg-white p-4 rounded-2xl flex flex-col justify-between space-y-3 cursor-pointer group transition-all"
             >
-              <div className="p-2.5 bg-red-950/40 rounded-xl border border-red-800/30 text-red-400 inline-block w-fit">
+              <div className="p-2.5 bg-rose-50 rounded-xl border border-rose-200 text-rose-600 inline-block w-fit">
                 <Scissors className="h-5 w-5" />
               </div>
               <div>
-                <h4 className="font-display font-extrabold text-[13px] text-text-main group-hover:text-green-light transition-colors">Excluir Páginas</h4>
+                <h4 className="font-display font-extrabold text-[13px] text-text-main group-hover:text-[#0284C7] transition-colors">Excluir Páginas</h4>
                 <p className="text-[10px] text-text-sec font-medium mt-1 leading-snug">Delete páginas desnecessárias do seu arquivo PDF.</p>
               </div>
             </div>
@@ -1952,13 +2121,13 @@ export default function App() {
             {/* Tool 6: Girar Páginas */}
             <div 
               onClick={() => handleNavigateToPdfTool("deleteRotate")}
-              className="bg-card-inner border border-border-main hover:border-green-primary hover:bg-cyan-950/20 p-4 rounded-2xl flex flex-col justify-between space-y-3 cursor-pointer group transition-all"
+              className="bg-card-inner border border-border-main hover:border-[#0284C7] hover:bg-white p-4 rounded-2xl flex flex-col justify-between space-y-3 cursor-pointer group transition-all"
             >
-              <div className="p-2.5 bg-cyan-950/40 rounded-xl border border-cyan-800/30 text-cyan-400 inline-block w-fit">
+              <div className="p-2.5 bg-cyan-50 rounded-xl border border-cyan-200 text-cyan-600 inline-block w-fit">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-rotate-cw h-5 w-5"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><polyline points="16 3 21 3 21 8"/></svg>
               </div>
               <div>
-                <h4 className="font-display font-extrabold text-[13px] text-text-main group-hover:text-green-light transition-colors">Girar Páginas</h4>
+                <h4 className="font-display font-extrabold text-[13px] text-text-main group-hover:text-[#0284C7] transition-colors">Girar Páginas</h4>
                 <p className="text-[10px] text-text-sec font-medium mt-1 leading-snug">Rotacione páginas vertical ou horizontalmente.</p>
               </div>
             </div>
@@ -1978,7 +2147,7 @@ export default function App() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             <div className="bg-card-inner border border-border-main rounded-2xl p-5 space-y-3">
-              <div className="w-8 h-8 rounded-lg bg-green-primary/10 border border-green-primary/20 flex items-center justify-center text-green-primary font-extrabold text-sm">1</div>
+              <div className="w-8 h-8 rounded-lg bg-[#E0F2FE] border border-[#BAE6FD] flex items-center justify-center text-[#0284C7] font-extrabold text-sm">1</div>
               <h4 className="font-display font-bold text-sm text-text-main">Selecione o arquivo</h4>
               <p className="text-xs text-text-sec leading-relaxed font-semibold">
                 Escolha o arquivo de áudio, vídeo ou PDF que deseja converter ou organizar.
@@ -1986,7 +2155,7 @@ export default function App() {
             </div>
 
             <div className="bg-card-inner border border-border-main rounded-2xl p-5 space-y-3">
-              <div className="w-8 h-8 rounded-lg bg-green-primary/10 border border-green-primary/20 flex items-center justify-center text-green-primary font-extrabold text-sm">2</div>
+              <div className="w-8 h-8 rounded-lg bg-[#E0F2FE] border border-[#BAE6FD] flex items-center justify-center text-[#0284C7] font-extrabold text-sm">2</div>
               <h4 className="font-display font-bold text-sm text-text-main">Escolha o formato ou ferramenta</h4>
               <p className="text-xs text-text-sec leading-relaxed font-semibold">
                 Selecione a opção desejada para seu arquivo.
@@ -1994,7 +2163,7 @@ export default function App() {
             </div>
 
             <div className="bg-card-inner border border-border-main rounded-2xl p-5 space-y-3">
-              <div className="w-8 h-8 rounded-lg bg-green-primary/10 border border-green-primary/20 flex items-center justify-center text-green-primary font-extrabold text-sm">3</div>
+              <div className="w-8 h-8 rounded-lg bg-[#E0F2FE] border border-[#BAE6FD] flex items-center justify-center text-[#0284C7] font-extrabold text-sm">3</div>
               <h4 className="font-display font-bold text-sm text-text-main">Ajuste as opções</h4>
               <p className="text-xs text-text-sec leading-relaxed font-semibold">
                 Defina a qualidade ou a ordem que preferir.
@@ -2002,7 +2171,7 @@ export default function App() {
             </div>
 
             <div className="bg-card-inner border border-border-main rounded-2xl p-5 space-y-3">
-              <div className="w-8 h-8 rounded-lg bg-green-primary/10 border border-green-primary/20 flex items-center justify-center text-green-primary font-extrabold text-sm">4</div>
+              <div className="w-8 h-8 rounded-lg bg-[#E0F2FE] border border-[#BAE6FD] flex items-center justify-center text-[#0284C7] font-extrabold text-sm">4</div>
               <h4 className="font-display font-bold text-sm text-text-main">Converta e baixe</h4>
               <p className="text-xs text-text-sec leading-relaxed font-semibold">
                 Acompanhe o processo e baixe seu arquivo final na hora.
@@ -2014,7 +2183,7 @@ export default function App() {
           <div className="bg-card-inner border border-border-main rounded-2xl p-6 md:p-8 space-y-5">
             <div className="border-b border-border-main pb-3">
               <h4 className="font-display font-extrabold text-base md:text-lg text-text-main flex items-center gap-2">
-                <Film className="h-5 w-5 text-green-primary" />
+                <Film className="h-5 w-5 text-[#0284C7]" />
                 Como converter vídeo para áudio
               </h4>
               <p className="text-xs text-text-sec font-semibold mt-1">
@@ -2024,31 +2193,31 @@ export default function App() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               <div className="space-y-2 bg-card-main border border-border-main p-4 rounded-xl">
-                <span className="w-6 h-6 rounded-full bg-green-primary text-bg-main flex items-center justify-center font-black text-xs">1</span>
+                <span className="w-6 h-6 rounded-full bg-[#0284C7] text-white flex items-center justify-center font-black text-xs">1</span>
                 <h5 className="font-extrabold text-xs text-text-main">Selecione o vídeo</h5>
                 <p className="text-[11px] text-text-sec leading-snug">Escolha um vídeo (MP4, MOV, M4V ou WebM) do computador.</p>
               </div>
 
               <div className="space-y-2 bg-card-main border border-border-main p-4 rounded-xl">
-                <span className="w-6 h-6 rounded-full bg-green-primary text-bg-main flex items-center justify-center font-black text-xs">2</span>
+                <span className="w-6 h-6 rounded-full bg-[#0284C7] text-white flex items-center justify-center font-black text-xs">2</span>
                 <h5 className="font-extrabold text-xs text-text-main">Escolha MP3 ou WAV</h5>
                 <p className="text-[11px] text-text-sec leading-snug">Defina o formato final desejado para o áudio extraído.</p>
               </div>
 
               <div className="space-y-2 bg-card-main border border-border-main p-4 rounded-xl">
-                <span className="w-6 h-6 rounded-full bg-green-primary text-bg-main flex items-center justify-center font-black text-xs">3</span>
+                <span className="w-6 h-6 rounded-full bg-[#0284C7] text-white flex items-center justify-center font-black text-xs">3</span>
                 <h5 className="font-extrabold text-xs text-text-main">Defina a qualidade</h5>
                 <p className="text-[11px] text-text-sec leading-snug">Ajuste o bitrate (64k–320k para MP3) ou taxa de amostragem para WAV.</p>
               </div>
 
               <div className="space-y-2 bg-card-main border border-border-main p-4 rounded-xl">
-                <span className="w-6 h-6 rounded-full bg-green-primary text-bg-main flex items-center justify-center font-black text-xs">4</span>
+                <span className="w-6 h-6 rounded-full bg-[#0284C7] text-white flex items-center justify-center font-black text-xs">4</span>
                 <h5 className="font-extrabold text-xs text-text-main">Marque a autorização</h5>
                 <p className="text-[11px] text-text-sec leading-snug">Confirme o consentimento para o processamento local no seu PC.</p>
               </div>
 
               <div className="space-y-2 bg-card-main border border-border-main p-4 rounded-xl sm:col-span-2 lg:col-span-1">
-                <span className="w-6 h-6 rounded-full bg-green-primary text-bg-main flex items-center justify-center font-black text-xs">5</span>
+                <span className="w-6 h-6 rounded-full bg-[#0284C7] text-white flex items-center justify-center font-black text-xs">5</span>
                 <h5 className="font-extrabold text-xs text-text-main">Converta e baixe</h5>
                 <p className="text-[11px] text-text-sec leading-snug">Clique em converter e salve o arquivo de áudio extraído.</p>
               </div>
@@ -2063,22 +2232,65 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer data-ads-exclude="true" className="bg-bg-sec text-text-sec py-10 px-4 md:px-8 border-t border-border-main">
-        <div className="max-w-[1220px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-[13px] text-center md:text-left">
-          <div className="space-y-1">
-            <p id="footer-text-left" className="text-text-main font-bold">
-              MultiConverte — Ferramentas online para áudio, vídeo, imagem e PDF.
+      <footer data-ads-exclude="true" className="bg-white text-[#475569] py-10 px-4 md:px-8 border-t border-[#E2E8F0] shadow-sm">
+        <div className="max-w-[1220px] mx-auto flex flex-col md:flex-row items-center md:items-start justify-between gap-8 text-[13px] text-center md:text-left">
+          <div className="space-y-2 max-w-md">
+            <p id="footer-text-left" className="text-[#0F172A] font-extrabold text-sm">
+              Conversor de Áudio
             </p>
-            <p className="text-xs text-text-sec font-medium">
+            <p className="text-xs text-[#475569] font-medium leading-relaxed">
+              Ferramentas online para áudio, vídeo, PDF, imagens e documentos.
+            </p>
+            <p className="text-[11px] text-[#64748B] font-normal leading-relaxed">
               Os arquivos utilizados nas ferramentas não ficam salvos após o encerramento da sessão.
             </p>
           </div>
-          <div className="flex flex-col items-center md:items-end gap-1" id="footer-links">
+          
+          <div className="flex flex-col items-center md:items-end gap-3" id="footer-links">
+            <div className="flex flex-wrap items-center justify-center md:justify-end gap-x-4 gap-y-2 text-xs font-bold text-[#475569]">
+              <button 
+                onClick={() => handleNavigate("audio")} 
+                className="hover:text-[#0284C7] transition-colors cursor-pointer"
+              >
+                Áudio
+              </button>
+              <button 
+                onClick={() => handleNavigate("videoToAudio")} 
+                className="hover:text-[#0284C7] transition-colors cursor-pointer"
+              >
+                Vídeo para Áudio
+              </button>
+              <button 
+                onClick={() => handleNavigate("pdf")} 
+                className="hover:text-[#0284C7] transition-colors cursor-pointer"
+              >
+                Ferramentas PDF
+              </button>
+              <button 
+                onClick={() => handleNavigate("imageConverter")} 
+                className="hover:text-[#0284C7] transition-colors cursor-pointer"
+              >
+                Ferramentas de Imagem
+              </button>
+              <button 
+                onClick={() => handleNavigate("documentHub")} 
+                className="hover:text-[#0284C7] transition-colors cursor-pointer"
+              >
+                Documentos
+              </button>
+              <button 
+                onClick={() => handleScrollToSection("como-funciona")} 
+                className="hover:text-[#0284C7] transition-colors cursor-pointer"
+              >
+                Como funciona
+              </button>
+            </div>
+
             {/* Invisible secret area for Admin login link */}
             <div className="group/admin py-0.5">
               <button
                 onClick={() => navigateTo("/admin-login")}
-                className="text-[10px] text-text-muted opacity-0 group-hover/admin:opacity-65 focus-visible:opacity-65 focus:outline-none transition-opacity duration-200 cursor-pointer select-none border-none bg-transparent"
+                className="text-[10px] text-[#94A3B8] opacity-0 group-hover/admin:opacity-65 focus-visible:opacity-65 focus:outline-none transition-opacity duration-200 cursor-pointer select-none border-none bg-transparent"
                 id="admin-secret-link"
               >
                 Admin
@@ -2096,10 +2308,10 @@ export default function App() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-md bg-[#1E252B] border border-border-main p-5 rounded-2xl shadow-2xl z-[90] space-y-4 text-text-main"
+            className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-md bg-white border border-border-main p-5 rounded-2xl shadow-2xl z-[90] space-y-4 text-text-main"
           >
             <div className="space-y-1">
-              <h4 className="text-sm font-bold text-[#39D977] flex items-center gap-2">
+              <h4 className="text-sm font-bold text-[#0284C7] flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4" />
                 Privacidade & Cookies
               </h4>
@@ -2110,13 +2322,13 @@ export default function App() {
             <div className="flex items-center gap-3 justify-end text-xs font-bold">
               <button
                 onClick={handleDeclineConsent}
-                className="px-3.5 py-2 hover:bg-[#2B333B] border border-border-main rounded-lg text-text-sec transition-colors cursor-pointer"
+                className="px-3.5 py-2 hover:bg-[#F1F5F9] border border-border-main rounded-lg text-text-sec transition-colors cursor-pointer"
               >
                 Recusar
               </button>
               <button
                 onClick={handleAcceptConsent}
-                className="px-4 py-2 bg-[#39D977] hover:bg-[#24C96B] text-white rounded-lg transition-colors cursor-pointer shadow-md"
+                className="px-4 py-2 bg-[#0284C7] hover:bg-[#0369A1] text-white rounded-lg transition-colors cursor-pointer shadow-md"
               >
                 Aceitar
               </button>

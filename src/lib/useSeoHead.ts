@@ -81,6 +81,14 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowIndexing: true,
       allowFollow: true
     },
+    audioMetadataEditor: {
+      title: "Editor de Metadados de Áudio Online | MP3, WAV, FLAC e M4A",
+      description: "Edite, analise e limpe metadados ID3, RIFF e VorbisComments de arquivos de áudio online sem recompresso ou perda de qualidade. 100% no navegador.",
+      keywords: ["editor de metadados de áudio", "editar id3 mp3", "remover metadados audio", "editar capa mp3", "editor id3v2", "limpeza de privacidade audio", "metadata editor mp3 wav flac m4a"],
+      canonicalUrl: "https://www.multiconverte.com.br/audio/editor-metadados",
+      allowIndexing: true,
+      allowFollow: true
+    },
     pdf: {
       title: "Ferramentas PDF Online Grátis - Juntar, Comprimir, Converter | MultiConverte",
       description: "Edite seus arquivos PDF gratuitamente: junte múltiplos PDFs, reduza o tamanho mantendo a qualidade, converta imagens JPG/PNG para PDF e reordene páginas.",

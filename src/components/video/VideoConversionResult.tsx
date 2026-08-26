@@ -64,35 +64,35 @@ export default function VideoConversionResult({ result, onReset }: VideoConversi
   };
 
   return (
-    <div className="bg-card-main border border-border-main rounded-[24px] p-6 md:p-8 space-y-6 max-w-xl mx-auto shadow-2xl animate-fadeIn">
+    <div className="bg-white border border-[#E2E8F0] rounded-[24px] p-6 md:p-8 space-y-6 max-w-xl mx-auto shadow-sm animate-fadeIn">
       <div className="text-center space-y-2">
-        <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl w-fit mx-auto">
+        <div className="p-3 bg-[#ECFDF5] border border-[#10B981]/20 text-[#10B981] rounded-2xl w-fit mx-auto">
           <CheckCircle2 className="h-8 w-8" />
         </div>
-        <h3 className="text-xl font-extrabold text-text-main font-display">
+        <h3 className="text-xl font-extrabold text-[#0F172A] font-display">
           Áudio Extraído com Sucesso!
         </h3>
-        <p className="text-xs text-text-sec">
+        <p className="text-xs text-[#475569]">
           O arquivo de áudio foi gerado e está pronto para ser salvo.
         </p>
       </div>
 
       {/* Audio Player Card */}
-      <div className="bg-card-inner border border-border-main rounded-2xl p-4 space-y-3">
+      <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl p-4 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 overflow-hidden">
             <button
               type="button"
               onClick={togglePlay}
-              className="p-3 bg-green-primary hover:bg-green-light text-bg-main rounded-xl transition-all cursor-pointer shrink-0 shadow-md"
+              className="p-3 bg-[#0284C7] hover:bg-[#0369A1] text-white rounded-xl transition-all cursor-pointer shrink-0 shadow-sm"
             >
               {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
             </button>
             <div className="overflow-hidden">
-              <h4 className="font-bold text-text-main text-xs md:text-sm truncate" title={result.outputFileName}>
+              <h4 className="font-bold text-[#0F172A] text-xs md:text-sm truncate" title={result.outputFileName}>
                 {result.outputFileName}
               </h4>
-              <p className="text-[11px] text-text-sec flex items-center gap-2">
+              <p className="text-[11px] text-[#475569] flex items-center gap-2">
                 <span>{result.format.toUpperCase()} • {result.qualityChosen}</span>
                 <span>•</span>
                 <span>{formatDuration(result.duration)}</span>
@@ -111,19 +111,19 @@ export default function VideoConversionResult({ result, onReset }: VideoConversi
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
-        <div className="bg-card-inner border border-border-main/60 rounded-xl p-3 space-y-1">
-          <span className="text-text-sec text-[10px] block">Tamanho do Vídeo</span>
-          <p className="font-bold text-text-main">{formatBytes(result.originalSize)}</p>
+        <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3 space-y-1">
+          <span className="text-[#475569] text-[10px] block">Tamanho do Vídeo</span>
+          <p className="font-bold text-[#0F172A]">{formatBytes(result.originalSize)}</p>
         </div>
 
-        <div className="bg-card-inner border border-border-main/60 rounded-xl p-3 space-y-1">
-          <span className="text-text-sec text-[10px] block">Tamanho do Áudio</span>
-          <p className="font-bold text-emerald-400">{formatBytes(result.finalSize)}</p>
+        <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3 space-y-1">
+          <span className="text-[#475569] text-[10px] block">Tamanho do Áudio</span>
+          <p className="font-bold text-[#10B981]">{formatBytes(result.finalSize)}</p>
         </div>
 
-        <div className="bg-card-inner border border-border-main/60 rounded-xl p-3 space-y-1 col-span-2 md:col-span-1">
-          <span className="text-text-sec text-[10px] block">Redução de Tamanho</span>
-          <p className="font-bold text-green-primary">{savingsPercent}% Menor</p>
+        <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3 space-y-1 col-span-2 md:col-span-1">
+          <span className="text-[#475569] text-[10px] block">Redução de Tamanho</span>
+          <p className="font-bold text-[#0284C7]">{savingsPercent}% Menor</p>
         </div>
       </div>
 
@@ -131,7 +131,7 @@ export default function VideoConversionResult({ result, onReset }: VideoConversi
         <button
           type="button"
           onClick={handleDownload}
-          className="flex-1 py-3.5 px-6 bg-green-primary hover:bg-green-light text-bg-main rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-green-primary/20 transition-all cursor-pointer"
+          className="flex-1 py-3.5 px-6 bg-[#10B981] hover:bg-[#059669] text-white rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
         >
           <Download className="h-5 w-5" />
           <span>BAIXAR ÁUDIO ({result.format.toUpperCase()})</span>
@@ -140,15 +140,15 @@ export default function VideoConversionResult({ result, onReset }: VideoConversi
         <button
           type="button"
           onClick={onReset}
-          className="py-3.5 px-5 bg-card-inner hover:bg-card-inner/80 text-text-main border border-border-main rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+          className="py-3.5 px-5 bg-white hover:bg-[#F8FAFC] text-[#0F172A] border border-[#E2E8F0] rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
         >
-          <RefreshCw className="h-4 w-4 text-green-primary" />
+          <RefreshCw className="h-4 w-4 text-[#0284C7]" />
           <span>Converter Outro Vídeo</span>
         </button>
       </div>
 
-      <div className="text-[11px] text-text-sec/80 text-center flex items-center justify-center gap-1.5 pt-1 border-t border-border-main/40">
-        <ShieldCheck className="h-4 w-4 text-green-primary shrink-0" />
+      <div className="text-[11px] text-[#64748B] text-center flex items-center justify-center gap-1.5 pt-1 border-t border-[#E2E8F0]">
+        <ShieldCheck className="h-4 w-4 text-[#0284C7] shrink-0" />
         <span>Processamento 100% local no seu navegador. Nenhum arquivo foi enviado a servidores.</span>
       </div>
     </div>
