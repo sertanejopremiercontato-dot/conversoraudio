@@ -345,40 +345,19 @@ export default async function handler(req: any, res: any) {
     }> = [];
 
     try {
-      const [hbSnap, adsSnap] = await Promise.allSettled([
-        getDocs(collection(db, "home_banners")),
-        getDocs(collection(db, "ads"))
-      ]);
-
-      if (hbSnap.status === "fulfilled") {
-        hbSnap.value.forEach(d => {
-          const bData = d.data();
-          registeredBanners.push({
-            id: d.id,
-            name: bData.name || bData.title || "Banner Carrossel",
-            status: bData.active !== false ? "active" : "inactive",
-            placement: "Carrossel Principal (Home)",
-            imageUrl: bData.imageUrl || "",
-            linkUrl: bData.linkUrl || bData.destinationUrl || "",
-            order: Number(bData.order || 0)
-          });
+      const hbSnap = await getDocs(collection(db, "home_banners"));
+      hbSnap.forEach(d => {
+        const bData = d.data();
+        registeredBanners.push({
+          id: d.id,
+          name: bData.name || bData.title || "Banner Carrossel",
+          status: bData.active !== false ? "active" : "inactive",
+          placement: "Carrossel Principal (Home)",
+          imageUrl: bData.imageUrl || "",
+          linkUrl: bData.linkUrl || bData.destinationUrl || "",
+          order: Number(bData.order || 0)
         });
-      }
-
-      if (adsSnap.status === "fulfilled") {
-        adsSnap.value.forEach(d => {
-          const aData = d.data();
-          registeredBanners.push({
-            id: d.id,
-            name: aData.name || aData.publicTitle || aData.title || "Anúncio Publicitário",
-            status: (aData.active !== false && aData.isActive !== false) ? "active" : "inactive",
-            placement: aData.position === "sidebar_top" ? "Barra Lateral (Topo)" : aData.position === "top_banner" ? "Banner Superior" : aData.position === "below_how_it_works" ? "Abaixo do Como Funciona" : aData.position || "Espaço Publicitário",
-            imageUrl: aData.imageUrl || "",
-            linkUrl: aData.destinationUrl || aData.linkUrl || "",
-            order: Number(aData.order || 0)
-          });
-        });
-      }
+      });
     } catch (e) {
       console.warn("[ANALYTICS-V2-API] Error fetching registered banners:", e);
     }
