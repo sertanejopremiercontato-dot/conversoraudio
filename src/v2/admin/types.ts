@@ -90,6 +90,9 @@ export interface MonetizationConfigV2 {
   mode: string;
   reviewStatus: string;
   notes: string;
+  customSnippet?: string;
+  customMetaTag?: string;
+  adsTxtContent?: string;
   verificationSnippet?: string;
   verificationMetaTag?: string;
   verificationAdsTxtLine?: string;

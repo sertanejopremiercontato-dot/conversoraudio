@@ -273,9 +273,14 @@ export function initializeAdSenseScript(enabled: boolean): void {
     return;
   }
 
-  const existingScript = document.querySelector('script[src*="adsbygoogle.js"]');
+  const existingScript = document.querySelector('script[src*="pagead2.googlesyndication.com"], script[src*="adsbygoogle.js"]');
 
-  if (enabled && !existingScript) {
+  // If script already exists in the static HTML <head>, never inject a duplicate
+  if (existingScript) {
+    return;
+  }
+
+  if (enabled) {
     try {
       const script = document.createElement("script");
       script.async = true;

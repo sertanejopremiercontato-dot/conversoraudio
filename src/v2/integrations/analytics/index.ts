@@ -12,15 +12,22 @@
 // Lista de parâmetros técnicos permitidos (Safe List)
 const ALLOWED_PARAM_KEYS = new Set([
   "app_version",
+  "tool",
   "output_format",
   "input_format",
   "file_count",
+  "fileCount",
+  "downloadActions",
+  "is_zip",
+  "isZip",
   "bitrate",
   "sample_rate",
   "channels",
   "error_code",
   "status",
-  "quality"
+  "quality",
+  "duration_seconds",
+  "durationSeconds"
 ]);
 
 /**
@@ -76,13 +83,22 @@ function getAnonymousSessionData(): { sessionId: string; isNewSession: boolean }
 }
 
 /**
- * Extrai fonte de tráfego e parâmetros UTM seguros
+ * Extrai fonte de tráfego e parâmetros UTM seguros com persistência de first-touch por sessão
  */
 function getSafeTrafficSource(): { referrerDomain: string; trafficSource: string; utmSource?: string; utmMedium?: string; utmCampaign?: string } {
   try {
     if (typeof window === "undefined") {
       return { referrerDomain: "Direto", trafficSource: "Direto" };
     }
+
+    // Verifica se já temos a origem gravada nesta sessão (first-touch attribution)
+    const FIRST_TOUCH_KEY = "mc_sess_first_touch";
+    try {
+      const stored = sessionStorage.getItem(FIRST_TOUCH_KEY);
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {}
 
     const referrer = document.referrer || "";
     let referrerDomain = "Direto";
@@ -140,13 +156,19 @@ function getSafeTrafficSource(): { referrerDomain: string; trafficSource: string
       trafficSource = `Campanha: ${utmSource}`;
     }
 
-    return {
+    const result = {
       referrerDomain,
       trafficSource,
       utmSource,
       utmMedium,
       utmCampaign
     };
+
+    try {
+      sessionStorage.setItem(FIRST_TOUCH_KEY, JSON.stringify(result));
+    } catch {}
+
+    return result;
   } catch {
     return { referrerDomain: "Direto", trafficSource: "Direto" };
   }
@@ -171,10 +193,26 @@ function sendTelemetryBeacon(payload: Record<string, any>): void {
     const { sessionId, isNewSession } = getAnonymousSessionData();
     const traffic = getSafeTrafficSource();
 
+    let timeZone: string | undefined = undefined;
+    try {
+      timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch {}
+
+    let clientCategory = "Desktop";
+    if (typeof window !== "undefined") {
+      if (window.innerWidth < 768) {
+        clientCategory = "Mobile";
+      } else if (window.innerWidth < 1024) {
+        clientCategory = "Tablet";
+      }
+    }
+
     const fullPayload = {
       ...payload,
       sessionId,
       isNewSession,
+      timeZone,
+      clientCategory,
       referrerDomain: traffic.referrerDomain,
       trafficSource: traffic.trafficSource,
       utmSource: traffic.utmSource,
@@ -311,7 +349,13 @@ export function trackEventV2(eventName: string, rawParams?: Record<string, any>)
 
     // Identifica tipo de evento para telemetria agregada
     let eventType = "tool_event";
-    if (eventName.includes("conversion_completed") || eventName.includes("convert_success")) {
+    if (
+      eventName.includes("conversion_completed") || 
+      eventName.includes("convert_success") || 
+      eventName.includes("conversion_success") ||
+      eventName.includes("extraction_completed") ||
+      eventName.includes("processing_completed")
+    ) {
       eventType = "conversion";
     } else if (eventName.includes("download")) {
       eventType = "download";
@@ -320,6 +364,9 @@ export function trackEventV2(eventName: string, rawParams?: Record<string, any>)
     sendTelemetryBeacon({
       type: eventType,
       eventName,
+      tool: safeParams.tool,
+      fileCount: safeParams.file_count || safeParams.fileCount || 1,
+      downloadActions: safeParams.downloadActions || 1,
       ...safeParams
     });
 
@@ -331,4 +378,49 @@ export function trackEventV2(eventName: string, rawParams?: Record<string, any>)
       console.warn(`[Analytics V2 Event Error - ${eventName}]:`, err);
     }
   }
+}
+
+/**
+ * Registra o início de uma conversão/processamento em uma ferramenta
+ */
+export function trackConversionStart(tool: string, params?: Record<string, any>): void {
+  trackEventV2(`${tool}_started`, {
+    tool,
+    ...params
+  });
+}
+
+/**
+ * Registra o sucesso real de uma conversão de áudio ou mídia
+ */
+export function trackConversionSuccess(tool: string, params?: Record<string, any>): void {
+  trackEventV2(`${tool}_conversion_completed`, {
+    tool,
+    ...params
+  });
+}
+
+/**
+ * Registra falha técnica durante o processamento de arquivo
+ */
+export function trackConversionError(tool: string, errorCode?: string, params?: Record<string, any>): void {
+  trackEventV2(`${tool}_conversion_failed`, {
+    tool,
+    error_code: errorCode || "unknown_error",
+    ...params
+  });
+}
+
+/**
+ * Registra o clique de download do arquivo convertido pelo usuário
+ */
+export function trackDownloadAction(tool: string, params?: { outputFormat?: string; fileCount?: number; isZip?: boolean }): void {
+  const count = params?.fileCount || 1;
+  trackEventV2(`${tool}_download_clicked`, {
+    tool,
+    output_format: params?.outputFormat,
+    file_count: count,
+    downloadActions: 1,
+    is_zip: !!params?.isZip
+  });
 }

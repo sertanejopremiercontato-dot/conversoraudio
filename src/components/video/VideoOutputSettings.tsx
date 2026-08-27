@@ -99,7 +99,7 @@ export default function VideoOutputSettings({
             ))}
           </div>
           <p className="text-[11px] text-[#475569] italic pt-1">
-            {config.mp3Kbps === 96 && "✓ 96 kbps (Padrão MultiConverte): Excelente equilíbrio entre qualidade sonora e tamanho reduzido."}
+            {config.mp3Kbps === 96 && "✓ 96 kbps (Padrão Conversor Áudio): Excelente equilíbrio entre qualidade sonora e tamanho reduzido."}
             {config.mp3Kbps === 64 && "• 64 kbps: Arquivo ultra compacto, ideal para fala ou gravações."}
             {config.mp3Kbps === 128 && "• 128 kbps: Qualidade padrão de áudio digital."}
             {config.mp3Kbps === 192 && "• 192 kbps: Alta qualidade sonora para vídeos musicais."}

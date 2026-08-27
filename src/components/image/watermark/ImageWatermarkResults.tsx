@@ -148,7 +148,7 @@ export const ImageWatermarkResults: React.FC<ImageWatermarkResultsProps> = ({
       {/* Navigation to related image tools */}
       <div className="pt-6 border-t border-border-main/60 space-y-3">
         <h4 className="font-extrabold text-xs text-text-main uppercase tracking-wider">
-          Outras Ferramentas de Imagem do MultiConverte
+          Outras Ferramentas de Imagem do Conversor Áudio
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-semibold">
           <button

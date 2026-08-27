@@ -292,7 +292,7 @@ function AdminAdsenseManagerContent({ currentUserId }: AdminAdsenseManagerProps)
             Monetização / Google AdSense
           </h2>
           <p className="text-xs text-text-sec font-medium leading-relaxed">
-            Gerenciador real de verificação e monetização do Google AdSense do MultiConverte
+            Gerenciador real de verificação e monetização do Google AdSense do Conversor Áudio
           </p>
         </div>
 

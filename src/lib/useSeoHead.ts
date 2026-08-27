@@ -6,40 +6,40 @@ import firebaseConfig from "../../firebase-applet-config.json";
 
 // Default seed SEO configuration
 export const DEFAULT_SEO_CONFIG: SeoConfig = {
-  siteName: "MultiConverte",
-  defaultTitle: "MultiConverte — Conversor de Áudio, PDF e Imagens Online",
-  defaultDescription: "Converta áudios, organize PDFs e edite imagens online com ferramentas simples, rápidas e seguras no MultiConverte.",
+  siteName: "Conversor Áudio",
+  defaultTitle: "Conversor Áudio — Conversor de Áudio Online Grátis",
+  defaultDescription: "Converta áudios online com ferramentas simples, rápidas e seguras no Conversor Áudio.",
   canonicalUrl: "https://www.conversoraudio.com.br",
   language: "pt-BR",
-  author: "MultiConverte",
-  theme: "#10b981",
+  author: "Conversor Áudio",
+  theme: "#0284c7",
 
   keywords: [
-    "multiconverte",
+    "conversor audio",
     "conversor de audio",
     "converter mp3",
-    "juntar pdf",
-    "comprimir pdf",
-    "imagem para pdf",
-    "conversor de imagem",
-    "redimensionar imagem",
-    "extrair texto de pdf"
+    "conversor mp3",
+    "extrair audio de video",
+    "cortar audio",
+    "juntar audio",
+    "comprimir audio",
+    "editor de metadados de audio"
   ],
 
   openGraph: {
-    title: "MultiConverte — Conversor de Áudio, PDF e Imagens Online",
-    description: "Converta áudios, organize PDFs e edite imagens online com ferramentas simples, rápidas e seguras no MultiConverte.",
+    title: "Conversor Áudio — Conversor de Áudio Online Grátis",
+    description: "Converta áudios online com ferramentas simples, rápidas e seguras no Conversor Áudio.",
     image: "https://www.conversoraudio.com.br/og-cover.png",
     url: "https://www.conversoraudio.com.br",
     type: "website",
-    siteName: "MultiConverte",
+    siteName: "Conversor Áudio",
     locale: "pt_BR"
   },
 
   twitter: {
     card: "summary_large_image",
-    title: "MultiConverte — Conversor de Áudio, PDF e Imagens Online",
-    description: "Converta áudios, organize PDFs e edite imagens online com ferramentas simples, rápidas e seguras no MultiConverte.",
+    title: "Conversor Áudio — Conversor de Áudio Online Grátis",
+    description: "Converta áudios online com ferramentas simples, rápidas e seguras no Conversor Áudio.",
     image: "https://www.conversoraudio.com.br/og-cover.png"
   },
 
@@ -54,27 +54,27 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
   },
 
   structuredData: {
-    webSiteName: "MultiConverte",
-    appName: "MultiConverte & PDF Tools",
+    webSiteName: "Conversor Áudio",
+    appName: "Conversor Áudio",
     appCategory: "MultimediaApplication",
     operatingSystem: "Web/Browser",
     price: "0",
     priceCurrency: "BRL",
     browserRequirements: "Navegador Web com suporte a HTML5 e WebAssembly",
-    description: "Ferramenta online gratuita para conversão rápida de áudios e edição de arquivos PDF sem limites."
+    description: "Ferramenta online gratuita para conversão rápida de áudios sem limites."
   },
 
   pages: {
     home: {
-      title: "MultiConverte - Ferramentas de Áudio, Vídeo, Imagem e PDF Online Grátis",
-      description: "Converta arquivos de áudio e edite PDFs gratuitamente online. Rápido, seguro e sem instalação.",
-      keywords: ["conversor de audio", "ferramentas pdf", "multiconverte", "conversor mp3"],
+      title: "Conversor Áudio - Ferramentas de Conversão de Áudio Online Grátis",
+      description: "Converta arquivos de áudio gratuitamente online. Rápido, seguro e sem instalação.",
+      keywords: ["conversor de audio", "conversor audio", "conversor mp3", "converter audio"],
       canonicalUrl: "https://www.conversoraudio.com.br",
       allowIndexing: true,
       allowFollow: true
     },
     audio: {
-      title: "Conversor de Áudio Online Grátis - MP3, WAV, AAC, OGG | MultiConverte",
+      title: "Conversor de Áudio Online Grátis - MP3, WAV, AAC, OGG | Conversor Áudio",
       description: "Converta qualquer arquivo de áudio para MP3, WAV, AAC, OGG, M4A ou FLAC em alta fidelidade diretamente no seu navegador.",
       keywords: ["conversor mp3", "converter audio", "mp3 para wav", "audio converter"],
       canonicalUrl: "https://www.conversoraudio.com.br/audio",
@@ -90,7 +90,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     pdf: {
-      title: "Ferramentas PDF Online Grátis - Juntar, Comprimir, Converter | MultiConverte",
+      title: "Ferramentas PDF Online Grátis - Juntar, Comprimir, Converter | Conversor Áudio",
       description: "Edite seus arquivos PDF gratuitamente: junte múltiplos PDFs, reduza o tamanho mantendo a qualidade, converta imagens JPG/PNG para PDF e reordene páginas.",
       keywords: ["juntar pdf", "comprimir pdf", "imagem para pdf", "organizar pdf"],
       canonicalUrl: "https://www.conversoraudio.com.br/pdf",
@@ -98,7 +98,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     merge: {
-      title: "Juntar PDF Online Grátis — Combine Múltiplos PDFs | MultiConverte",
+      title: "Juntar PDF Online Grátis — Combine Múltiplos PDFs | Conversor Áudio",
       description: "Combine múltiplos arquivos PDF em um único documento de forma rápida, gratuita e segura. Organize a ordem das páginas e baixe instantaneamente.",
       keywords: ["juntar pdf", "combinar pdf", "mesclar pdf", "unir pdf", "juntar arquivos pdf"],
       canonicalUrl: "https://www.conversoraudio.com.br/pdf/juntar-pdf",
@@ -106,7 +106,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     pdf_merge: {
-      title: "Juntar PDF Online Grátis — Combine Múltiplos PDFs | MultiConverte",
+      title: "Juntar PDF Online Grátis — Combine Múltiplos PDFs | Conversor Áudio",
       description: "Combine múltiplos arquivos PDF em um único documento de forma rápida, gratuita e segura. Organize a ordem das páginas e baixe instantaneamente.",
       keywords: ["juntar pdf", "combinar pdf", "mesclar pdf", "unir pdf", "juntar arquivos pdf"],
       canonicalUrl: "https://www.conversoraudio.com.br/pdf/juntar-pdf",
@@ -114,7 +114,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     compress: {
-      title: "Comprimir PDF Online Grátis — Reduzir Tamanho | MultiConverte",
+      title: "Comprimir PDF Online Grátis — Reduzir Tamanho | Conversor Áudio",
       description: "Reduza o tamanho dos seus arquivos PDF mantendo a melhor qualidade visual. Processamento rápido, ilimitado e direto no seu navegador.",
       keywords: ["comprimir pdf", "reduzir tamanho pdf", "diminuir pdf", "otimizar pdf", "compactar pdf"],
       canonicalUrl: "https://www.conversoraudio.com.br/pdf/comprimir-pdf",
@@ -122,7 +122,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     pdf_compress: {
-      title: "Comprimir PDF Online Grátis — Reduzir Tamanho | MultiConverte",
+      title: "Comprimir PDF Online Grátis — Reduzir Tamanho | Conversor Áudio",
       description: "Reduza o tamanho dos seus arquivos PDF mantendo a melhor qualidade visual. Processamento rápido, ilimitado e direto no seu navegador.",
       keywords: ["comprimir pdf", "reduzir tamanho pdf", "diminuir pdf", "otimizar pdf", "compactar pdf"],
       canonicalUrl: "https://www.conversoraudio.com.br/pdf/comprimir-pdf",
@@ -130,7 +130,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     organize: {
-      title: "Organizar Páginas de PDF Online Grátis | MultiConverte",
+      title: "Organizar Páginas de PDF Online Grátis | Conversor Áudio",
       description: "Reordene, mova e reorganize as páginas do seu documento PDF com facilidade. Interface simples, rápida e 100% segura.",
       keywords: ["organizar pdf", "reordenar paginas pdf", "mudar ordem paginas pdf", "organizador de pdf"],
       canonicalUrl: "https://www.conversoraudio.com.br/pdf/organizar-pdf",
@@ -138,7 +138,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     pdf_organize: {
-      title: "Organizar Páginas de PDF Online Grátis | MultiConverte",
+      title: "Organizar Páginas de PDF Online Grátis | Conversor Áudio",
       description: "Reordene, mova e reorganize as páginas do seu documento PDF com facilidade. Interface simples, rápida e 100% segura.",
       keywords: ["organizar pdf", "reordenar paginas pdf", "mudar ordem paginas pdf", "organizador de pdf"],
       canonicalUrl: "https://www.conversoraudio.com.br/pdf/organizar-pdf",
@@ -146,7 +146,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     girar: {
-      title: "Girar Páginas de PDF Online Grátis | MultiConverte",
+      title: "Girar Páginas de PDF Online Grátis | Conversor Áudio",
       description: "Gire a orientação de páginas específicas ou de todo o arquivo PDF para a esquerda ou direita sem perdas de qualidade.",
       keywords: ["girar pdf", "rotacionar pdf", "virar pagina pdf", "girar pdf online"],
       canonicalUrl: "https://www.conversoraudio.com.br/pdf/girar-pdf",
@@ -154,7 +154,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     pdf_girar: {
-      title: "Girar Páginas de PDF Online Grátis | MultiConverte",
+      title: "Girar Páginas de PDF Online Grátis | Conversor Áudio",
       description: "Gire a orientação de páginas específicas ou de todo o arquivo PDF para a esquerda ou direita sem perdas de qualidade.",
       keywords: ["girar pdf", "rotacionar pdf", "virar pagina pdf", "girar pdf online"],
       canonicalUrl: "https://www.conversoraudio.com.br/pdf/girar-pdf",
@@ -162,7 +162,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     excluir: {
-      title: "Excluir Páginas de PDF Online Grátis | MultiConverte",
+      title: "Excluir Páginas de PDF Online Grátis | Conversor Áudio",
       description: "Remova páginas indesejadas do seu arquivo PDF em poucos cliques e baixe um novo documento limpo e otimizado.",
       keywords: ["excluir paginas pdf", "remover pagina pdf", "deletar pagina pdf", "apagar pagina pdf"],
       canonicalUrl: "https://www.conversoraudio.com.br/pdf/excluir-paginas",
@@ -170,7 +170,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     pdf_excluir: {
-      title: "Excluir Páginas de PDF Online Grátis | MultiConverte",
+      title: "Excluir Páginas de PDF Online Grátis | Conversor Áudio",
       description: "Remova páginas indesejadas do seu arquivo PDF em poucos cliques e baixe um novo documento limpo e otimizado.",
       keywords: ["excluir paginas pdf", "remover pagina pdf", "deletar pagina pdf", "apagar pagina pdf"],
       canonicalUrl: "https://www.conversoraudio.com.br/pdf/excluir-paginas",
@@ -178,7 +178,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     imgToPdf: {
-      title: "Imagens para PDF Grátis: JPG, PNG e WEBP | MultiConverte",
+      title: "Imagens para PDF Grátis: JPG, PNG e WEBP | Conversor Áudio",
       description: "Transforme imagens JPG, PNG e WEBP em um único arquivo PDF, organize a ordem das páginas e baixe gratuitamente.",
       keywords: ["imagens para PDF", "JPG para PDF", "PNG para PDF", "WEBP para PDF", "converter imagem em PDF"],
       canonicalUrl: "https://www.conversoraudio.com.br/pdf/imagens-para-pdf",
@@ -186,15 +186,15 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     howItWorks: {
-      title: "Como Funciona | MultiConverte & PDF Tools",
-      description: "Saiba como utilizar o MultiConverte para converter áudios e editar arquivos PDF com máxima privacidade e processamento instantâneo.",
-      keywords: ["como funciona multiconverte", "privacidade conversor audio", "tutorial pdf"],
+      title: "Como Funciona | Conversor Áudio",
+      description: "Saiba como utilizar o Conversor Áudio para converter áudios com máxima privacidade e processamento instantâneo.",
+      keywords: ["como funciona conversor audio", "privacidade conversor audio", "tutorial conversor"],
       canonicalUrl: "https://www.conversoraudio.com.br/como-funciona",
       allowIndexing: true,
       allowFollow: true
     },
     videoToAudio: {
-      title: "Extrair Áudio de Vídeo para MP3 ou WAV | MultiConverte",
+      title: "Extrair Áudio de Vídeo para MP3 ou WAV | Conversor Áudio",
       description: "Extraia o áudio de vídeos MP4, MOV, M4V e WebM para MP3 ou WAV diretamente no navegador do computador, sem enviar arquivos para servidores.",
       keywords: [
         "extrair áudio de vídeo",
@@ -213,14 +213,14 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
         "conversor de vídeo para áudio",
         "conversor de vídeo no computador",
         "extrair áudio online grátis",
-        "conversor MultiConverte"
+        "conversor audio"
       ],
       canonicalUrl: "https://www.conversoraudio.com.br/video-para-audio",
       allowIndexing: true,
       allowFollow: true
     },
     imagesToPdf: {
-      title: "Imagens para PDF Grátis: JPG, PNG e WEBP | MultiConverte",
+      title: "Imagens para PDF Grátis: JPG, PNG e WEBP | Conversor Áudio",
       description: "Transforme imagens JPG, PNG e WEBP em um único arquivo PDF, organize a ordem das páginas e baixe gratuitamente.",
       keywords: [
         "imagens para PDF",
@@ -240,7 +240,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     pdfToImages: {
-      title: "PDF para JPG ou PNG Grátis | MultiConverte",
+      title: "PDF para JPG ou PNG Grátis | Conversor Áudio",
       description: "Converta páginas de PDF para imagens JPG ou PNG, escolha a resolução e baixe individualmente ou em arquivo ZIP.",
       keywords: [
         "PDF para JPG",
@@ -258,7 +258,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     imageConverter: {
-      title: "Conversor de Imagens Grátis: JPG, PNG, WEBP e AVIF | MultiConverte",
+      title: "Conversor de Imagens Grátis: JPG, PNG, WEBP e AVIF | Conversor Áudio",
       description: "Converta imagens entre JPG, PNG, WEBP, AVIF e BMP gratuitamente, com qualidade personalizada e download em lote.",
       keywords: [
         "conversor de imagens",
@@ -276,7 +276,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     imageCompressor: {
-      title: "Comprimir Imagem Grátis: JPG, PNG e WEBP | MultiConverte",
+      title: "Comprimir Imagem Grátis: JPG, PNG e WEBP | Conversor Áudio",
       description: "Reduza o tamanho de imagens JPG, PNG, WEBP e AVIF gratuitamente, mantendo uma boa qualidade e baixando individualmente ou em ZIP.",
       keywords: [
         "comprimir imagem",
@@ -300,7 +300,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     imageResizer: {
-      title: "Redimensionar Imagem Grátis em Pixels e Porcentagem | MultiConverte",
+      title: "Redimensionar Imagem Grátis em Pixels e Porcentagem | Conversor Áudio",
       description: "Redimensione imagens JPG, PNG, WEBP e AVIF em pixels, porcentagem ou tamanhos prontos, com download individual ou em lote.",
       keywords: [
         "redimensionar imagem",
@@ -323,7 +323,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     imageCropper: {
-      title: "Cortar Imagem Grátis e Criar Tamanhos para Redes Sociais | MultiConverte",
+      title: "Cortar Imagem Grátis e Criar Tamanhos para Redes Sociais | Conversor Áudio",
       description: "Recorte imagens livremente ou crie vários tamanhos prontos para Instagram, YouTube, Facebook, TikTok e documentos de uma só vez.",
       keywords: [
         "cortar imagem",
@@ -341,7 +341,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     imageRotateFlip: {
-      title: "Girar e Espelhar Imagem Grátis Online | MultiConverte",
+      title: "Girar e Espelhar Imagem Grátis Online | Conversor Áudio",
       description: "Gire imagens para esquerda ou direita, espelhe fotos e corrija a orientação de várias imagens de uma só vez.",
       keywords: [
         "girar imagem",
@@ -363,7 +363,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     image_watermark: {
-      title: "Adicionar Marca d’Água em Fotos e Imagens Grátis | MultiConverte",
+      title: "Adicionar Marca d’Água em Fotos e Imagens Grátis | Conversor Áudio",
       description: "Adicione texto, logotipo ou marca repetida em várias imagens, com prévia, presets e download em lote.",
       keywords: [
         "marca d’água em imagem",
@@ -383,7 +383,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     image_background_removal: {
-      title: "Remover Fundo de Imagem Grátis e Manualmente | MultiConverte",
+      title: "Remover Fundo de Imagem Grátis e Manualmente | Conversor Áudio",
       description: "Remova fundo branco, preto, verde ou colorido usando seleção por cor, varinha mágica e pincéis de precisão.",
       keywords: [
         "remover fundo de imagem",
@@ -403,7 +403,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: false
     },
     pdf_extract_text: {
-      title: "Extrair Texto de PDF Grátis e Converter PDF para TXT | MultiConverte",
+      title: "Extrair Texto de PDF Grátis e Converter PDF para TXT | Conversor Áudio",
       description: "Extraia texto de arquivos PDF, copie o conteúdo ou baixe em TXT de forma rápida e gratuita.",
       keywords: [
         "extrair texto de PDF",
@@ -422,7 +422,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: true
     },
     excelToPdf: {
-      title: "Excel para PDF Grátis - Converter XLSX, XLS e CSV em PDF | MultiConverte",
+      title: "Excel para PDF Grátis - Converter XLSX, XLS e CSV em PDF | Conversor Áudio",
       description: "Converta planilhas Excel (XLSX, XLS) e arquivos CSV para PDF gratuitamente. Selecione abas, ajuste a orientação da página e gere documentos prontos para impressão.",
       keywords: [
         "Excel para PDF",
@@ -437,7 +437,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: false
     },
     wordToPdf: {
-      title: "Converter Word para PDF Grátis e Online | MultiConverte",
+      title: "Converter Word para PDF Grátis e Online | Conversor Áudio",
       description: "Converta documentos Word DOCX para PDF online, mantendo textos, imagens, listas e tabelas. Processamento local, gratuito e seguro.",
       keywords: [
         "Word para PDF",
@@ -450,7 +450,7 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
       allowFollow: false
     },
     documentHub: {
-      title: "Ferramentas de Documentos Online Grátis | MultiConverte",
+      title: "Ferramentas de Documentos Online Grátis | Conversor Áudio",
       description: "Suíte de ferramentas para conversão e manipulação de documentos de escritório: Excel para PDF, Extrair Texto e mais de forma rápida e segura.",
       keywords: [
         "ferramentas de documentos",
@@ -468,13 +468,13 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
   faqList: [
     {
       id: "faq-1",
-      question: "O MultiConverte é 100% gratuito?",
-      answer: "Sim! Todas as nossas ferramentas de áudio e PDF são completamente gratuitas e ilimitadas, sem necessidade de cadastro."
+      question: "O Conversor Áudio é 100% gratuito?",
+      answer: "Sim! Todas as nossas ferramentas de áudio são completamente gratuitas e ilimitadas, sem necessidade de cadastro."
     },
     {
       id: "faq-2",
       question: "Meus arquivos são salvos ou mantidos no servidor?",
-      answer: "Não. Garantimos sua total privacidade. O processamento dos seus arquivos é feito de forma segura e temporária, e seus documentos são descartados após a conclusão."
+      answer: "Não. Garantimos sua total privacidade. O processamento dos seus arquivos é feito diretamente no seu navegador, sem envio de áudios a servidores."
     },
     {
       id: "faq-3",
@@ -483,8 +483,8 @@ export const DEFAULT_SEO_CONFIG: SeoConfig = {
     },
     {
       id: "faq-4",
-      question: "Como juntar vários arquivos PDF em um único documento?",
-      answer: "Acesse a seção 'Ferramentas PDF', escolha 'Juntar PDFs', envie os arquivos desejados, organize a ordem das páginas e clique em 'Juntar PDFs' para baixar o documento final."
+      question: "Como extrair áudio de um vídeo?",
+      answer: "Acesse a ferramenta 'Extrair Áudio de Vídeo', selecione o arquivo de vídeo MP4, MOV ou WebM e escolha o formato de saída MP3 ou WAV."
     }
   ]
 };
@@ -495,20 +495,23 @@ function getFirestoreDb() {
   return getFirestore(app, firebaseConfig.firestoreDatabaseId || "(default)");
 }
 
-// Helper to sanitize SEO config and purge legacy SomDrive/Convertauto references
+// Helper to sanitize SEO config and purge legacy Multiconvert/SomDrive/Convertauto references
 export function sanitizeSeoConfig(input: Partial<SeoConfig> | null | undefined, defaultConfig: SeoConfig = DEFAULT_SEO_CONFIG): SeoConfig {
   if (!input) return defaultConfig;
 
   const replaceLegacyText = (text: string | undefined, fallback: string): string => {
     if (!text || typeof text !== "string") return fallback;
     let clean = text
-      .replace(/conversor\s*somdrive/gi, "MultiConverte")
-      .replace(/somdrive/gi, "MultiConverte")
-      .replace(/convertauto/gi, "MultiConverte")
-      .replace(/multiconvert(?!e)/gi, "MultiConverte")
+      .replace(/conversor\s*somdrive/gi, "Conversor Áudio")
+      .replace(/somdrive/gi, "Conversor Áudio")
+      .replace(/convertauto/gi, "Conversor Áudio")
+      .replace(/multiconverte/gi, "Conversor Áudio")
+      .replace(/multiconvert/gi, "Conversor Áudio")
       .replace(/https?:\/\/conversor\.somdrive\.com\.br\/?/gi, "https://www.conversoraudio.com.br/")
       .replace(/https?:\/\/somdrive\.com\.br\/?/gi, "https://www.conversoraudio.com.br/")
       .replace(/https?:\/\/somdrive\.com\/?/gi, "https://www.conversoraudio.com.br/")
+      .replace(/https?:\/\/multiconverte\.com\.br\/?/gi, "https://www.conversoraudio.com.br/")
+      .replace(/https?:\/\/multiconvert\.com\.br\/?/gi, "https://www.conversoraudio.com.br/")
       .replace(/https?:\/\/convertauto\.com\.br\/?/gi, "https://www.conversoraudio.com.br/");
 
     return clean.trim();
@@ -518,10 +521,10 @@ export function sanitizeSeoConfig(input: Partial<SeoConfig> | null | undefined, 
     if (!Array.isArray(kws) || kws.length === 0) return defaultKws;
     const cleaned = kws
       .map(k => replaceLegacyText(k, ""))
-      .filter(k => k && k.length > 0 && !k.toLowerCase().includes("somdrive") && !k.toLowerCase().includes("convertauto"));
+      .filter(k => k && k.length > 0 && !k.toLowerCase().includes("somdrive") && !k.toLowerCase().includes("convertauto") && !k.toLowerCase().includes("multiconvert"));
     
-    if (!cleaned.some(k => k.toLowerCase() === "multiconverte")) {
-      cleaned.unshift("MultiConverte");
+    if (!cleaned.some(k => k.toLowerCase() === "conversor audio" || k.toLowerCase() === "conversor de audio")) {
+      cleaned.unshift("Conversor Áudio");
     }
     return Array.from(new Set(cleaned));
   };
@@ -546,7 +549,7 @@ export function sanitizeSeoConfig(input: Partial<SeoConfig> | null | undefined, 
     ...(input.openGraph || {}),
     title: replaceLegacyText(input.openGraph?.title, defaultConfig.openGraph.title),
     description: replaceLegacyText(input.openGraph?.description, defaultConfig.openGraph.description),
-    image: input.openGraph?.image?.includes("somdrive") ? defaultConfig.openGraph.image : (input.openGraph?.image || defaultConfig.openGraph.image),
+    image: (input.openGraph?.image?.includes("somdrive") || input.openGraph?.image?.includes("multiconvert")) ? defaultConfig.openGraph.image : (input.openGraph?.image || defaultConfig.openGraph.image),
     url: replaceLegacyText(input.openGraph?.url, defaultConfig.openGraph.url),
     siteName: replaceLegacyText(input.openGraph?.siteName, defaultConfig.openGraph.siteName)
   };
@@ -556,7 +559,7 @@ export function sanitizeSeoConfig(input: Partial<SeoConfig> | null | undefined, 
     ...(input.twitter || {}),
     title: replaceLegacyText(input.twitter?.title, defaultConfig.twitter.title),
     description: replaceLegacyText(input.twitter?.description, defaultConfig.twitter.description),
-    image: input.twitter?.image?.includes("somdrive") ? defaultConfig.twitter.image : (input.twitter?.image || defaultConfig.twitter.image)
+    image: (input.twitter?.image?.includes("somdrive") || input.twitter?.image?.includes("multiconvert")) ? defaultConfig.twitter.image : (input.twitter?.image || defaultConfig.twitter.image)
   };
 
   const robotsConfig = {

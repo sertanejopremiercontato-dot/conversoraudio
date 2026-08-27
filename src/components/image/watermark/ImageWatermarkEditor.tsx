@@ -39,10 +39,7 @@ interface ImageWatermarkEditorProps {
   progressPercent: number;
 }
 
-const MULTICONVERTE_LOCAL_STORAGE_KEY = "multiconverte_watermark_preferences";
-const MULTICONVERT_LOCAL_STORAGE_KEY = "multiconvert_watermark_preferences";
-const NEW_LOCAL_STORAGE_KEY = "convertauto_watermark_preferences";
-const OLD_LOCAL_STORAGE_KEY = "somdrive_watermark_preferences";
+const CONVERSORAUDIO_LOCAL_STORAGE_KEY = "conversoraudio_watermark_preferences";
 
 export const ImageWatermarkEditor: React.FC<ImageWatermarkEditorProps> = ({
   batchItems,
@@ -76,10 +73,15 @@ export const ImageWatermarkEditor: React.FC<ImageWatermarkEditorProps> = ({
     qualitySetting: "max"
   });
 
-  // Load saved preferences if available
+  // Load saved preferences if available and purge legacy keys
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(MULTICONVERTE_LOCAL_STORAGE_KEY) || localStorage.getItem(MULTICONVERT_LOCAL_STORAGE_KEY) || localStorage.getItem(NEW_LOCAL_STORAGE_KEY) || localStorage.getItem(OLD_LOCAL_STORAGE_KEY);
+      localStorage.removeItem("multiconverte_watermark_preferences");
+      localStorage.removeItem("multiconvert_watermark_preferences");
+      localStorage.removeItem("convertauto_watermark_preferences");
+      localStorage.removeItem("somdrive_watermark_preferences");
+
+      const saved = localStorage.getItem(CONVERSORAUDIO_LOCAL_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed) {
@@ -105,10 +107,7 @@ export const ImageWatermarkEditor: React.FC<ImageWatermarkEditorProps> = ({
       saveToLocalStorage(settings);
     } else {
       try {
-        localStorage.removeItem(MULTICONVERTE_LOCAL_STORAGE_KEY);
-        localStorage.removeItem(MULTICONVERT_LOCAL_STORAGE_KEY);
-        localStorage.removeItem(NEW_LOCAL_STORAGE_KEY);
-        localStorage.removeItem(OLD_LOCAL_STORAGE_KEY);
+        localStorage.removeItem(CONVERSORAUDIO_LOCAL_STORAGE_KEY);
       } catch (e) {
         // ignore
       }
@@ -139,7 +138,7 @@ export const ImageWatermarkEditor: React.FC<ImageWatermarkEditorProps> = ({
           pattern: s.repeatConfig.pattern
         }
       };
-      localStorage.setItem(MULTICONVERTE_LOCAL_STORAGE_KEY, JSON.stringify(toSave));
+      localStorage.setItem(CONVERSORAUDIO_LOCAL_STORAGE_KEY, JSON.stringify(toSave));
     } catch (e) {
       // ignore
     }

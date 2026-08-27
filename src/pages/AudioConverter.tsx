@@ -1121,7 +1121,7 @@ export default function AudioConverter({ onBack }: AudioConverterProps = {}) {
 
       const link = document.createElement("a");
       link.href = zipUrl;
-      link.download = `multiconverte-conversao-${selectedFormat}.zip`;
+      link.download = `conversoraudio-conversao-${selectedFormat}.zip`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

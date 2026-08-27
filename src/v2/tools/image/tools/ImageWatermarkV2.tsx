@@ -50,7 +50,7 @@ export const ImageWatermarkV2: React.FC<ImageWatermarkV2Props> = ({ onBack }) =>
   const [config, setConfig] = useState<WatermarkConfig>({
     type: "text",
     text: {
-      text: "MultiConverte Protegido",
+      text: "Conversor Áudio Protegido",
       fontSize: 48,
       color: "#FFFFFF",
       opacity: 0.8,

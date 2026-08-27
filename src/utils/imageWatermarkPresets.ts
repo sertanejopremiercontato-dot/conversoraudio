@@ -94,7 +94,7 @@ export interface WatermarkPreset {
 }
 
 export const DEFAULT_TEXT_CONFIG: TextWatermarkConfig = {
-  text: "MultiConverte © " + new Date().getFullYear(),
+  text: "Conversor Áudio © " + new Date().getFullYear(),
   fontFamily: "Arial",
   fontSize: 5, // 5% of image width
   color: "#FFFFFF",

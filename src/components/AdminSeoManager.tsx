@@ -109,7 +109,8 @@ export default function AdminSeoManager() {
 
       // Save to localStorage and purge legacy keys
       try {
-        localStorage.setItem("multiconverte_seo", JSON.stringify(cleanConfig));
+        localStorage.setItem("conversoraudio_seo", JSON.stringify(cleanConfig));
+        localStorage.removeItem("multiconverte_seo");
         localStorage.removeItem("somdrive_seo");
         localStorage.removeItem("convertauto_seo");
         localStorage.removeItem("multiconvert_seo");
@@ -141,9 +142,9 @@ export default function AdminSeoManager() {
 
   const seedDefaultKeywords = () => {
     const seeds = [
-      "conversor de audio", "converter mp3", "juntar pdf", "comprimir pdf",
-      "imagem para pdf", "multiconverte", "converter audio online",
-      "ferramentas de pdf gratis", "conversor de mp3 para wav", "organizar paginas de pdf"
+      "conversor de audio", "converter mp3", "converter audio online",
+      "extrair audio de video", "juntar pdf", "comprimir pdf",
+      "ferramentas de audio gratis", "conversor de mp3 para wav", "cortar audio"
     ];
     const unique = Array.from(new Set([...config.keywords, ...seeds]));
     setConfig({ ...config, keywords: unique });
@@ -303,7 +304,7 @@ export default function AdminSeoManager() {
                 type="text"
                 value={config.siteName}
                 onChange={(e) => setConfig({ ...config, siteName: e.target.value })}
-                placeholder="Ex: Multiconvert"
+                placeholder="Ex: Conversor Áudio"
                 className="w-full bg-card-main border border-border-main rounded-xl px-4 py-2.5 text-text-main font-medium focus:outline-none focus:border-green-primary"
               />
             </div>
@@ -314,7 +315,7 @@ export default function AdminSeoManager() {
                 type="text"
                 value={config.defaultTitle}
                 onChange={(e) => setConfig({ ...config, defaultTitle: e.target.value })}
-                placeholder="Ex: Multiconvert - Ferramentas de Áudio e PDF Online"
+                placeholder="Ex: Conversor Áudio - Conversão Profissional de Áudio Online"
                 className="w-full bg-card-main border border-border-main rounded-xl px-4 py-2.5 text-text-main font-medium focus:outline-none focus:border-green-primary"
               />
             </div>
@@ -366,7 +367,7 @@ export default function AdminSeoManager() {
                 type="text"
                 value={config.author}
                 onChange={(e) => setConfig({ ...config, author: e.target.value })}
-                placeholder="Multiconvert"
+                placeholder="Conversor Áudio"
                 className="w-full bg-card-main border border-border-main rounded-xl px-4 py-2.5 text-text-main font-medium focus:outline-none focus:border-green-primary"
               />
             </div>
@@ -469,7 +470,7 @@ export default function AdminSeoManager() {
                 type="text"
                 value={config.openGraph.title}
                 onChange={(e) => setConfig({ ...config, openGraph: { ...config.openGraph, title: e.target.value } })}
-                placeholder="Multiconvert - Ferramentas de Áudio e PDF Grátis"
+                placeholder="Conversor Áudio - Ferramentas de Áudio Online Grátis"
                 className="w-full bg-card-main border border-border-main rounded-xl px-4 py-2.5 text-text-main font-medium focus:outline-none focus:border-green-primary"
               />
             </div>
@@ -562,7 +563,7 @@ export default function AdminSeoManager() {
                 type="text"
                 value={config.twitter.title}
                 onChange={(e) => setConfig({ ...config, twitter: { ...config.twitter, title: e.target.value } })}
-                placeholder="MultiConverte"
+                placeholder="Conversor Áudio"
                 className="w-full bg-card-main border border-border-main rounded-xl px-4 py-2.5 text-text-main font-medium focus:outline-none focus:border-green-primary"
               />
             </div>

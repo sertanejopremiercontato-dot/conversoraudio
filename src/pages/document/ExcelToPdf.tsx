@@ -400,7 +400,7 @@ export default function ExcelToPdf({ onNavigate }: ExcelToPdfProps) {
       <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 space-y-4 shadow-sm">
         <h4 className="font-display font-bold text-sm text-[#0F172A] flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-[#0284C7]" />
-          <span>Outras Ferramentas de Documentos e PDF do MultiConverte</span>
+          <span>Outras Ferramentas de Documentos e PDF do Conversor Áudio</span>
         </h4>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

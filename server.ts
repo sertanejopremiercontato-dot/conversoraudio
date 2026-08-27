@@ -387,6 +387,72 @@ const PORT = 3000;
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
+// Public /ads.txt endpoint - Always returns pure plain text
+app.get("/ads.txt", async (req, res) => {
+  try {
+    let content = "google.com, pub-8846628306821055, DIRECT, f08c47fec0942fa0\n";
+
+    if (db) {
+      try {
+        const docRef = doc(db, "site_settings", "adsense");
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.adsTxtContent && typeof data.adsTxtContent === "string" && data.adsTxtContent.trim()) {
+            content = data.adsTxtContent.trim() + "\n";
+          } else if (data.publisherId) {
+            const cleanPub = data.publisherId.replace(/^ca-/, "").replace(/^pub-/, "");
+            content = `google.com, pub-${cleanPub}, DIRECT, f08c47fec0942fa0\n`;
+          }
+        }
+      } catch (dbErr) {
+        console.warn("[SERVER] Firestore error fetching ads.txt, using file fallback:", dbErr);
+      }
+    }
+
+    if (content === "google.com, pub-8846628306821055, DIRECT, f08c47fec0942fa0\n") {
+      const publicPath = path.join(process.cwd(), "public", "ads.txt");
+      if (fs.existsSync(publicPath)) {
+        const fileContent = fs.readFileSync(publicPath, "utf-8");
+        if (fileContent && fileContent.trim()) {
+          content = fileContent.trim() + "\n";
+        }
+      }
+    }
+
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=300");
+    return res.status(200).send(content);
+  } catch (err: any) {
+    console.error("[SERVER] Error serving /ads.txt:", err);
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    return res.status(200).send("google.com, pub-8846628306821055, DIRECT, f08c47fec0942fa0\n");
+  }
+});
+
+// Admin Route: Synchronize ads.txt disk file with Firestore content
+app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, res) => {
+  try {
+    const { adsTxtContent } = req.body;
+    if (typeof adsTxtContent !== "string") {
+      return res.status(400).json({ error: "adsTxtContent deve ser uma string." });
+    }
+
+    const publicPath = path.join(process.cwd(), "public", "ads.txt");
+    fs.writeFileSync(publicPath, adsTxtContent.trim() + "\n", "utf-8");
+
+    const distPath = path.join(process.cwd(), "dist", "ads.txt");
+    if (fs.existsSync(path.join(process.cwd(), "dist"))) {
+      fs.writeFileSync(distPath, adsTxtContent.trim() + "\n", "utf-8");
+    }
+
+    return res.json({ success: true, message: "ads.txt sincronizado com sucesso nos arquivos públicos." });
+  } catch (err: any) {
+    console.error("[SERVER] Error syncing ads.txt:", err);
+    return res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
   // API Route: Generate presigned upload URL
   app.post("/api/ads-presigned-upload", requireAdminMiddleware, async (req, res) => {
     try {
@@ -1144,34 +1210,169 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
     return { isBot: false, category, os, browser };
   }
 
-  // Helper: Extração de Geolocalização segura a partir de headers de infraestrutura/proxy
-  function extractGeoHeaders(req: express.Request) {
-    const country = String(
+  const COUNTRY_MAP: Record<string, string> = {
+    BR: "Brasil",
+    US: "Estados Unidos",
+    PT: "Portugal",
+    ES: "Espanha",
+    AR: "Argentina",
+    MX: "México",
+    FR: "França",
+    DE: "Alemanha",
+    GB: "Reino Unido",
+    UK: "Reino Unido",
+    IT: "Itália",
+    CL: "Chile",
+    CO: "Colômbia",
+    UY: "Uruguai",
+    PY: "Paraguai",
+    CA: "Canadá",
+    AO: "Angola",
+    MZ: "Moçambique",
+    JP: "Japão",
+    AU: "Austrália",
+    IN: "Índia"
+  };
+
+  const BRAZIL_STATE_MAP: Record<string, string> = {
+    SP: "São Paulo",
+    RJ: "Rio de Janeiro",
+    MG: "Minas Gerais",
+    RS: "Rio Grande do Sul",
+    PR: "Paraná",
+    SC: "Santa Catarina",
+    BA: "Bahia",
+    PE: "Pernambuco",
+    CE: "Ceará",
+    GO: "Goiás",
+    DF: "Distrito Federal",
+    ES: "Espírito Santo",
+    PA: "Pará",
+    MA: "Maranhão",
+    MT: "Mato Grosso",
+    MS: "Mato Grosso do Sul",
+    AM: "Amazonas",
+    RN: "Rio Grande do Norte",
+    PB: "Paraíba",
+    AL: "Alagoas",
+    PI: "Piauí",
+    SE: "Sergipe",
+    RO: "Rondônia",
+    TO: "Tocantins",
+    AC: "Acre",
+    AP: "Amapá",
+    RR: "Roraima"
+  };
+
+  function formatLocationName(raw: string): string {
+    if (!raw) return "";
+    let formatted = raw.replace(/^Brasil_/, "").replace(/^Brazil_/, "").replace(/_/g, " ").trim();
+    const lower = formatted.toLowerCase();
+    if (lower.includes("s o paulo") || lower.includes("sao paulo")) return "São Paulo";
+    if (lower.includes("rio de janeiro")) return "Rio de Janeiro";
+    if (lower.includes("minas gerais")) return "Minas Gerais";
+    if (lower.includes("espirito santo")) return "Espírito Santo";
+    if (lower.includes("distrito federal") || lower.includes("brasilia")) return "Distrito Federal";
+    if (lower.includes("parana")) return "Paraná";
+    if (lower.includes("rio grande do sul")) return "Rio Grande do Sul";
+    if (lower.includes("santa catarina")) return "Santa Catarina";
+    if (lower.includes("bahia") || lower.includes("salvador")) return "Bahia";
+    if (lower.includes("ceara") || lower.includes("fortaleza")) return "Ceará";
+    if (lower.includes("pernambuco") || lower.includes("recife")) return "Pernambuco";
+    if (lower.includes("maranhao")) return "Maranhão";
+    if (lower.includes("para ") || lower.endsWith("para") || lower.includes("belem")) return "Pará";
+    if (lower.includes("goias") || lower.includes("goiania")) return "Goiás";
+    if (lower.includes("amazonas") || lower.includes("manaus")) return "Amazonas";
+    if (lower.includes("paraiba")) return "Paraíba";
+    if (lower.includes("rio grande do norte") || lower.includes("natal")) return "Rio Grande do Norte";
+    if (lower.includes("alagoas") || lower.includes("maceio")) return "Alagoas";
+    if (lower.includes("piaui") || lower.includes("teresina")) return "Piauí";
+    if (lower.includes("mato grosso do sul") || lower.includes("campo grande")) return "Mato Grosso do Sul";
+    if (lower.includes("mato grosso") || lower.includes("cuiaba")) return "Mato Grosso";
+    if (lower.includes("sergipe") || lower.includes("aracaju")) return "Sergipe";
+    if (lower.includes("rondonia") || lower.includes("porto velho")) return "Rondônia";
+    if (lower.includes("tocantins") || lower.includes("palmas")) return "Tocantins";
+    if (lower.includes("acre") || lower.includes("rio branco")) return "Acre";
+    if (lower.includes("amapa") || lower.includes("macapa")) return "Amapá";
+    if (lower.includes("roraima") || lower.includes("boa vista")) return "Roraima";
+    return formatted;
+  }
+
+  const TIMEZONE_GEO_MAP: Record<string, { country: string; region: string; city: string }> = {
+    "America/Sao_Paulo": { country: "Brasil", region: "São Paulo", city: "São Paulo" },
+    "America/Recife": { country: "Brasil", region: "Pernambuco", city: "Recife" },
+    "America/Fortaleza": { country: "Brasil", region: "Ceará", city: "Fortaleza" },
+    "America/Bahia": { country: "Brasil", region: "Bahia", city: "Salvador" },
+    "America/Manaus": { country: "Brasil", region: "Amazonas", city: "Manaus" },
+    "America/Belem": { country: "Brasil", region: "Pará", city: "Belém" },
+    "America/Cuiaba": { country: "Brasil", region: "Mato Grosso", city: "Cuiabá" },
+    "America/Campo_Grande": { country: "Brasil", region: "Mato Grosso do Sul", city: "Campo Grande" },
+    "America/Porto_Velho": { country: "Brasil", region: "Rondônia", city: "Porto Velho" },
+    "America/Boa_Vista": { country: "Brasil", region: "Roraima", city: "Boa Vista" },
+    "America/Rio_Branco": { country: "Brasil", region: "Acre", city: "Rio Branco" },
+    "America/Maceio": { country: "Brasil", region: "Alagoas", city: "Maceió" },
+    "America/Araguaina": { country: "Brasil", region: "Tocantins", city: "Palmas" },
+    "America/Noronha": { country: "Brasil", region: "Pernambuco", city: "Fernando de Noronha" },
+    "America/Santarem": { country: "Brasil", region: "Pará", city: "Santarém" },
+    "America/Eirunepe": { country: "Brasil", region: "Amazonas", city: "Eirunepé" }
+  };
+
+  // Helper: Extração de Geolocalização segura a partir de headers de infraestrutura/proxy com fallback por timezone
+  function extractGeoHeaders(req: express.Request, clientTimeZone?: string) {
+    const rawCountry = String(
+      req.headers["x-vercel-ip-country"] ||
+      req.headers["cf-ipcountry"] ||
       req.headers["x-country-code"] ||
       req.headers["x-client-geo-location"] ||
       req.headers["x-appengine-country"] ||
-      req.headers["cf-ipcountry"] ||
-      req.headers["x-vercel-ip-country"] ||
       req.headers["x-real-ip-country"] ||
       ""
     ).trim().toUpperCase();
 
-    const region = String(
-      req.headers["x-appengine-region"] ||
+    let country = COUNTRY_MAP[rawCountry] || (rawCountry.length === 2 ? rawCountry : rawCountry || "");
+
+    let rawRegion = String(
       req.headers["x-vercel-ip-country-region"] ||
+      req.headers["cf-region-code"] ||
+      req.headers["x-appengine-region"] ||
+      req.headers["x-region"] ||
+      ""
+    ).trim().toUpperCase();
+
+    if (rawCountry === "BR" && BRAZIL_STATE_MAP[rawRegion]) {
+      rawRegion = BRAZIL_STATE_MAP[rawRegion];
+    }
+
+    let rawCity = String(
+      req.headers["x-vercel-ip-city"] ||
+      req.headers["cf-ipcity"] ||
+      req.headers["x-appengine-city"] ||
+      req.headers["x-city"] ||
       ""
     ).trim();
 
-    const city = String(
-      req.headers["x-appengine-city"] ||
-      req.headers["x-vercel-ip-city"] ||
-      ""
-    ).trim();
+    if (rawCity) {
+      try {
+        rawCity = decodeURIComponent(rawCity);
+      } catch {}
+    }
+
+    // Fallback inteligente para ambiente Cloud Run / Dev quando headers de borda não estão presentes
+    if (!country && clientTimeZone && TIMEZONE_GEO_MAP[clientTimeZone]) {
+      const tzInfo = TIMEZONE_GEO_MAP[clientTimeZone];
+      country = tzInfo.country;
+      if (!rawRegion) rawRegion = tzInfo.region;
+      if (!rawCity) rawCity = tzInfo.city;
+    } else if (country === "Brasil" && !rawRegion && clientTimeZone && TIMEZONE_GEO_MAP[clientTimeZone]) {
+      const tzInfo = TIMEZONE_GEO_MAP[clientTimeZone];
+      rawRegion = tzInfo.region;
+      if (!rawCity) rawCity = tzInfo.city;
+    }
 
     return {
-      country: country && country.length <= 10 ? country : "",
-      region: region && region.length <= 40 ? region : "",
-      city: city && city.length <= 50 ? city : ""
+      country: country && country.length <= 40 ? country : "",
+      region: rawRegion && rawRegion.length <= 40 ? rawRegion : "",
+      city: rawCity && rawCity.length <= 50 ? rawCity : ""
     };
   }
 
@@ -1187,9 +1388,14 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
         bannerTitle: rawBannerTitle,
         placement: rawPlacement,
         isNewSession,
+        timeZone: rawTimeZone,
+        clientCategory: rawClientCategory,
         trafficSource: rawTrafficSource,
         referrerDomain: rawReferrerDomain,
-        utmSource: rawUtmSource
+        utmSource: rawUtmSource,
+        utmCampaign: rawUtmCampaign,
+        fileCount: rawFileCount,
+        downloadActions: rawDownloadActions
       } = req.body || {};
       
       const pathStr = typeof rawPath === "string" ? rawPath.trim() : "";
@@ -1202,10 +1408,15 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
       }
 
       const userAgentStr = String(req.headers["user-agent"] || "");
-      const { isBot, category, os, browser } = parseUserAgentDetails(userAgentStr);
+      const { isBot, category: uaCategory, os, browser } = parseUserAgentDetails(userAgentStr);
       if (isBot) {
         return res.json({ success: true, ignoredBot: true });
       }
+
+      // Prioriza detecção de categoria de tela enviada pelo cliente (mobile/tablet/desktop)
+      const category = (rawClientCategory === "Mobile" || rawClientCategory === "Tablet" || rawClientCategory === "Desktop") 
+        ? rawClientCategory 
+        : uaCategory;
 
       const todayStr = new Date().toISOString().substring(0, 10);
       const dailyDocRef = doc(db, "site_metrics", `daily_${todayStr}`);
@@ -1223,11 +1434,53 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
           const cleanPathKey = pathStr.replace(/[^a-zA-Z0-9_-]/g, "_") || "home";
           updates[`routes.${cleanPathKey}`] = increment(1);
         }
+
+        // Devices, OS, Browsers e Geolocalização são incrementados estritamente em PAGE_VIEW
+        if (category) {
+          const deviceKey = category.replace(/[^a-zA-Z0-9_-]/g, "_");
+          updates[`devices.${deviceKey}`] = increment(1);
+        }
+        if (os) {
+          const osKey = os.replace(/[^a-zA-Z0-9_-]/g, "_");
+          updates[`os.${osKey}`] = increment(1);
+        }
+        if (browser) {
+          const browserKey = browser.replace(/[^a-zA-Z0-9_-]/g, "_");
+          updates[`browsers.${browserKey}`] = increment(1);
+        }
+
+        const geo = extractGeoHeaders(req, rawTimeZone);
+        if (geo.country) {
+          const cleanCountry = geo.country.replace(/[^a-zA-Z0-9_-]/g, "_");
+          updates[`countries.${cleanCountry}`] = increment(1);
+          if (geo.region) {
+            const cleanRegion = `${cleanCountry}_${geo.region}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+            updates[`regions.${cleanRegion}`] = increment(1);
+          }
+          if (geo.city) {
+            const cleanCity = `${cleanCountry}_${geo.city}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+            updates[`cities.${cleanCity}`] = increment(1);
+          }
+        }
       }
 
-      // Sessions
+      // Sessions, Traffic Sources & UTMs são contabilizados estritamente na nova sessão
       if (isNewSession) {
         updates.sessions = increment(1);
+        if (rawTrafficSource && typeof rawTrafficSource === "string") {
+          const sourceKey = rawTrafficSource.trim().replace(/[^a-zA-Z0-9_-]/g, "_") || "Direto";
+          updates[`trafficSources.${sourceKey}`] = increment(1);
+        }
+        if (rawReferrerDomain && typeof rawReferrerDomain === "string") {
+          const refKey = rawReferrerDomain.trim().replace(/[^a-zA-Z0-9_-]/g, "_") || "Direto";
+          updates[`referrers.${refKey}`] = increment(1);
+        }
+        if (rawUtmSource && typeof rawUtmSource === "string") {
+          const utmKey = (rawUtmCampaign || rawUtmSource).trim().replace(/[^a-zA-Z0-9_-]/g, "_");
+          if (utmKey) {
+            updates[`utms.${utmKey}`] = increment(1);
+          }
+        }
       }
 
       // Tools Usage
@@ -1237,7 +1490,15 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
       }
 
       // Conversions
-      const isConversion = type === "conversion" || (typeof rawEvent === "string" && (rawEvent.includes("completed") || rawEvent.includes("convert_success") || rawEvent.includes("conversion_completed")));
+      const isConversion = type === "conversion" || (typeof rawEvent === "string" && (
+        rawEvent.includes("conversion_completed") || 
+        rawEvent.includes("convert_success") || 
+        rawEvent.includes("conversion_success") ||
+        rawEvent.includes("extraction_completed") ||
+        rawEvent.includes("processing_completed") ||
+        rawEvent.includes("completed")
+      ));
+
       if (isConversion) {
         updates.conversions = increment(1);
         if (toolKey) {
@@ -1248,9 +1509,15 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
       // Downloads
       const isDownload = type === "download" || (typeof rawEvent === "string" && rawEvent.includes("download"));
       if (isDownload) {
-        updates.downloads = increment(1);
+        const actionsCount = Number(rawDownloadActions || 1);
+        const filesCount = Number(rawFileCount || 1);
+
+        updates.downloads = increment(actionsCount);
+        updates.filesDownloaded = increment(filesCount);
+
         if (toolKey) {
-          updates[`toolDownloads.${toolKey}`] = increment(1);
+          updates[`toolDownloads.${toolKey}`] = increment(actionsCount);
+          updates[`toolFilesDownloaded.${toolKey}`] = increment(filesCount);
         }
       }
 
@@ -1281,51 +1548,6 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
           if (rawPlacement && typeof rawPlacement === "string") {
             updates[`bannerPlacements.${bannerKey}`] = rawPlacement.substring(0, 40);
           }
-        }
-      }
-
-      // Traffic Sources & UTMs
-      if (rawTrafficSource && typeof rawTrafficSource === "string") {
-        const sourceKey = rawTrafficSource.trim().replace(/[^a-zA-Z0-9_-]/g, "_") || "Direto";
-        updates[`trafficSources.${sourceKey}`] = increment(1);
-      }
-      if (rawReferrerDomain && typeof rawReferrerDomain === "string") {
-        const refKey = rawReferrerDomain.trim().replace(/[^a-zA-Z0-9_-]/g, "_") || "Direto";
-        updates[`referrers.${refKey}`] = increment(1);
-      }
-      if (rawUtmSource && typeof rawUtmSource === "string") {
-        const utmKey = rawUtmSource.trim().replace(/[^a-zA-Z0-9_-]/g, "_");
-        if (utmKey) {
-          updates[`utms.${utmKey}`] = increment(1);
-        }
-      }
-
-      // Devices, OS and Browsers
-      if (category) {
-        const deviceKey = category.replace(/[^a-zA-Z0-9_-]/g, "_");
-        updates[`devices.${deviceKey}`] = increment(1);
-      }
-      if (os) {
-        const osKey = os.replace(/[^a-zA-Z0-9_-]/g, "_");
-        updates[`os.${osKey}`] = increment(1);
-      }
-      if (browser) {
-        const browserKey = browser.replace(/[^a-zA-Z0-9_-]/g, "_");
-        updates[`browsers.${browserKey}`] = increment(1);
-      }
-
-      // Geo headers from GCP/Cloud Run/Proxy
-      const geo = extractGeoHeaders(req);
-      if (geo.country) {
-        const cleanCountry = geo.country.replace(/[^a-zA-Z0-9_-]/g, "_");
-        updates[`countries.${cleanCountry}`] = increment(1);
-        if (geo.region) {
-          const cleanRegion = `${cleanCountry}_${geo.region}`.replace(/[^a-zA-Z0-9_-]/g, "_");
-          updates[`regions.${cleanRegion}`] = increment(1);
-        }
-        if (geo.city) {
-          const cleanCity = `${cleanCountry}_${geo.city}`.replace(/[^a-zA-Z0-9_-]/g, "_");
-          updates[`cities.${cleanCity}`] = increment(1);
         }
       }
 
@@ -1568,7 +1790,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
         }
       }
 
-      // Fetch all registered banners from "home_banners" (and "ads") collection to ensure ALL banners appear
+      // Fetch all registered banners strictly from "home_banners" collection (Source of truth da V2)
       const registeredBanners: Array<{
         id: string;
         name: string;
@@ -1581,40 +1803,19 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
       if (db) {
         try {
-          const [hbSnap, adsSnap] = await Promise.allSettled([
-            getDocs(collection(db, "home_banners")),
-            getDocs(collection(db, "ads"))
-          ]);
-
-          if (hbSnap.status === "fulfilled") {
-            hbSnap.value.forEach(d => {
-              const bData = d.data();
-              registeredBanners.push({
-                id: d.id,
-                name: bData.name || bData.title || "Banner Carrossel",
-                status: bData.active !== false ? "active" : "inactive",
-                placement: "Carrossel Principal (Home)",
-                imageUrl: bData.imageUrl || "",
-                linkUrl: bData.linkUrl || bData.destinationUrl || "",
-                order: Number(bData.order || 0)
-              });
+          const hbSnap = await getDocs(collection(db, "home_banners"));
+          hbSnap.forEach((d) => {
+            const bData = d.data();
+            registeredBanners.push({
+              id: d.id,
+              name: bData.name || bData.title || "Banner Carrossel",
+              status: bData.active !== false ? "active" : "inactive",
+              placement: "Carrossel Principal (Home)",
+              imageUrl: bData.imageUrl || "",
+              linkUrl: bData.linkUrl || bData.destinationUrl || "",
+              order: Number(bData.order || 0)
             });
-          }
-
-          if (adsSnap.status === "fulfilled") {
-            adsSnap.value.forEach(d => {
-              const aData = d.data();
-              registeredBanners.push({
-                id: d.id,
-                name: aData.name || aData.publicTitle || aData.title || "Anúncio Publicitário",
-                status: (aData.active !== false && aData.isActive !== false) ? "active" : "inactive",
-                placement: aData.position === "sidebar_top" ? "Barra Lateral (Topo)" : aData.position === "top_banner" ? "Banner Superior" : aData.position === "below_how_it_works" ? "Abaixo do Como Funciona" : aData.position || "Espaço Publicitário",
-                imageUrl: aData.imageUrl || "",
-                linkUrl: aData.destinationUrl || aData.linkUrl || "",
-                order: Number(aData.order || 0)
-              });
-            });
-          }
+          });
         } catch (e) {
           console.warn("[SERVER-V2] Error loading registered banners:", e);
         }
@@ -1741,11 +1942,11 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
       const regionsList = Object.entries(regionsMap)
         .map(([regionKey, count]) => {
           const parts = regionKey.split("_");
-          const country = parts[0] || "";
-          const region = parts.slice(1).join(" ") || regionKey;
+          const country = parts[0] || "Brasil";
+          const region = formatLocationName(parts.slice(1).join("_") || regionKey);
           return {
             region,
-            country,
+            country: country === "Brasil" ? "Brasil" : country,
             count,
             percentage: `${Math.round((count / totalRegionCounts) * 100)}%`
           };
@@ -1756,11 +1957,11 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
       const citiesList = Object.entries(citiesMap)
         .map(([cityKey, count]) => {
           const parts = cityKey.split("_");
-          const country = parts[0] || "";
-          const city = parts.slice(1).join(" ") || cityKey;
+          const country = parts[0] || "Brasil";
+          const city = formatLocationName(parts.slice(1).join("_") || cityKey);
           return {
             city,
-            country,
+            country: country === "Brasil" ? "Brasil" : country,
             count,
             percentage: `${Math.round((count / totalCityCounts) * 100)}%`
           };

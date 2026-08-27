@@ -29,8 +29,8 @@ interface BrandingConfig {
   updatedAt?: string;
 }
 
-const DEFAULT_LOGO_PATH = "/multiconverte-logo-dark.png";
-const DEFAULT_ALT_TEXT = "MultiConverte";
+const DEFAULT_LOGO_PATH = "";
+const DEFAULT_ALT_TEXT = "Conversor Áudio";
 const DEFAULT_DESKTOP_WIDTH = 240;
 const DEFAULT_DESKTOP_MAX_HEIGHT = 72;
 const DEFAULT_MOBILE_WIDTH = 180;
@@ -406,7 +406,7 @@ export default function AdminBrandingManager() {
           <span>Configuração da Logo do Cabeçalho</span>
         </h2>
         <p className="text-[11px] text-text-muted font-medium mt-1">
-          Gerencie a imagem principal do logotipo <strong className="text-text-sec">MultiConverte</strong>, faça upload de imagens PNG transparentes e ajuste os tamanhos e limites de altura para computador e celular.
+          Gerencie a imagem principal do logotipo <strong className="text-text-sec">Conversor Áudio</strong>, faça upload de imagens PNG transparentes e ajuste os tamanhos e limites de altura para computador e celular.
         </p>
       </div>
 
@@ -785,11 +785,11 @@ export default function AdminBrandingManager() {
               type="text"
               value={logoAlt}
               onChange={(e) => setLogoAlt(e.target.value)}
-              placeholder="MultiConverte"
+              placeholder="Conversor Áudio"
               className="w-full bg-card-main border border-border-main focus:border-green-primary/50 text-text-main text-xs rounded-xl px-3.5 py-2.5 font-bold outline-none transition-colors"
             />
             <p className="text-[10px] text-text-muted">
-              Valor padrão: <span className="font-mono text-text-sec">MultiConverte</span>
+              Valor padrão: <span className="font-mono text-text-sec">Conversor Áudio</span>
             </p>
           </div>
         </div>
@@ -861,7 +861,7 @@ export default function AdminBrandingManager() {
           <li className="flex items-start gap-2">
             <span className="text-green-primary font-bold">•</span>
             <span>
-              <strong className="text-text-main">Logo Padrão Nativa:</strong> Caso nenhuma logo seja enviada, o sistema usa <code className="bg-card-main px-1.5 py-0.5 rounded text-green-light">/multiconverte-logo-dark.png</code>.
+              <strong className="text-text-main">Logo Padrão Nativa:</strong> Caso nenhuma logo personalizada seja enviada, o sistema exibe o logotipo textual estilizado padrão do <strong className="text-text-main">Conversor Áudio</strong>.
             </span>
           </li>
         </ul>

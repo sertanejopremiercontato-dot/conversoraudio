@@ -1,7 +1,7 @@
 {
-  "name": "Conversor de Áudio",
-  "short_name": "ConversorAudio",
-  "description": "Conversor online de áudio, documentos, imagens e PDFs rápido, seguro e executado diretamente no navegador.",
+  "name": "Conversor Áudio",
+  "short_name": "Conversor Áudio",
+  "description": "Conversor online de áudio rápido, seguro e executado diretamente no seu navegador.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020817",

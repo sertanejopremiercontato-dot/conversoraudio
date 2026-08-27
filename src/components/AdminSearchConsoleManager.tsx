@@ -379,11 +379,11 @@ export default function AdminSearchConsoleManager({ currentUserId: _currentUserI
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           <div className="p-4 bg-[#111822] border border-border-main rounded-xl space-y-2">
             <span className="font-extrabold text-green-primary uppercase text-[10px] tracking-wider block">
-              Domínio Origem (Antigo)
+              Domínio Raiz
             </span>
-            <code className="text-white font-mono text-xs block">https://conversor.somdrive.com.br</code>
+            <code className="text-white font-mono text-xs block">https://conversoraudio.com.br</code>
             <p className="text-[11px] text-text-muted leading-relaxed">
-              Deve manter redirecionamentos HTTP 301 permanentes para o novo endereço correspondente.
+              Redireciona permanentemente (301) para a versão canônica com www.
             </p>
           </div>
 
@@ -424,7 +424,7 @@ export default function AdminSearchConsoleManager({ currentUserId: _currentUserI
             <span>Resumo da Auditoria Local de Indexação</span>
           </h3>
           <p className="text-xs text-text-sec mt-1">
-            Status dos componentes técnicos no código-fonte atual do MultiConverte.
+            Status dos componentes técnicos no código-fonte atual do Conversor Áudio.
           </p>
         </div>
 

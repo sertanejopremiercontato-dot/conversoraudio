@@ -1,5 +1,5 @@
 /**
- * MultiConverte Document Suite V2 Types
+ * Conversor Áudio Document Suite V2 Types
  */
 
 export type DocumentSubTool = "hub" | "excelToPdf" | "wordToPdf";

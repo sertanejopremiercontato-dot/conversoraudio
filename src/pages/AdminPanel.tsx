@@ -631,12 +631,13 @@ export default function AdminPanel({ onNavigate }: AdminPanelProps) {
   // Load SEO config from local storage or Firestore
   const loadSeo = async () => {
     try {
+      localStorage.removeItem("multiconverte_seo");
       localStorage.removeItem("somdrive_seo");
       localStorage.removeItem("convertauto_seo");
       localStorage.removeItem("multiconvert_seo");
     } catch (e) {}
 
-    const storedSeo = localStorage.getItem("multiconverte_seo");
+    const storedSeo = localStorage.getItem("conversoraudio_seo");
     if (storedSeo) {
       try {
         const parsed = JSON.parse(storedSeo);
@@ -653,7 +654,7 @@ export default function AdminPanel({ onNavigate }: AdminPanelProps) {
         const data = docSnap.data() as Partial<SeoConfig>;
         const clean = sanitizeSeoConfig(data, DEFAULT_SEO_CONFIG);
         setSeo(clean);
-        localStorage.setItem("multiconverte_seo", JSON.stringify(clean));
+        localStorage.setItem("conversoraudio_seo", JSON.stringify(clean));
       }
     } catch (err) {
       console.warn("Could not load SEO config from Firestore in AdminPanel:", err);
@@ -988,7 +989,8 @@ export default function AdminPanel({ onNavigate }: AdminPanelProps) {
   const handleSaveSeo = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      localStorage.setItem("multiconverte_seo", JSON.stringify(seo));
+      localStorage.setItem("conversoraudio_seo", JSON.stringify(seo));
+      localStorage.removeItem("multiconverte_seo");
       
       // Save to Firestore so it is persistent across all clients
       const docRef = doc(db, "ads", "seo_config");
@@ -1984,7 +1986,7 @@ export default function AdminPanel({ onNavigate }: AdminPanelProps) {
                         <input
                           type="text"
                           value={seo.siteTitle || ""}
-                          placeholder="Ex: MultiConverte"
+                          placeholder="Ex: Conversor Áudio"
                           onChange={(e) => setSeo({ ...seo, siteTitle: e.target.value })}
                           className="w-full bg-card-main border border-border-main rounded-xl px-3 py-2.5 text-xs text-text-main font-semibold focus:outline-none"
                         />
@@ -2403,7 +2405,7 @@ export default function AdminPanel({ onNavigate }: AdminPanelProps) {
                           Localização dos Visitantes
                         </h3>
                         <p className="text-[11px] text-text-muted font-medium mt-0.5">
-                          Principais cidades e regiões que acessam o MultiConverte.
+                          Principais cidades e regiões que acessam o Conversor Áudio.
                         </p>
                       </div>
                       {analyticsData?.locations && analyticsData.locations.length > 15 && (

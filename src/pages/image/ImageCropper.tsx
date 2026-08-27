@@ -50,7 +50,7 @@ interface ImageCropperProps {
 
 export default function ImageCropper({ onNavigate }: ImageCropperProps) {
   // Inject SEO metadata
-  useSeoHead("imageCropper", "Cortar Imagem Grátis e Criar Tamanhos para Redes Sociais | MultiConverte", "Recorte imagens livremente ou gere vários tamanhos prontos para Instagram, YouTube, Facebook e outras plataformas.");
+  useSeoHead("imageCropper", "Cortar Imagem Grátis e Criar Tamanhos para Redes Sociais | Conversor Áudio", "Recorte imagens livremente ou gere vários tamanhos prontos para Instagram, YouTube, Facebook e outras plataformas.");
 
   // States
   const [file, setFile] = useState<File | null>(null);
@@ -620,7 +620,7 @@ export default function ImageCropper({ onNavigate }: ImageCropperProps) {
         {/* Navigation to other image tools */}
         <div className="pt-6 border-t border-border-main/60 space-y-3">
           <h4 className="font-extrabold text-xs text-text-main uppercase tracking-wider">
-            Outras Ferramentas de Imagem do MultiConverte
+            Outras Ferramentas de Imagem do Conversor Áudio
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-semibold">
             <button

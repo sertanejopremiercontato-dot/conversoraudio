@@ -58,6 +58,7 @@ import { collection, getDocs, query, where, doc, getDoc, onSnapshot } from "fire
 import { db, handleFirestoreError, OperationType } from "./firebase";
 import { initGA, trackPageView, trackEvent, updateGAConsent } from "./lib/gtag";
 import { subscribeAdSenseConfig, initializeAdSenseScript } from "./services/adsenseService";
+import { subscribeGoogleAdsTagConfig } from "./services/googleAdsTagService";
 import PublicAdCard from "./components/PublicAdCard";
 import useSeoHead, { DEFAULT_SEO_CONFIG, sanitizeSeoConfig } from "./lib/useSeoHead";
 
@@ -137,7 +138,7 @@ export default function App() {
   }>({
     logoUrl: "",
     logoStoragePath: "",
-    logoAlt: "MultiConverte",
+    logoAlt: "Conversor Áudio",
     logoDesktopWidth: 240,
     logoDesktopMaxHeight: 72,
     logoMobileWidth: 180,
@@ -153,7 +154,7 @@ export default function App() {
         setBranding({
           logoUrl: data.logoUrl || "",
           logoStoragePath: data.logoStoragePath || "",
-          logoAlt: data.logoAlt || "MultiConverte",
+          logoAlt: data.logoAlt || "Conversor Áudio",
           logoDesktopWidth: typeof data.logoDesktopWidth === 'number' ? data.logoDesktopWidth : 240,
           logoDesktopMaxHeight: typeof data.logoDesktopMaxHeight === 'number' ? data.logoDesktopMaxHeight : 72,
           logoMobileWidth: typeof data.logoMobileWidth === 'number' ? data.logoMobileWidth : 180,
@@ -170,7 +171,7 @@ export default function App() {
   const isValidImageUrl = (url?: string) => {
     if (!url || typeof url !== "string") return false;
     const clean = url.trim().toLowerCase();
-    if (!clean) return false;
+    if (!clean || clean.includes("multiconvert") || clean.includes("somdrive") || clean.includes("convertauto")) return false;
     return (
       clean.startsWith("/") ||
       clean.startsWith("data:image/") ||
@@ -184,7 +185,7 @@ export default function App() {
     ? branding.logoUrl
     : branding.logoStoragePath
       ? `/api/ads-public-image?path=${encodeURIComponent(branding.logoStoragePath)}`
-      : (isValidImageUrl(seoConfig.siteLogoUrl) ? seoConfig.siteLogoUrl : "/multiconverte-logo-dark.png");
+      : (isValidImageUrl(seoConfig.siteLogoUrl) ? seoConfig.siteLogoUrl : "");
 
   // Navigate function for pathname routing
   const navigateTo = (path: string) => {
@@ -197,12 +198,13 @@ export default function App() {
   const loadConfigAndAds = async () => {
     // Purge legacy local storage keys
     try {
+      localStorage.removeItem("multiconverte_seo");
       localStorage.removeItem("somdrive_seo");
       localStorage.removeItem("convertauto_seo");
       localStorage.removeItem("multiconvert_seo");
     } catch (e) {}
 
-    const storedSeo = localStorage.getItem("multiconverte_seo");
+    const storedSeo = localStorage.getItem("conversoraudio_seo");
     if (storedSeo) {
       try {
         const parsed = JSON.parse(storedSeo);
@@ -219,7 +221,7 @@ export default function App() {
         const data = docSnap.data() as Partial<SeoConfig>;
         const clean = sanitizeSeoConfig(data, DEFAULT_SEO_CONFIG);
         setSeoConfig(clean);
-        localStorage.setItem("multiconverte_seo", JSON.stringify(clean));
+        localStorage.setItem("conversoraudio_seo", JSON.stringify(clean));
       }
     } catch (err) {
       console.warn("Could not load SEO config from Firestore in App:", err);
@@ -331,9 +333,12 @@ export default function App() {
       initializeAdSenseScript(cfg.adsenseEnabled);
     });
 
+    // Subscribe to Google Ads Tag config and manage dynamic script loading / gtag config
+    const unsubGoogleAds = subscribeGoogleAdsTagConfig(() => {});
+
     // Check if consent has already been given or if a banner is needed
     if ((import.meta as any).env.VITE_GA4_MEASUREMENT_ID || (import.meta as any).env.VITE_GA_MEASUREMENT_ID) {
-      const savedDecision = localStorage.getItem("multiconverte_ga_consent") || localStorage.getItem("multiconvert_ga_consent");
+      const savedDecision = localStorage.getItem("conversoraudio_ga_consent") || localStorage.getItem("multiconverte_ga_consent") || localStorage.getItem("multiconvert_ga_consent");
       if (!savedDecision) {
         setShowConsentBanner(true);
       }
@@ -420,6 +425,7 @@ export default function App() {
 
     return () => {
       unsubAdSense();
+      unsubGoogleAds();
       window.removeEventListener("popstate", handlePopState);
       window.removeEventListener("storage", handleStorageChange);
     };
@@ -431,10 +437,10 @@ export default function App() {
     let path = "/";
 
     if (currentPath === "/admin-login") {
-      title = "Login Administrativo | MultiConverte";
+      title = "Login Administrativo | Conversor Áudio";
       path = "/admin-login";
     } else if (currentPath === "/admin") {
-      title = "Painel Administrativo | MultiConverte";
+      title = "Painel Administrativo | Conversor Áudio";
       path = "/admin";
     } else {
       if (activeTab === "inicio") {
@@ -444,7 +450,7 @@ export default function App() {
         title = seoConfig.pages.audio.title;
         path = "/audio";
       } else if (activeTab === "videoToAudio") {
-        title = seoConfig.pages.videoToAudio?.title || "Extrair Áudio de Vídeo | MultiConverte";
+        title = seoConfig.pages.videoToAudio?.title || "Extrair Áudio de Vídeo | Conversor Áudio";
         path = "/video-para-audio";
       } else if (activeTab === "pdf") {
         if (activePdfTool === "none") {
@@ -463,7 +469,7 @@ export default function App() {
           title = seoConfig.pages.organize.title;
           path = "/pdf/organizar";
         } else if (activePdfTool === "deleteRotate") {
-          title = "Excluir e Girar Páginas de PDF | MultiConverte";
+          title = "Excluir e Girar Páginas de PDF | Conversor Áudio";
           path = "/pdf/excluir-girar";
         }
       }
@@ -558,7 +564,7 @@ export default function App() {
         currentPageTitle = seoConfig.pages.organize.title;
         currentPageDesc = seoConfig.pages.organize.description;
       } else if (activePdfTool === "deleteRotate") {
-        currentPageTitle = "Excluir e Girar Páginas de PDF | MultiConverte";
+        currentPageTitle = "Excluir e Girar Páginas de PDF | Conversor Áudio";
         currentPageDesc = "Exclua páginas indesejadas e gire orientações de páginas de seus documentos PDF online de forma gratuita e rápida.";
       }
     }
@@ -580,8 +586,8 @@ export default function App() {
     setMetaTag("name", "description", currentPageDesc);
     setMetaTag("property", "og:title", currentPageTitle);
     setMetaTag("property", "og:description", currentPageDesc);
-    setMetaTag("property", "og:image", seoConfig.ogImage || "/multiconverte-og-image.png");
-    setMetaTag("property", "og:site_name", seoConfig.siteName || "MultiConverte");
+    setMetaTag("property", "og:image", seoConfig.ogImage || "https://www.conversoraudio.com.br/android-chrome-512x512.png");
+    setMetaTag("property", "og:site_name", seoConfig.siteName || "Conversor Áudio");
     setMetaTag("property", "og:locale", "pt_BR");
     setMetaTag("property", "og:type", "website");
     setMetaTag("name", "robots", seoConfig.robots || "index, follow");
@@ -902,16 +908,31 @@ export default function App() {
                 }
               }
             `}</style>
-            <img 
-              src={headerLogoSrc} 
-              alt={branding.logoAlt || "MultiConverte"} 
-              className="header-brand-logo transition-transform duration-200 group-hover:scale-[1.02]"
-              referrerPolicy="no-referrer"
-              onError={(e) => {
-                e.currentTarget.onerror = null;
-                e.currentTarget.src = "/multiconverte-logo-dark.png";
-              }}
-            />
+            {headerLogoSrc ? (
+              <img 
+                src={headerLogoSrc} 
+                alt={branding.logoAlt || "Conversor Áudio"} 
+                className="header-brand-logo transition-transform duration-200 group-hover:scale-[1.02]"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            ) : (
+              <div className="flex items-center gap-2.5 py-1">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#0284C7] to-[#2563EB] flex items-center justify-center text-white shadow-sm shadow-[#0284C7]/20">
+                  <Volume2 className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-black text-xl md:text-2xl tracking-tight text-[#0F172A] leading-none">
+                    Conversor <span className="text-[#0284C7]">Áudio</span>
+                  </span>
+                  <span className="text-[10px] font-bold text-[#64748B] tracking-wider uppercase">
+                    100% Online & Seguro
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
           
           {/* Navigation Links */}

@@ -40,7 +40,7 @@ export function initGA() {
     };
 
     // 3. Set up default consent settings (denied by default, unless already stored as granted)
-    const savedConsent = localStorage.getItem("multiconverte_ga_consent") || localStorage.getItem("multiconvert_ga_consent");
+    const savedConsent = localStorage.getItem("conversoraudio_ga_consent") || localStorage.getItem("multiconverte_ga_consent") || localStorage.getItem("multiconvert_ga_consent");
     const defaultConsent = savedConsent === "granted" ? "granted" : "denied";
 
     window.gtag("consent", "default", {
@@ -68,7 +68,11 @@ export function initGA() {
  * Updates the user's consent choice and saves it to localStorage.
  */
 export function updateGAConsent(status: "granted" | "denied") {
-  localStorage.setItem("multiconverte_ga_consent", status);
+  localStorage.setItem("conversoraudio_ga_consent", status);
+  try {
+    localStorage.removeItem("multiconverte_ga_consent");
+    localStorage.removeItem("multiconvert_ga_consent");
+  } catch (e) {}
   if (window.gtag) {
     try {
       window.gtag("consent", "update", {

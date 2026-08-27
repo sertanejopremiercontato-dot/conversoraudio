@@ -54,7 +54,7 @@ export default function ImageRotateFlip({ onNavigate }: ImageRotateFlipProps) {
   // Page SEO setup
   useSeoHead(
     "imageRotateFlip",
-    "Girar e Espelhar Imagem Grátis Online | MultiConverte",
+    "Girar e Espelhar Imagem Grátis Online | Conversor Áudio",
     "Gire imagens para esquerda ou direita, espelhe fotos e corrija a orientação de várias imagens de uma só vez."
   );
 
@@ -438,7 +438,7 @@ export default function ImageRotateFlip({ onNavigate }: ImageRotateFlipProps) {
       <div className="space-y-3">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-green-primary/10 border border-green-primary/30 text-green-primary font-bold text-xs uppercase tracking-wider">
           <Scissors className="h-4 w-4" />
-          <span>Ferramenta de Imagem MultiConverte</span>
+          <span>Ferramenta de Imagem Conversor Áudio</span>
         </div>
         <h1 className="font-display font-black text-2xl md:text-4xl text-text-main tracking-tight">
           Girar e Espelhar Imagens Grátis
@@ -557,7 +557,7 @@ export default function ImageRotateFlip({ onNavigate }: ImageRotateFlipProps) {
       {/* Related Internal Tools Navigation Links */}
       <div className="pt-8 border-t border-border-main/60 space-y-4 text-left">
         <h3 className="font-display font-bold text-sm text-text-main uppercase tracking-wider">
-          Outras Ferramentas de Imagem do MultiConverte
+          Outras Ferramentas de Imagem do Conversor Áudio
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-semibold">
           <button

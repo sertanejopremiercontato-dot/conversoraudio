@@ -126,10 +126,13 @@ export const AdminPanelV2: React.FC<AdminPanelV2Props> = ({
         setMonetization({
           adsenseEnabled: data.adsenseEnabled !== undefined ? !!data.adsenseEnabled : true,
           publisherId: data.publisherId || "ca-pub-8846628306821055",
-          domain: data.domain || "",
+          domain: data.domain || "https://www.conversoraudio.com.br",
           mode: data.mode || "Anúncios automáticos",
           reviewStatus: data.reviewStatus || "Ativo",
           notes: data.notes || "",
+          customSnippet: data.customSnippet || "",
+          customMetaTag: data.customMetaTag || "",
+          adsTxtContent: data.adsTxtContent || "",
           verificationSnippet: data.verificationSnippet,
           verificationMetaTag: data.verificationMetaTag,
           verificationAdsTxtLine: data.verificationAdsTxtLine,
@@ -139,7 +142,7 @@ export const AdminPanelV2: React.FC<AdminPanelV2Props> = ({
         setMonetization({
           adsenseEnabled: true,
           publisherId: "ca-pub-8846628306821055",
-          domain: "",
+          domain: "https://www.conversoraudio.com.br",
           mode: "Anúncios automáticos",
           reviewStatus: "Ativo",
           notes: "Configuração padrão de monetização"

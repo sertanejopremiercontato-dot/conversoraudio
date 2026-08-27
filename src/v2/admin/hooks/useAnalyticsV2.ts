@@ -149,16 +149,23 @@ export function useAnalyticsV2() {
     setError(null);
 
     try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        throw new Error("Usuário administrador não autenticado.");
+      if (typeof (auth as any).authStateReady === "function") {
+        await (auth as any).authStateReady();
       }
 
-      const idToken = await currentUser.getIdToken();
+      let idToken = "";
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        idToken = await currentUser.getIdToken();
+      }
+
+      const headers: Record<string, string> = {};
+      if (idToken) {
+        headers["Authorization"] = `Bearer ${idToken}`;
+      }
+
       const response = await fetch(`/api/admin/analytics-v2?period=${activePeriod}`, {
-        headers: {
-          Authorization: `Bearer ${idToken}`,
-        },
+        headers,
       });
 
       if (!response.ok) {
