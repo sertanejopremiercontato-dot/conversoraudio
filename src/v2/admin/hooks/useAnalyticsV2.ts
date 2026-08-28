@@ -52,6 +52,8 @@ export interface AnalyticsBannerItemV2 {
 export interface AnalyticsCountryItemV2 {
   country: string;
   count: number;
+  users?: number;
+  sessions?: number;
   percentage: string;
 }
 
@@ -59,6 +61,8 @@ export interface AnalyticsRegionItemV2 {
   region: string;
   country: string;
   count: number;
+  users?: number;
+  sessions?: number;
   percentage: string;
 }
 
@@ -66,13 +70,34 @@ export interface AnalyticsCityItemV2 {
   city: string;
   country: string;
   count: number;
+  users?: number;
+  sessions?: number;
   percentage: string;
+}
+
+export interface AnalyticsFunnelV2 {
+  sessions: number;
+  toolOpens: number;
+  conversions: number;
+  downloads: number;
+  openRate: string;
+  conversionRate: string;
+  downloadRate: string;
+}
+
+export interface AnalyticsLocationRowV2 {
+  city: string;
+  region: string;
+  country: string;
+  users: number;
+  sessions: number;
 }
 
 export interface AnalyticsLocationDataV2 {
   countries: AnalyticsCountryItemV2[];
   regions: AnalyticsRegionItemV2[];
   cities: AnalyticsCityItemV2[];
+  table?: AnalyticsLocationRowV2[];
   hasCountryData: boolean;
   hasRegionData: boolean;
   hasCityData: boolean;
@@ -94,18 +119,21 @@ export interface AnalyticsUtmV2 {
 export interface AnalyticsDeviceItemV2 {
   category: string;
   count: number;
+  sessions?: number;
   percentage: string;
 }
 
 export interface AnalyticsBrowserItemV2 {
   browser: string;
   count: number;
+  sessions?: number;
   percentage: string;
 }
 
 export interface AnalyticsOsItemV2 {
   os: string;
   count: number;
+  sessions?: number;
   percentage: string;
 }
 
@@ -117,6 +145,7 @@ export interface AnalyticsEventV2 {
 
 export interface AnalyticsDataV2 {
   summary: AnalyticsSummaryV2;
+  funnel?: AnalyticsFunnelV2;
   dailyTrend: AnalyticsDailyTrendV2[];
   topPages: AnalyticsTopPageV2[];
   toolsRanking?: AnalyticsToolRankingV2[];
@@ -129,6 +158,8 @@ export interface AnalyticsDataV2 {
   browsers?: AnalyticsBrowserItemV2[];
   operatingSystems?: AnalyticsOsItemV2[];
   events: AnalyticsEventV2[];
+  ga4Configured?: boolean;
+  telemetryConfigured?: boolean;
   source?: string;
   app_version?: string;
   fetchedAt: string;

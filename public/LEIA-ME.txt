@@ -1,17 +1,4 @@
-PACOTE DE IMAGENS - CONVERSOR AUDIO
+Arquivos recriados do favicon/ícones do Conversor Audio.
 
-Este ZIP traz imagens PNG prontas para substituir os arquivos antigos da pasta public.
-
-Principais arquivos incluídos:
-- android-chrome-192x192.png
-- android-chrome-512x512.png
-- apple-touch-icon.png
-- favicon-16x16.png
-- favicon-32x32.png
-- favicon-48x48.png
-- favicon.png
-- favicon.ico
-- logo-conversoraudio.png
-- conversoraudio-og-image.png
-
-Também incluí nomes antigos/legados (multiconvert, multiconverter, convertauto e somdrive) para você simplesmente substituir na pasta public.
+Substitua os arquivos da sua pasta public por estes.
+Incluídos: android-chrome-192x192.png, android-chrome-512x512.png, apple-touch-icon.png, favicon.ico, favicon-16x16.png, favicon-32x32.png, favicon-48x48.png, favicon.png e logo-icon.png.

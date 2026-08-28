@@ -22,6 +22,16 @@ export const FooterV2: React.FC<FooterV2Props> = ({
   const { branding } = useBrandingV2();
   const hasCustomLogo = !!branding.logoUrl;
 
+  const handleContactClick = () => {
+    onNavigate("comoFunciona");
+    setTimeout(() => {
+      const el = document.getElementById("contato");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth" });
+      }
+    }, 100);
+  };
+
   return (
     <footer className="bg-white border-t border-[#E2E8F0] text-[#5C6F84] py-6 px-4 md:px-8 mt-12 shadow-xs" id="v2-main-footer">
       <div className="max-w-[1440px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-medium">
@@ -104,7 +114,7 @@ export const FooterV2: React.FC<FooterV2Props> = ({
           </button>
 
           <button
-            onClick={() => onNavigate("comoFunciona")}
+            onClick={handleContactClick}
             className="hover:text-[#1D68F2] transition-colors cursor-pointer flex items-center gap-1.5"
           >
             <Mail className="w-3.5 h-3.5 text-[#64748B]" />

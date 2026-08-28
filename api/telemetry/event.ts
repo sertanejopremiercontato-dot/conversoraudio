@@ -180,6 +180,34 @@ function extractGeoHeaders(req: any): { country: string; region: string; city: s
   };
 }
 
+// Helper: Verifica se a requisição originou de ambiente de desenvolvimento/preview ou navegador excluído
+function isDevOrPreviewRequest(req: any): boolean {
+  try {
+    const headers = req.headers || {};
+    const host = String(headers["x-forwarded-host"] || headers["host"] || "").toLowerCase();
+    const origin = String(headers["origin"] || "").toLowerCase();
+    const referer = String(headers["referer"] || "").toLowerCase();
+
+    const devKeywords = [
+      "localhost",
+      "127.0.0.1",
+      "ai.studio",
+      "aistudio",
+      "webcontainer",
+      "github.dev",
+      "stackblitz",
+      ".run.app"
+    ];
+
+    for (const kw of devKeywords) {
+      if (host.includes(kw) || origin.includes(kw) || referer.includes(kw)) {
+        return true;
+      }
+    }
+  } catch {}
+  return false;
+}
+
 export default async function handler(req: any, res: any) {
   // CORS configuration
   if (res.setHeader) {
@@ -220,6 +248,7 @@ export default async function handler(req: any, res: any) {
       bannerTitle: rawBannerTitle,
       placement: rawPlacement,
       isNewSession,
+      isOwnerExcluded,
       trafficSource: rawTrafficSource,
       referrerDomain: rawReferrerDomain,
       utmSource: rawUtmSource,
@@ -230,8 +259,13 @@ export default async function handler(req: any, res: any) {
 
     const pathStr = typeof rawPath === "string" ? rawPath.trim() : "";
     
-    // Privacy & Scope: Never track admin or preview routes as public metrics
+    // 1. Privacy & Scope: Never track admin or preview routes as public metrics
     if (pathStr.includes("/admin") || pathStr.includes("/preview")) {
+      return res.status(200).json({ success: true, ignored: true });
+    }
+
+    // 2. Ignore Dev / AI Studio preview / localhost / Owner browser traffic
+    if (isOwnerExcluded || isDevOrPreviewRequest(req)) {
       return res.status(200).json({ success: true, ignored: true });
     }
 
@@ -249,10 +283,11 @@ export default async function handler(req: any, res: any) {
 
     const updates: Record<string, any> = {
       date: todayStr,
+      schemaVersion: 2,
       updatedAt: new Date().toISOString()
     };
 
-    // 1. Page Views
+    // 1. Page Views (Incrementa ESTRITAMENTE em page_view)
     if (type === "page_view" || !type) {
       updates.pageViews = increment(1);
       if (pathStr) {
@@ -261,18 +296,65 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    // 2. Sessions (New session per visitor/30min window)
+    // 2. Sessão Única (Incrementa ESTRITAMENTE 1x por sessão: Sessão, Dispositivo, OS, Navegador, Geo e Origem)
     if (isNewSession) {
       updates.sessions = increment(1);
+
+      // Devices, OS, Browsers (1x por sessão)
+      if (category) {
+        const deviceKey = category.replace(/[^a-zA-Z0-9_-]/g, "_");
+        updates[`devices.${deviceKey}`] = increment(1);
+      }
+      if (os) {
+        const osKey = os.replace(/[^a-zA-Z0-9_-]/g, "_");
+        updates[`os.${osKey}`] = increment(1);
+      }
+      if (browser) {
+        const browserKey = browser.replace(/[^a-zA-Z0-9_-]/g, "_");
+        updates[`browsers.${browserKey}`] = increment(1);
+      }
+
+      // Geolocation from real infrastructure headers (1x por sessão)
+      const geo = extractGeoHeaders(req);
+      if (geo.country) {
+        const cleanCountry = geo.country.replace(/[^a-zA-Z0-9_-]/g, "_");
+        updates[`countries.${cleanCountry}`] = increment(1);
+        if (geo.region) {
+          const cleanRegion = `${cleanCountry}_${geo.region}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+          updates[`regions.${cleanRegion}`] = increment(1);
+        }
+        if (geo.city) {
+          const cleanCity = `${cleanCountry}_${geo.city}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+          updates[`cities.${cleanCity}`] = increment(1);
+        }
+      } else {
+        updates[`countries.Nao_disponivel`] = increment(1);
+      }
+
+      // Traffic Sources & UTMs (1x por sessão)
+      if (rawTrafficSource && typeof rawTrafficSource === "string") {
+        const sourceKey = rawTrafficSource.trim().replace(/[^a-zA-Z0-9_-]/g, "_") || "Direto";
+        updates[`trafficSources.${sourceKey}`] = increment(1);
+      }
+      if (rawReferrerDomain && typeof rawReferrerDomain === "string") {
+        const refKey = rawReferrerDomain.trim().replace(/[^a-zA-Z0-9_-]/g, "_") || "Direto";
+        updates[`referrers.${refKey}`] = increment(1);
+      }
+      if (rawUtmSource && typeof rawUtmSource === "string") {
+        const utmKey = (rawUtmCampaign || rawUtmSource).trim().replace(/[^a-zA-Z0-9_-]/g, "_");
+        if (utmKey) {
+          updates[`utms.${utmKey}`] = increment(1);
+        }
+      }
     }
 
-    // 3. Tool Usage
+    // 3. Tool Usage (NUNCA incrementa geo/device/traffic)
     const toolKey = typeof rawTool === "string" ? rawTool.trim().replace(/[^a-zA-Z0-9_-]/g, "_") : "";
     if (toolKey) {
       updates[`tools.${toolKey}`] = increment(1);
     }
 
-    // 4. Conversions (Strictly conversion completed / success)
+    // 4. Conversions (NUNCA incrementa geo/device/traffic)
     const isConversion = type === "conversion" || (typeof rawEvent === "string" && (
       rawEvent.includes("conversion_completed") || 
       rawEvent.includes("convert_success") || 
@@ -288,7 +370,7 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    // 5. Downloads (Real user download click)
+    // 5. Downloads (NUNCA incrementa geo/device/traffic)
     const isDownload = type === "download" || (typeof rawEvent === "string" && rawEvent.includes("download"));
     if (isDownload) {
       const actionsCount = Number(rawDownloadActions || 1);
@@ -303,7 +385,7 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    // 6. Banners - Real Impressions (>=50% viewport for 1s)
+    // 6. Banners - Real Impressions (NUNCA incrementa geo/device/traffic)
     if (type === "banner_impression" && rawBannerId) {
       const bannerKey = String(rawBannerId).trim().replace(/[^a-zA-Z0-9_-]/g, "_");
       if (bannerKey) {
@@ -318,7 +400,7 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    // 7. Banners - Real Clicks
+    // 7. Banners - Real Clicks (NUNCA incrementa geo/device/traffic)
     if (type === "banner_click" && rawBannerId) {
       const bannerKey = String(rawBannerId).trim().replace(/[^a-zA-Z0-9_-]/g, "_");
       if (bannerKey) {
@@ -333,54 +415,7 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    // 8. Traffic Sources & UTMs
-    if (rawTrafficSource && typeof rawTrafficSource === "string") {
-      const sourceKey = rawTrafficSource.trim().replace(/[^a-zA-Z0-9_-]/g, "_") || "Direto";
-      updates[`trafficSources.${sourceKey}`] = increment(1);
-    }
-    if (rawReferrerDomain && typeof rawReferrerDomain === "string") {
-      const refKey = rawReferrerDomain.trim().replace(/[^a-zA-Z0-9_-]/g, "_") || "Direto";
-      updates[`referrers.${refKey}`] = increment(1);
-    }
-    if (rawUtmSource && typeof rawUtmSource === "string") {
-      const utmKey = (rawUtmCampaign || rawUtmSource).trim().replace(/[^a-zA-Z0-9_-]/g, "_");
-      if (utmKey) {
-        updates[`utms.${utmKey}`] = increment(1);
-      }
-    }
-
-    // 9. Devices, OS, Browsers
-    if (category) {
-      const deviceKey = category.replace(/[^a-zA-Z0-9_-]/g, "_");
-      updates[`devices.${deviceKey}`] = increment(1);
-    }
-    if (os) {
-      const osKey = os.replace(/[^a-zA-Z0-9_-]/g, "_");
-      updates[`os.${osKey}`] = increment(1);
-    }
-    if (browser) {
-      const browserKey = browser.replace(/[^a-zA-Z0-9_-]/g, "_");
-      updates[`browsers.${browserKey}`] = increment(1);
-    }
-
-    // 10. Geolocation from infrastructure headers
-    const geo = extractGeoHeaders(req);
-    if (geo.country) {
-      const cleanCountry = geo.country.replace(/[^a-zA-Z0-9_-]/g, "_");
-      updates[`countries.${cleanCountry}`] = increment(1);
-      if (geo.region) {
-        const cleanRegion = `${cleanCountry}_${geo.region}`.replace(/[^a-zA-Z0-9_-]/g, "_");
-        updates[`regions.${cleanRegion}`] = increment(1);
-      }
-      if (geo.city) {
-        const cleanCity = `${cleanCountry}_${geo.city}`.replace(/[^a-zA-Z0-9_-]/g, "_");
-        updates[`cities.${cleanCity}`] = increment(1);
-      }
-    } else {
-      updates[`countries.Nao_identificada`] = increment(1);
-    }
-
-    // 11. Custom Technical Events
+    // 8. Custom Technical Events
     if (rawEvent && typeof rawEvent === "string") {
       const eventKey = rawEvent.trim().replace(/[^a-zA-Z0-9_-]/g, "_");
       if (eventKey) {

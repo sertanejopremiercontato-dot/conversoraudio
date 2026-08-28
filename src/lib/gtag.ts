@@ -1,3 +1,5 @@
+import { shouldTrackAnalytics } from "../v2/integrations/analytics";
+
 /**
  * Google Analytics 4 (GA4) Integration Utilities
  */
@@ -94,6 +96,8 @@ export function updateGAConsent(status: "granted" | "denied") {
 function sendInternalTelemetryBeacon(payload: Record<string, any>): void {
   try {
     if (typeof window === "undefined") return;
+
+    if (!shouldTrackAnalytics()) return;
 
     const path = window.location.pathname || "";
     if (path.includes("/admin") || path.includes("/preview")) return;

@@ -4,9 +4,13 @@
  * Responsável por instrumentar pageviews e eventos exclusivos da V2
  * sem acoplamento ou importações da V1.
  * 
- * Regras de Privacidade:
- * Eventos V2 utilizam uma lista restrita de parâmetros e não enviam os campos pessoais identificados nesta implementação.
- * (Nomes de arquivo, caminhos, UIDs e emails são estritamente descartados).
+ * Regras de Integridade & Privacidade:
+ * - Não rastreia rotas /admin ou /preview
+ * - Não rastreia ambientes de desenvolvimento (localhost, AI Studio preview, etc.)
+ * - Respeita a flag de exclusão do proprietário (analyticsOwnerExcluded)
+ * - Associa geolocalização, dispositivo e tecnologia ESTRITAMENTE à SESSÃO ÚNICA (1x por sessão)
+ * - Banners, conversões e downloads NUNCA incrementam geolocalização ou dispositivos
+ * - Nomes de arquivo, caminhos, UIDs e emails são estritamente descartados
  */
 
 // Lista de parâmetros técnicos permitidos (Safe List)
@@ -29,6 +33,82 @@ const ALLOWED_PARAM_KEYS = new Set([
   "duration_seconds",
   "durationSeconds"
 ]);
+
+/**
+ * Verifica se o navegador atual pertence ao administrador/proprietário e deve ser excluído
+ */
+export function isOwnerExcluded(): boolean {
+  try {
+    if (typeof window === "undefined") return false;
+    return (
+      localStorage.getItem("analyticsOwnerExcluded") === "true" ||
+      localStorage.getItem("conversoraudio_owner_excluded") === "true" ||
+      sessionStorage.getItem("analyticsOwnerExcluded") === "true" ||
+      localStorage.getItem("v2_admin_auth") === "true"
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Ativa ou desativa a exclusão de métricas para o navegador do proprietário
+ */
+export function setOwnerExcluded(excluded: boolean): void {
+  try {
+    if (typeof window === "undefined") return;
+    if (excluded) {
+      localStorage.setItem("analyticsOwnerExcluded", "true");
+      sessionStorage.setItem("analyticsOwnerExcluded", "true");
+    } else {
+      localStorage.removeItem("analyticsOwnerExcluded");
+      sessionStorage.removeItem("analyticsOwnerExcluded");
+      localStorage.removeItem("conversoraudio_owner_excluded");
+    }
+  } catch {}
+}
+
+/**
+ * Verifica se o ambiente atual é preview/dev/localhost/AI Studio
+ */
+export function isDevOrPreviewEnvironment(): boolean {
+  try {
+    if (typeof window === "undefined") return false;
+    const hostname = (window.location.hostname || "").toLowerCase();
+    const pathname = (window.location.pathname || "").toLowerCase();
+
+    if (pathname.includes("/admin") || pathname.includes("/preview")) {
+      return true;
+    }
+
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname.includes("ai.studio") ||
+      hostname.includes("aistudio") ||
+      hostname.includes("webcontainer") ||
+      hostname.includes("github.dev") ||
+      hostname.includes("stackblitz") ||
+      hostname.includes(".run.app")
+    ) {
+      return true;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Condição geral para envio de telemetria pública
+ */
+export function shouldTrackAnalytics(): boolean {
+  if (typeof window === "undefined") return false;
+  if (isDevOrPreviewEnvironment()) return false;
+  if (isOwnerExcluded()) return false;
+  return true;
+}
 
 /**
  * Sanitiza e remove qualquer dado não autorizado ou sensível antes do envio
@@ -186,9 +266,10 @@ function sendTelemetryBeacon(payload: Record<string, any>): void {
   try {
     if (typeof window === "undefined") return;
     
-    // Não contabiliza rotas administrativas
-    const path = window.location.pathname || "";
-    if (path.includes("/admin")) return;
+    // Regra Crítica: Nunca rastrear em ambientes dev/preview, rotas admin ou se proprietário estiver excluído
+    if (!shouldTrackAnalytics()) {
+      return;
+    }
 
     const { sessionId, isNewSession } = getAnonymousSessionData();
     const traffic = getSafeTrafficSource();
@@ -211,6 +292,7 @@ function sendTelemetryBeacon(payload: Record<string, any>): void {
       ...payload,
       sessionId,
       isNewSession,
+      isOwnerExcluded: false,
       timeZone,
       clientCategory,
       referrerDomain: traffic.referrerDomain,

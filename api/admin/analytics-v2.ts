@@ -272,50 +272,55 @@ export default async function handler(req: any, res: any) {
         }
       }
 
-      // Traffic sources & UTMs
-      const docTrafficSources = extractMetricsMap(d, "trafficSources");
-      for (const [sKey, count] of Object.entries(docTrafficSources)) {
-        const cleanSource = sKey.replace(/_/g, " ");
-        trafficSourcesMap[cleanSource] = (trafficSourcesMap[cleanSource] || 0) + Number(count || 0);
-      }
+      // Regra de Integridade V2: Métricas de tecnologia, geolocalização e origem são lidas SOMENTE de registros V2 (>= 28/08/2026)
+      const isSchemaV2 = Number(d.schemaVersion || 0) >= 2 || item.date >= "2026-08-28";
 
-      const docUtms = extractMetricsMap(d, "utms");
-      for (const [uKey, count] of Object.entries(docUtms)) {
-        const cleanUtm = uKey.replace(/_/g, " ");
-        utmsMap[cleanUtm] = (utmsMap[cleanUtm] || 0) + Number(count || 0);
-      }
+      if (isSchemaV2) {
+        // Traffic sources & UTMs
+        const docTrafficSources = extractMetricsMap(d, "trafficSources");
+        for (const [sKey, count] of Object.entries(docTrafficSources)) {
+          const cleanSource = sKey.replace(/_/g, " ");
+          trafficSourcesMap[cleanSource] = (trafficSourcesMap[cleanSource] || 0) + Number(count || 0);
+        }
 
-      // Devices, OS, Browsers
-      const docDevices = extractMetricsMap(d, "devices");
-      for (const [devKey, count] of Object.entries(docDevices)) {
-        devicesMap[devKey] = (devicesMap[devKey] || 0) + Number(count || 0);
-      }
+        const docUtms = extractMetricsMap(d, "utms");
+        for (const [uKey, count] of Object.entries(docUtms)) {
+          const cleanUtm = uKey.replace(/_/g, " ");
+          utmsMap[cleanUtm] = (utmsMap[cleanUtm] || 0) + Number(count || 0);
+        }
 
-      const docOs = extractMetricsMap(d, "os");
-      for (const [osKey, count] of Object.entries(docOs)) {
-        osMap[osKey] = (osMap[osKey] || 0) + Number(count || 0);
-      }
+        // Devices, OS, Browsers
+        const docDevices = extractMetricsMap(d, "devices");
+        for (const [devKey, count] of Object.entries(docDevices)) {
+          devicesMap[devKey] = (devicesMap[devKey] || 0) + Number(count || 0);
+        }
 
-      const docBrowsers = extractMetricsMap(d, "browsers");
-      for (const [brKey, count] of Object.entries(docBrowsers)) {
-        browsersMap[brKey] = (browsersMap[brKey] || 0) + Number(count || 0);
-      }
+        const docOs = extractMetricsMap(d, "os");
+        for (const [osKey, count] of Object.entries(docOs)) {
+          osMap[osKey] = (osMap[osKey] || 0) + Number(count || 0);
+        }
 
-      // Locations
-      const docCountries = extractMetricsMap(d, "countries");
-      for (const [cKey, count] of Object.entries(docCountries)) {
-        const countryFormatted = formatCountryName(cKey);
-        countriesMap[countryFormatted] = (countriesMap[countryFormatted] || 0) + Number(count || 0);
-      }
+        const docBrowsers = extractMetricsMap(d, "browsers");
+        for (const [brKey, count] of Object.entries(docBrowsers)) {
+          browsersMap[brKey] = (browsersMap[brKey] || 0) + Number(count || 0);
+        }
 
-      const docRegions = extractMetricsMap(d, "regions");
-      for (const [rKey, count] of Object.entries(docRegions)) {
-        regionsMap[rKey] = (regionsMap[rKey] || 0) + Number(count || 0);
-      }
+        // Locations
+        const docCountries = extractMetricsMap(d, "countries");
+        for (const [cKey, count] of Object.entries(docCountries)) {
+          const countryFormatted = formatCountryName(cKey);
+          countriesMap[countryFormatted] = (countriesMap[countryFormatted] || 0) + Number(count || 0);
+        }
 
-      const docCities = extractMetricsMap(d, "cities");
-      for (const [ctKey, count] of Object.entries(docCities)) {
-        citiesMap[ctKey] = (citiesMap[ctKey] || 0) + Number(count || 0);
+        const docRegions = extractMetricsMap(d, "regions");
+        for (const [rKey, count] of Object.entries(docRegions)) {
+          regionsMap[rKey] = (regionsMap[rKey] || 0) + Number(count || 0);
+        }
+
+        const docCities = extractMetricsMap(d, "cities");
+        for (const [ctKey, count] of Object.entries(docCities)) {
+          citiesMap[ctKey] = (citiesMap[ctKey] || 0) + Number(count || 0);
+        }
       }
 
       // Custom Events
@@ -325,10 +330,11 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    summary.activeUsers = Math.max(summary.pageViews > 0 ? 1 : 0, Math.round(summary.pageViews * 0.75));
-    if (summary.sessions === 0 && summary.pageViews > 0) {
-      summary.sessions = Math.max(summary.activeUsers, Math.round(summary.pageViews * 0.85));
-    }
+    // Regra Matemática: Visitantes Únicos Estimados NUNCA podem ser superiores a Sessões (1 visitante = >= 1 sessão)
+    summary.activeUsers = summary.sessions > 0 
+      ? Math.min(summary.sessions, Math.max(1, Math.round(summary.sessions * 0.92)))
+      : (summary.pageViews > 0 ? 1 : 0);
+
     if (summary.pageViews > 0) {
       summary.conversionRate = ((summary.conversions / summary.pageViews) * 100).toFixed(1) + "%";
     }

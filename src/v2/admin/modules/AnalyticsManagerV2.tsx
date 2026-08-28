@@ -23,7 +23,10 @@ import {
   Layers,
   MapPin,
   ExternalLink,
-  Tag
+  Tag,
+  ArrowRight,
+  ShieldCheck,
+  Activity
 } from "lucide-react";
 import { useAnalyticsV2, AnalyticsPeriodV2, AnalyticsBannerItemV2 } from "../hooks/useAnalyticsV2";
 
@@ -38,6 +41,7 @@ export const AnalyticsManagerV2: React.FC = () => {
   } = useAnalyticsV2();
 
   const [techTab, setTechTab] = useState<"devices" | "browsers" | "os">("devices");
+  const [geoTab, setGeoTab] = useState<"cities" | "regions" | "countries">("cities");
 
   const periodLabels: Record<AnalyticsPeriodV2, string> = {
     today: "Hoje",
@@ -56,6 +60,7 @@ export const AnalyticsManagerV2: React.FC = () => {
   );
 
   const bannersList: AnalyticsBannerItemV2[] = data?.banners || data?.bannersRanking || [];
+  const funnel = data?.funnel;
 
   return (
     <div className="space-y-6" id="v2-admin-analytics-manager">
@@ -67,10 +72,10 @@ export const AnalyticsManagerV2: React.FC = () => {
           </div>
           <div>
             <h3 className="font-bold text-slate-900 dark:text-white text-base">
-              Métricas & Acessos da Plataforma
+              Painel Unificado de Métricas & Analytics
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Telemetria nativa agregada em tempo real com source of truth no Firestore (<code className="font-mono">site_metrics</code>)
+              Tráfego oficial via Google Analytics 4 integrado à telemetria de eventos nativa (<code className="font-mono">site_metrics</code>)
             </p>
           </div>
         </div>
@@ -106,12 +111,31 @@ export const AnalyticsManagerV2: React.FC = () => {
         </div>
       </div>
 
-      {/* Telemetry Status Notice */}
-      <div className="bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/70 dark:border-emerald-900/40 rounded-2xl px-4 py-3 flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-300">
-        <div className="flex items-center gap-2.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-          <span>
-            <strong>Telemetria Nativa Ativa:</strong> Dados persistidos e agregados por dia e totais no Firestore. Sem mocks ou números simulados.
+      {/* Status Badges: GA4 & Telemetry */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* GA4 Status */}
+        <div className="bg-sky-50/60 dark:bg-sky-950/20 border border-sky-200/60 dark:border-sky-900/40 rounded-2xl px-4 py-3 flex items-center justify-between gap-2 text-xs text-sky-900 dark:text-sky-200">
+          <div className="flex items-center gap-2.5">
+            <div className={`w-2.5 h-2.5 rounded-full ${data?.ga4Configured ? "bg-sky-500 animate-pulse" : "bg-amber-400"} shrink-0`} />
+            <span>
+              <strong>Google Analytics 4:</strong> {data?.ga4Configured ? "Conectado (Fonte Oficial de Tráfego)" : "Sincronizando dados..."}
+            </span>
+          </div>
+          <span className="text-[11px] bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-300 px-2 py-0.5 rounded-md font-medium">
+            GA4 REST
+          </span>
+        </div>
+
+        {/* Telemetry Status */}
+        <div className="bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/40 rounded-2xl px-4 py-3 flex items-center justify-between gap-2 text-xs text-emerald-900 dark:text-emerald-200">
+          <div className="flex items-center gap-2.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span>
+              <strong>Telemetria de Eventos:</strong> Ativa (Ferramentas, Conversões, Downloads & Banners)
+            </span>
+          </div>
+          <span className="text-[11px] bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-md font-medium">
+            Firestore
           </span>
         </div>
       </div>
@@ -127,23 +151,28 @@ export const AnalyticsManagerV2: React.FC = () => {
         </div>
       )}
 
-      {/* Primary KPI Cards (6 Cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
-        {/* Pageviews */}
+      {/* ========================================================
+          TOP 5 KPI CARDS
+          ======================================================== */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5">
+        {/* Active Users (GA4) */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-1.5">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span className="font-medium">Pageviews</span>
-            <Eye className="w-4 h-4 text-sky-500" />
+            <span className="font-medium">Usuários Ativos</span>
+            <Users className="w-4 h-4 text-sky-500" />
           </div>
           <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
-            {loading ? "..." : (data?.summary?.pageViews ?? 0).toLocaleString("pt-BR")}
+            {loading ? "..." : (data?.summary?.activeUsers ?? 0).toLocaleString("pt-BR")}
           </div>
-          <p className="text-[11px] text-slate-400 truncate">
-            {hasData ? `Visualizações totais` : "Aguardando acessos"}
-          </p>
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-slate-400">Pessoas únicas</span>
+            <span className="text-[10px] font-semibold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/50 px-1.5 py-0.5 rounded">
+              GA4
+            </span>
+          </div>
         </div>
 
-        {/* Sessions */}
+        {/* Sessions (GA4) */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-1.5">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span className="font-medium">Sessões</span>
@@ -152,26 +181,32 @@ export const AnalyticsManagerV2: React.FC = () => {
           <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
             {loading ? "..." : (data?.summary?.sessions ?? 0).toLocaleString("pt-BR")}
           </div>
-          <p className="text-[11px] text-slate-400 truncate">
-            {hasData ? `Sessões únicas` : "Aguardando sessões"}
-          </p>
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-slate-400">Visitas à plataforma</span>
+            <span className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/50 px-1.5 py-0.5 rounded">
+              GA4
+            </span>
+          </div>
         </div>
 
-        {/* Visitors */}
+        {/* Pageviews (GA4) */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-1.5">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span className="font-medium">Visitantes</span>
-            <Users className="w-4 h-4 text-indigo-500" />
+            <span className="font-medium">Visualizações</span>
+            <Eye className="w-4 h-4 text-indigo-500" />
           </div>
           <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
-            {loading ? "..." : (data?.summary?.activeUsers ?? 0).toLocaleString("pt-BR")}
+            {loading ? "..." : (data?.summary?.pageViews ?? 0).toLocaleString("pt-BR")}
           </div>
-          <p className="text-[11px] text-slate-400 truncate">
-            {hasData ? `Usuários estimados` : "Aguardando acessos"}
-          </p>
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-slate-400">Páginas visualizadas</span>
+            <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-1.5 py-0.5 rounded">
+              GA4
+            </span>
+          </div>
         </div>
 
-        {/* Conversions */}
+        {/* Conversions (Firestore Telemetry) */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-1.5">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span className="font-medium">Conversões</span>
@@ -180,12 +215,15 @@ export const AnalyticsManagerV2: React.FC = () => {
           <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
             {loading ? "..." : (data?.summary?.conversions ?? 0).toLocaleString("pt-BR")}
           </div>
-          <p className="text-[11px] text-slate-400 truncate">
-            {hasData ? `Ações concluídas` : "Aguardando"}
-          </p>
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-slate-400">Processamentos com êxito</span>
+            <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded">
+              Telemetria
+            </span>
+          </div>
         </div>
 
-        {/* Downloads */}
+        {/* Downloads (Firestore Telemetry) */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-1.5">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span className="font-medium">Downloads</span>
@@ -194,38 +232,103 @@ export const AnalyticsManagerV2: React.FC = () => {
           <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
             {loading ? "..." : (data?.summary?.downloads ?? 0).toLocaleString("pt-BR")}
           </div>
-          <p className="text-[11px] text-slate-400 truncate">
-            {hasData ? `Arquivos baixados` : "Aguardando"}
-          </p>
-        </div>
-
-        {/* Conversion Rate */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span className="font-medium">Taxa Conv.</span>
-            <Percent className="w-4 h-4 text-teal-500" />
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-slate-400">Arquivos baixados</span>
+            <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-1.5 py-0.5 rounded">
+              Telemetria
+            </span>
           </div>
-          <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
-            {loading ? "..." : (data?.summary?.conversionRate || ((data?.summary?.pageViews ?? 0) > 0 ? `${(((data?.summary?.conversions ?? 0) / (data?.summary?.pageViews ?? 1)) * 100).toFixed(1)}%` : "0%"))}
-          </div>
-          <p className="text-[11px] text-slate-400 truncate">
-            {hasData ? `Conversões / Views` : "Sem dados"}
-          </p>
         </div>
       </div>
 
       {/* ========================================================
-          TABELA EXCLUSIVA: DESEMPENHO DE BANNERS & ANÚNCIOS
+          FUNIL DE USO DA PLATAFORMA
+          ======================================================== */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4" id="v2-admin-funnel-section">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <Activity className="w-4 h-4 text-sky-500" />
+              <span>Funil de Uso do Usuário</span>
+            </h4>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Taxa de progressão desde a visita inicial até a conclusão do download
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          {/* Step 1: Sessions */}
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">1. Sessões (GA4)</span>
+              <Compass className="w-4 h-4 text-violet-500" />
+            </div>
+            <div className="text-xl font-bold text-slate-900 dark:text-white">
+              {(funnel?.sessions ?? data?.summary?.sessions ?? 0).toLocaleString("pt-BR")}
+            </div>
+            <p className="text-[11px] text-slate-400">Total de visitas à plataforma</p>
+          </div>
+
+          {/* Step 2: Tool Opens */}
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">2. Abertura de Ferramentas</span>
+              <Flame className="w-4 h-4 text-amber-500" />
+            </div>
+            <div className="text-xl font-bold text-slate-900 dark:text-white">
+              {(funnel?.toolOpens ?? 0).toLocaleString("pt-BR")}
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-violet-600 dark:text-violet-400 font-semibold">
+              <span>{funnel?.openRate || "0%"}</span>
+              <span className="text-slate-400 font-normal">taxa de abertura</span>
+            </div>
+          </div>
+
+          {/* Step 3: Conversions */}
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">3. Conversões Concluídas</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            </div>
+            <div className="text-xl font-bold text-slate-900 dark:text-white">
+              {(funnel?.conversions ?? data?.summary?.conversions ?? 0).toLocaleString("pt-BR")}
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+              <span>{funnel?.conversionRate || "0%"}</span>
+              <span className="text-slate-400 font-normal">taxa de conclusão</span>
+            </div>
+          </div>
+
+          {/* Step 4: Downloads */}
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">4. Downloads Realizados</span>
+              <Download className="w-4 h-4 text-sky-500" />
+            </div>
+            <div className="text-xl font-bold text-slate-900 dark:text-white">
+              {(funnel?.downloads ?? data?.summary?.downloads ?? 0).toLocaleString("pt-BR")}
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-sky-600 dark:text-sky-400 font-semibold">
+              <span>{funnel?.downloadRate || "0%"}</span>
+              <span className="text-slate-400 font-normal">taxa de download</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================
+          DESEMPENHO DE BANNERS & ANÚNCIOS (FIRESTORE)
           ======================================================== */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4" id="v2-admin-banner-performance-section">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
               <LayoutGrid className="w-4 h-4 text-indigo-500" />
-              <span>Desempenho de Banners & Anúncios</span>
+              <span>Desempenho de Banners & Anúncios (Telemetria Interna)</span>
             </h4>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Métricas reais vinculadas ao ID persistente de cada banner (≥50% visível por 1s para impressão e cliques reais).
+              Impressões reais (visibilidade ≥50% por 1s) e cliques vinculados ao ID de cada banner.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -244,7 +347,7 @@ export const AnalyticsManagerV2: React.FC = () => {
                 <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-semibold bg-slate-50/50 dark:bg-slate-800/20">
                   <th className="py-3 px-3">Banner</th>
                   <th className="py-3 px-3">Status</th>
-                  <th className="py-3 px-3">Posição / Espaço</th>
+                  <th className="py-3 px-3">Posição</th>
                   <th className="py-3 px-3 text-right">Impressões Reais</th>
                   <th className="py-3 px-3 text-right">Cliques</th>
                   <th className="py-3 px-3 text-right">CTR (%)</th>
@@ -329,16 +432,16 @@ export const AnalyticsManagerV2: React.FC = () => {
       </div>
 
       {/* ========================================================
-          DESEMPENHO POR FERRAMENTA
+          DESEMPENHO POR FERRAMENTA (FIRESTORE)
           ======================================================== */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
         <div className="flex items-center justify-between">
           <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
             <Flame className="w-4 h-4 text-amber-500" />
-            <span>Desempenho por Ferramenta</span>
+            <span>Desempenho por Ferramenta (Telemetria Interna)</span>
           </h4>
           <span className="text-[11px] text-slate-400 font-medium">
-            Uso, conversões e downloads reais
+            Aberturas, conversões e downloads
           </span>
         </div>
 
@@ -388,17 +491,19 @@ export const AnalyticsManagerV2: React.FC = () => {
       </div>
 
       {/* ========================================================
-          GRID: ORIGEM DE TRÁFEGO, DISPOSITIVOS & TECNOLOGIA, LOCALIZAÇÃO
+          GRID: ORIGEM DE TRÁFEGO, DISPOSITIVOS & LOCALIZAÇÃO (GA4)
           ======================================================== */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Origem de Tráfego */}
+        {/* Origem de Tráfego [GA4] */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-3.5">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
               <Compass className="w-4 h-4 text-violet-500" />
-              <span>Origens de Tráfego</span>
+              <span>Origem do Tráfego</span>
             </h4>
-            <span className="text-[11px] text-slate-400">Sessões Reais</span>
+            <span className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/50 px-1.5 py-0.5 rounded">
+              GA4
+            </span>
           </div>
 
           {loading ? (
@@ -408,8 +513,11 @@ export const AnalyticsManagerV2: React.FC = () => {
               {data.trafficSources.map((item, idx) => (
                 <div key={idx} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">{item.source}</span>
-                    <span className="font-bold text-slate-900 dark:text-white">{item.sessions} ({item.percentage || "100%"})</span>
+                    <div className="min-w-0 pr-2">
+                      <p className="font-semibold text-slate-800 dark:text-slate-200 truncate">{item.source}</p>
+                      <p className="text-[10px] text-slate-400">{item.medium}</p>
+                    </div>
+                    <span className="font-bold text-slate-900 dark:text-white shrink-0">{item.sessions} sessões ({item.percentage || "100%"})</span>
                   </div>
                   <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
                     <div 
@@ -429,7 +537,7 @@ export const AnalyticsManagerV2: React.FC = () => {
                   {data.utms.map((u, i) => (
                     <div key={i} className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
                       <span>{u.campaign}</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-300">{u.count} cliques</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">{u.count} sessões</span>
                     </div>
                   ))}
                 </div>
@@ -440,12 +548,12 @@ export const AnalyticsManagerV2: React.FC = () => {
           )}
         </div>
 
-        {/* Dispositivos e Tecnologia */}
+        {/* Dispositivos e Tecnologia [GA4] */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-3.5">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
               <Smartphone className="w-4 h-4 text-emerald-500" />
-              <span>Tecnologia & Acesso</span>
+              <span>Tecnologia & Dispositivos</span>
             </h4>
             
             {/* Sub-tabs for Tech */}
@@ -486,7 +594,7 @@ export const AnalyticsManagerV2: React.FC = () => {
                         {item.category === "Desktop" ? <Laptop className="w-3.5 h-3.5 text-slate-500" /> : item.category === "Tablet" ? <Tablet className="w-3.5 h-3.5 text-slate-500" /> : <Smartphone className="w-3.5 h-3.5 text-slate-500" />}
                         {item.category}
                       </span>
-                      <span className="font-bold text-slate-900 dark:text-white">{item.count} ({item.percentage})</span>
+                      <span className="font-bold text-slate-900 dark:text-white">{item.sessions || item.count} ({item.percentage})</span>
                     </div>
                     <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
                       <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.percentage }} />
@@ -504,7 +612,7 @@ export const AnalyticsManagerV2: React.FC = () => {
                   <div key={idx} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-semibold text-slate-800 dark:text-slate-200">{item.browser}</span>
-                      <span className="font-bold text-slate-900 dark:text-white">{item.count} ({item.percentage})</span>
+                      <span className="font-bold text-slate-900 dark:text-white">{item.sessions || item.count} ({item.percentage})</span>
                     </div>
                     <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
                       <div className="bg-sky-500 h-full rounded-full" style={{ width: item.percentage }} />
@@ -522,7 +630,7 @@ export const AnalyticsManagerV2: React.FC = () => {
                   <div key={idx} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-semibold text-slate-800 dark:text-slate-200">{item.os}</span>
-                      <span className="font-bold text-slate-900 dark:text-white">{item.count} ({item.percentage})</span>
+                      <span className="font-bold text-slate-900 dark:text-white">{item.sessions || item.count} ({item.percentage})</span>
                     </div>
                     <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
                       <div className="bg-indigo-500 h-full rounded-full" style={{ width: item.percentage }} />
@@ -536,84 +644,113 @@ export const AnalyticsManagerV2: React.FC = () => {
           )}
         </div>
 
-        {/* Localização dos Acessos */}
+        {/* Localização [GA4] */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-3.5">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
               <Globe2 className="w-4 h-4 text-sky-500" />
-              <span>Localização dos Acessos</span>
+              <span>Localização Geográfica</span>
             </h4>
-            <span className="text-[11px] text-slate-400">Headers Reais</span>
+            
+            {/* Sub-tabs for Geo */}
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-[10px] font-medium">
+              <button 
+                type="button" 
+                onClick={() => setGeoTab("cities")}
+                className={`px-2 py-1 rounded-md cursor-pointer transition-colors ${geoTab === "cities" ? "bg-white dark:bg-slate-900 text-sky-700 dark:text-sky-300 shadow-xs" : "text-slate-500"}`}
+              >
+                Cidades
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setGeoTab("regions")}
+                className={`px-2 py-1 rounded-md cursor-pointer transition-colors ${geoTab === "regions" ? "bg-white dark:bg-slate-900 text-sky-700 dark:text-sky-300 shadow-xs" : "text-slate-500"}`}
+              >
+                Estados
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setGeoTab("countries")}
+                className={`px-2 py-1 rounded-md cursor-pointer transition-colors ${geoTab === "countries" ? "bg-white dark:bg-slate-900 text-sky-700 dark:text-sky-300 shadow-xs" : "text-slate-500"}`}
+              >
+                Países
+              </button>
+            </div>
           </div>
 
           {loading ? (
             <p className="text-xs text-slate-400 py-3 text-center">Carregando...</p>
-          ) : data?.locations?.countries && data.locations.countries.length > 0 ? (
-            <div className="space-y-3">
-              {/* Países */}
-              <div className="space-y-2">
-                <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Top Países</p>
-                {data.locations.countries.map((c, i) => (
+          ) : geoTab === "cities" ? (
+            <div className="space-y-2">
+              {data?.locations?.cities && data.locations.cities.length > 0 ? (
+                data.locations.cities.map((ct, i) => (
+                  <div key={i} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">{ct.city} ({ct.country})</span>
+                      <span className="font-bold text-slate-900 dark:text-white">{ct.users || ct.count} usuários ({ct.percentage || "100%"})</span>
+                    </div>
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-sky-500 h-full rounded-full" style={{ width: ct.percentage || "100%" }} />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-400 py-3 text-center">Sem dados de cidades.</p>
+              )}
+            </div>
+          ) : geoTab === "regions" ? (
+            <div className="space-y-2">
+              {data?.locations?.regions && data.locations.regions.length > 0 ? (
+                data.locations.regions.map((r, i) => (
+                  <div key={i} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">{r.region} ({r.country})</span>
+                      <span className="font-bold text-slate-900 dark:text-white">{r.users || r.count} usuários ({r.percentage || "100%"})</span>
+                    </div>
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-sky-500 h-full rounded-full" style={{ width: r.percentage || "100%" }} />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-400 py-3 text-center">Sem dados de estados.</p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {data?.locations?.countries && data.locations.countries.length > 0 ? (
+                data.locations.countries.map((c, i) => (
                   <div key={i} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-semibold text-slate-800 dark:text-slate-200">{c.country}</span>
-                      <span className="font-bold text-slate-900 dark:text-white">{c.count} ({c.percentage})</span>
+                      <span className="font-bold text-slate-900 dark:text-white">{c.users || c.count} usuários ({c.percentage})</span>
                     </div>
                     <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
                       <div className="bg-sky-500 h-full rounded-full" style={{ width: c.percentage }} />
                     </div>
                   </div>
-                ))}
-              </div>
-
-              {/* Estados / Regiões */}
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
-                <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Estados / Regiões</p>
-                {data.locations.hasRegionData ? (
-                  data.locations.regions.map((r, i) => (
-                    <div key={i} className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 py-1">
-                      <span>{r.region} ({r.country})</span>
-                      <span className="font-semibold">{r.count}</span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-[11px] text-slate-400 italic py-1">
-                    Não disponível (infraestrutura Cloud Run não envia header de região)
-                  </p>
-                )}
-              </div>
-
-              {/* Cidades */}
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
-                <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Cidades</p>
-                {data.locations.hasCityData ? (
-                  data.locations.cities.map((ct, i) => (
-                    <div key={i} className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 py-1">
-                      <span>{ct.city} ({ct.country})</span>
-                      <span className="font-semibold">{ct.count}</span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-[11px] text-slate-400 italic py-1">
-                    Não disponível (infraestrutura Cloud Run não envia header de cidade)
-                  </p>
-                )}
-              </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-400 py-3 text-center">Sem dados de países.</p>
+              )}
             </div>
-          ) : (
-            <p className="text-xs text-slate-400 py-3 text-center">Sem dados de localização ainda.</p>
           )}
         </div>
       </div>
 
       {/* ========================================================
-          PÁGINAS MAIS ACESSADAS
+          PÁGINAS MAIS ACESSADAS [GA4]
           ======================================================== */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-3">
-        <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-          <FileText className="w-4 h-4 text-sky-500" />
-          <span>Páginas Mais Acessadas</span>
-        </h4>
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+            <FileText className="w-4 h-4 text-sky-500" />
+            <span>Páginas Mais Acessadas</span>
+          </h4>
+          <span className="text-[10px] font-semibold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/50 px-1.5 py-0.5 rounded">
+            GA4
+          </span>
+        </div>
         {loading ? (
           <p className="text-xs text-slate-400 py-4 text-center">Carregando páginas...</p>
         ) : data?.topPages && data.topPages.length > 0 ? (
@@ -621,9 +758,9 @@ export const AnalyticsManagerV2: React.FC = () => {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 font-semibold bg-slate-50/50 dark:bg-slate-800/20">
-                  <th className="py-2.5 px-3">Rota</th>
-                  <th className="py-2.5 px-3 text-right">Pageviews</th>
-                  <th className="py-2.5 px-3 text-right">Usuários Estimados</th>
+                  <th className="py-2.5 px-3">Rota / URL</th>
+                  <th className="py-2.5 px-3 text-right">Visualizações</th>
+                  <th className="py-2.5 px-3 text-right">Usuários Ativos</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -638,40 +775,45 @@ export const AnalyticsManagerV2: React.FC = () => {
             </table>
           </div>
         ) : (
-          <p className="text-xs text-slate-400 py-4 text-center">Aguardando novos acessos em rotas públicas.</p>
+          <p className="text-xs text-slate-400 py-4 text-center">Aguardando acessos em rotas públicas.</p>
         )}
       </div>
 
       {/* ========================================================
-          TENDÊNCIA DIÁRIA
+          TENDÊNCIA DIÁRIA (GA4 + TELEMETRIA)
           ======================================================== */}
       {data?.dailyTrend && data.dailyTrend.length > 0 && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-3">
-          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-sky-500" />
-            <span>Tendência Diária</span>
-          </h4>
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-sky-500" />
+              <span>Tendência Diária Unificada</span>
+            </h4>
+            <span className="text-[11px] text-slate-400">
+              Tráfego (GA4) e Operações (Telemetria) por Dia
+            </span>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 font-semibold bg-slate-50/50 dark:bg-slate-800/20">
                   <th className="py-2.5 px-3">Data</th>
-                  <th className="py-2.5 px-3 text-right">Sessões</th>
-                  <th className="py-2.5 px-3 text-right">Visitantes</th>
-                  <th className="py-2.5 px-3 text-right">Pageviews</th>
-                  <th className="py-2.5 px-3 text-right">Conversões</th>
-                  <th className="py-2.5 px-3 text-right">Downloads</th>
+                  <th className="py-2.5 px-3 text-right">Usuários (GA4)</th>
+                  <th className="py-2.5 px-3 text-right">Sessões (GA4)</th>
+                  <th className="py-2.5 px-3 text-right">Views (GA4)</th>
+                  <th className="py-2.5 px-3 text-right">Conversões (Telemetria)</th>
+                  <th className="py-2.5 px-3 text-right">Downloads (Telemetria)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {data.dailyTrend.map((item, idx) => (
                   <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                     <td className="py-2.5 px-3 font-medium text-slate-700 dark:text-slate-300">{item.date}</td>
-                    <td className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white">{(item.sessions || item.users || 0).toLocaleString("pt-BR")}</td>
-                    <td className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white">{(item.users || 0).toLocaleString("pt-BR")}</td>
+                    <td className="py-2.5 px-3 text-right font-bold text-sky-600 dark:text-sky-400">{(item.users || 0).toLocaleString("pt-BR")}</td>
+                    <td className="py-2.5 px-3 text-right font-bold text-violet-600 dark:text-violet-400">{(item.sessions || 0).toLocaleString("pt-BR")}</td>
                     <td className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white">{(item.views || 0).toLocaleString("pt-BR")}</td>
                     <td className="py-2.5 px-3 text-right font-bold text-emerald-600 dark:text-emerald-400">{(item.conversions || 0).toLocaleString("pt-BR")}</td>
-                    <td className="py-2.5 px-3 text-right font-bold text-sky-600 dark:text-sky-400">{(item.downloads || 0).toLocaleString("pt-BR")}</td>
+                    <td className="py-2.5 px-3 text-right font-bold text-amber-600 dark:text-amber-400">{(item.downloads || 0).toLocaleString("pt-BR")}</td>
                   </tr>
                 ))}
               </tbody>
@@ -681,7 +823,7 @@ export const AnalyticsManagerV2: React.FC = () => {
       )}
 
       {/* ========================================================
-          EVENTOS TÉCNICOS REGISTRADOS
+          EVENTOS TÉCNICOS REGISTRADOS (TELEMETRIA FIRESTORE)
           ======================================================== */}
       {data?.events && data.events.length > 0 && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs space-y-4">
@@ -691,7 +833,7 @@ export const AnalyticsManagerV2: React.FC = () => {
             </div>
             <div>
               <h4 className="font-bold text-slate-900 dark:text-white text-sm">
-                Eventos Técnicos Registrados
+                Eventos Técnicos Registrados (Telemetria)
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Ações e gatilhos instrumentados na aplicação

@@ -8,6 +8,7 @@ import {
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../../../firebase";
 import { AdminUserV2 } from "../types";
+import { setOwnerExcluded } from "../../integrations/analytics";
 
 const BOOTSTRAP_ADMIN_EMAIL = "sertanejopremiercontato@gmail.com";
 
@@ -44,6 +45,7 @@ export function useAdminAuthV2() {
         }
 
         if (isActiveAdmin) {
+          setOwnerExcluded(true);
           if (isMounted) {
             setAdminUser({
               uid: firebaseUser.uid,

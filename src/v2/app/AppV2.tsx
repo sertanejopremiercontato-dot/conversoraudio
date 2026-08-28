@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { AppRouteV2 } from "../routes";
 import { MainLayoutV2 } from "../layout/MainLayoutV2";
 import { HomeV2 } from "../pages/HomeV2";
+import { ComoFuncionaPageV2 } from "../pages/ComoFuncionaPageV2";
 import { AudioConverterV2 } from "../tools/audio/AudioConverterV2";
 import { AudioMetadataV2 } from "../tools/metadata/AudioMetadataV2";
 import { VideoToAudioV2 } from "../tools/video/VideoToAudioV2";
@@ -31,7 +32,9 @@ export const AppV2: React.FC<AppV2Props> = ({
     if (initialRoute) return initialRoute;
     if (typeof window !== "undefined") {
       const path = window.location.pathname;
+      const hash = window.location.hash;
       if (path === "/admin" || path.startsWith("/admin/") || path === "/v2/admin" || path.startsWith("/v2/admin/")) return "admin";
+      if (path === "/como-funciona" || path === "/v2/como-funciona" || hash === "#como-funciona" || hash === "#contato") return "comoFunciona";
       if (path === "/audio" || path === "/v2/audio" || path === "/converter-audio" || path === "/v2/converter-audio") return "audio";
       if (path === "/audio/editor-metadados" || path === "/v2/audio/editor-metadados" || path === "/v2/metadados") return "audioMetadata";
       if (path === "/video-para-audio" || path === "/v2/video-para-audio") return "videoToAudio";
@@ -53,7 +56,9 @@ export const AppV2: React.FC<AppV2Props> = ({
   useEffect(() => {
     const handlePopState = () => {
       const path = window.location.pathname;
+      const hash = window.location.hash;
       if (path === "/admin" || path.startsWith("/admin/") || path === "/v2/admin" || path.startsWith("/v2/admin/")) setCurrentRoute("admin");
+      else if (path === "/como-funciona" || path === "/v2/como-funciona" || hash === "#como-funciona" || hash === "#contato") setCurrentRoute("comoFunciona");
       else if (path === "/audio" || path === "/v2/audio" || path === "/converter-audio" || path === "/v2/converter-audio") setCurrentRoute("audio");
       else if (path === "/audio/editor-metadados" || path === "/v2/audio/editor-metadados" || path === "/v2/metadados") setCurrentRoute("audioMetadata");
       else if (path === "/video-para-audio" || path === "/v2/video-para-audio") setCurrentRoute("videoToAudio");
@@ -85,6 +90,8 @@ export const AppV2: React.FC<AppV2Props> = ({
   useEffect(() => {
     if (currentRoute === "home") {
       trackPageViewV2("/", "Conversor de Áudio & Mídia Online");
+    } else if (currentRoute === "comoFunciona") {
+      trackPageViewV2("/como-funciona", "Como Funciona & Contato");
     } else if (currentRoute === "audio") {
       trackPageViewV2("/audio", "Conversor de Áudio Online");
     } else if (currentRoute === "audioMetadata") {
@@ -120,7 +127,7 @@ export const AppV2: React.FC<AppV2Props> = ({
       pdf: "/pdf",
       image: "/imagem",
       document: "/documento",
-      comoFunciona: "/#como-funciona",
+      comoFunciona: "/como-funciona",
       admin: "/admin"
     };
 
@@ -130,10 +137,7 @@ export const AppV2: React.FC<AppV2Props> = ({
     }
 
     if (route === "comoFunciona") {
-      const el = document.getElementById("como-funciona");
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth" });
-      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -149,8 +153,12 @@ export const AppV2: React.FC<AppV2Props> = ({
   }
 
   const renderContent = () => {
-    if (currentRoute === "home" || currentRoute === "comoFunciona") {
+    if (currentRoute === "home") {
       return <HomeV2 onNavigate={handleNavigate} />;
+    }
+
+    if (currentRoute === "comoFunciona") {
+      return <ComoFuncionaPageV2 onNavigate={handleNavigate} />;
     }
 
     if (currentRoute === "audio") {

@@ -67,7 +67,7 @@ export const NAV_ITEMS_V2: NavItemV2[] = [
   {
     id: "comoFunciona",
     label: "Como Funciona",
-    path: "/#como-funciona",
+    path: "/como-funciona",
     description: "Entenda o fluxo rápido e seguro de processamento"
   }
 ];

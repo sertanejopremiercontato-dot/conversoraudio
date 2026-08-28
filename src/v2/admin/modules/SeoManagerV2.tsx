@@ -40,7 +40,7 @@ interface RouteOption {
 
 const ROUTE_OPTIONS: RouteOption[] = [
   { key: "home", label: "Página Inicial (Home)", category: "Geral", path: "/" },
-  { key: "comoFunciona", label: "Como Funciona", category: "Geral", path: "/#como-funciona" },
+  { key: "comoFunciona", label: "Como Funciona", category: "Geral", path: "/como-funciona" },
   { key: "audio", label: "Conversor de Áudio", category: "Áudio", path: "/audio" },
   { key: "audioMetadata", label: "Editor de Metadados de Áudio", category: "Áudio", path: "/audio/editor-metadados" },
   { key: "videoToAudio", label: "Extrair Áudio de Vídeo", category: "Áudio", path: "/video-para-audio" },

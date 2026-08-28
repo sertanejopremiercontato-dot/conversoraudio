@@ -9,6 +9,7 @@ import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, Head
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import firebaseConfig from "./firebase-applet-config.json";
 import adsTrackClickHandler from "./api/ads-track-click";
+import contactHandler from "./api/contact";
 
 // Load environment variables
 dotenv.config();
@@ -127,6 +128,83 @@ async function runGA4ReportREST(propertyId: string, payload: any): Promise<any> 
   }
 
   return response.json();
+}
+
+// Lightweight Google Analytics 4 Realtime report client
+async function runGA4RealtimeReportREST(propertyId: string, payload: any): Promise<any> {
+  const clientEmail = process.env.GA4_CLIENT_EMAIL?.trim();
+  const rawKey = process.env.GA4_PRIVATE_KEY || "";
+  const repairedKey = repairPrivateKey(rawKey);
+
+  if (!clientEmail || !repairedKey) {
+    throw new Error("Google Analytics ainda não configurado.");
+  }
+
+  const accessToken = await generateGoogleAccessToken(clientEmail, repairedKey);
+
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runRealtimeReport`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${accessToken}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Google Analytics Realtime API respondeu com status ${response.status}: ${errorBody}`);
+  }
+
+  return response.json();
+}
+
+// Format location names from GA4 to clear, user-friendly labels
+function formatLocationDisplay(raw: string | undefined): string {
+  if (!raw || raw === "(not set)" || raw === "Unknown" || raw === "(desconhecido)") {
+    return "Não disponível";
+  }
+  const clean = raw.trim();
+  const map: Record<string, string> = {
+    "Brazil": "Brasil",
+    "United States": "Estados Unidos",
+    "Portugal": "Portugal",
+    "Spain": "Espanha",
+    "Germany": "Alemanha",
+    "France": "França",
+    "Italy": "Itália",
+    "United Kingdom": "Reino Unido",
+    "Canada": "Canadá",
+    "Argentina": "Argentina",
+    "Chile": "Chile",
+    "Colombia": "Colômbia",
+    "Mexico": "México",
+    "State of Goias": "Goiás",
+    "Goias": "Goiás",
+    "Goiania": "Goiânia",
+    "State of Sao Paulo": "São Paulo",
+    "Sao Paulo": "São Paulo",
+    "State of Rio de Janeiro": "Rio de Janeiro",
+    "Rio de Janeiro": "Rio de Janeiro",
+    "State of Minas Gerais": "Minas Gerais",
+    "Belo Horizonte": "Belo Horizonte",
+    "Federal District": "Distrito Federal",
+    "Brasilia": "Brasília",
+    "State of Parana": "Paraná",
+    "Curitiba": "Curitiba",
+    "State of Rio Grande do Sul": "Rio Grande do Sul",
+    "Porto Alegre": "Porto Alegre",
+    "State of Bahia": "Bahia",
+    "Salvador": "Salvador",
+    "State of Ceara": "Ceará",
+    "Fortaleza": "Fortaleza",
+    "State of Pernambuco": "Pernambuco",
+    "Recife": "Recife",
+    "State of Santa Catarina": "Santa Catarina",
+    "Florianopolis": "Florianópolis"
+  };
+  return map[clean] || clean;
 }
 
 // Lightweight, 100% secure Firebase ID Token verification using standard Google REST API (completely bypasses gRPC & firebase-admin)
@@ -578,6 +656,98 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
     }
   });
 
+  // API Route: Support QR Code Real Upload (R2 with public/uploads fallback)
+  app.post("/api/admin/support-qr-upload", requireAdminMiddleware, express.json({ limit: "15mb" }), async (req, res) => {
+    try {
+      const { dataUrl, fileName, contentType } = req.body;
+
+      if (!dataUrl || typeof dataUrl !== "string") {
+        return res.status(400).json({
+          error: "INVALID_DATA",
+          message: "A imagem do QR Code (dataUrl) é obrigatória."
+        });
+      }
+
+      // Determine extension and content type
+      let mime = contentType || "image/png";
+      let ext = "png";
+      if (dataUrl.startsWith("data:")) {
+        const matches = dataUrl.match(/^data:([^;]+);base64,/);
+        if (matches && matches[1]) {
+          mime = matches[1];
+          if (mime.includes("jpeg") || mime.includes("jpg")) ext = "jpg";
+          else if (mime.includes("webp")) ext = "webp";
+          else if (mime.includes("png")) ext = "png";
+        }
+      } else if (fileName) {
+        if (fileName.endsWith(".webp")) { mime = "image/webp"; ext = "webp"; }
+        else if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) { mime = "image/jpeg"; ext = "jpg"; }
+      }
+
+      const base64Content = dataUrl.includes("base64,") ? dataUrl.split("base64,")[1] : dataUrl;
+      const buffer = Buffer.from(base64Content, "base64");
+
+      const timestamp = Date.now();
+      const storageKey = `support/support-qr-${timestamp}.${ext}`;
+      const localFileName = `support-qr-${timestamp}.${ext}`;
+
+      // Try uploading to R2 first
+      let r2Uploaded = false;
+      let finalUrl = "";
+      try {
+        const r2Config = getR2Client();
+        const { s3, bucketName } = r2Config;
+        const command = new PutObjectCommand({
+          Bucket: bucketName,
+          Key: storageKey,
+          Body: buffer,
+          ContentType: mime
+        });
+        await s3.send(command);
+        r2Uploaded = true;
+        finalUrl = `/api/ads-public-image?path=${storageKey}`;
+        console.log(`[SERVER] Support QR uploaded to R2: ${storageKey}`);
+      } catch (r2Err: any) {
+        console.warn("[SERVER] R2 upload unavailable for Support QR, using disk fallback:", r2Err.message);
+      }
+
+      // Fallback or local disk write
+      if (!r2Uploaded) {
+        const uploadsDir = path.join(process.cwd(), "public", "uploads");
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        const localPath = path.join(uploadsDir, localFileName);
+        fs.writeFileSync(localPath, buffer);
+
+        // Also write to dist/uploads if dist exists
+        const distUploadsDir = path.join(process.cwd(), "dist", "uploads");
+        if (fs.existsSync(path.join(process.cwd(), "dist"))) {
+          if (!fs.existsSync(distUploadsDir)) {
+            fs.mkdirSync(distUploadsDir, { recursive: true });
+          }
+          fs.writeFileSync(path.join(distUploadsDir, localFileName), buffer);
+        }
+
+        finalUrl = `/uploads/${localFileName}`;
+        console.log(`[SERVER] Support QR saved to local disk: ${finalUrl}`);
+      }
+
+      return res.json({
+        success: true,
+        url: finalUrl,
+        storagePath: r2Uploaded ? storageKey : `uploads/${localFileName}`,
+        contentType: mime
+      });
+    } catch (err: any) {
+      console.error("[SERVER] Error in support-qr-upload:", err);
+      return res.status(500).json({
+        error: "UPLOAD_ERROR",
+        message: err.message || String(err)
+      });
+    }
+  });
+
   // API Route: Diagnostics health check endpoint
   app.get("/api/health", (req, res) => {
     const r2Configured = !!(
@@ -669,11 +839,11 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
         });
       }
 
-      // Restrict access exclusively to approved directories ('ads/' and 'branding/')
-      if (!cleanStoragePath.startsWith("ads/") && !cleanStoragePath.startsWith("branding/")) {
+      // Restrict access exclusively to approved directories ('ads/', 'branding/', and 'support/')
+      if (!cleanStoragePath.startsWith("ads/") && !cleanStoragePath.startsWith("branding/") && !cleanStoragePath.startsWith("support/")) {
         return res.status(403).json({
           error: "FORBIDDEN_DIRECTORY",
-          message: "Acesso negado: a rota pública de imagens só aceita recursos das pastas 'ads/' e 'branding/'."
+          message: "Acesso negado: a rota pública de imagens só aceita recursos das pastas 'ads/', 'branding/' e 'support/'."
         });
       }
       
@@ -781,11 +951,11 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
         });
       }
 
-      // Validate storagePath starts with ads/ or branding/ to restrict deletion to allowed directories
-      if (!storagePath.startsWith("ads/") && !storagePath.startsWith("branding/")) {
+      // Validate storagePath starts with ads/, branding/, or support/ to restrict deletion to allowed directories
+      if (!storagePath.startsWith("ads/") && !storagePath.startsWith("branding/") && !storagePath.startsWith("support/")) {
         return res.status(403).json({
           error: "FORBIDDEN_PATH",
-          message: "A exclusão de arquivos é estrita e restrita às pastas 'ads/' e 'branding/' para segurança."
+          message: "A exclusão de arquivos é estrita e restrita às pastas 'ads/', 'branding/' e 'support/' para segurança."
         });
       }
 
@@ -858,6 +1028,9 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
 
   // API Route: Track ad click (atomic count)
   app.post("/api/ads-track-click", adsTrackClickHandler);
+
+  // API Route: Contact & Suggestions Form
+  app.post("/api/contact", express.json(), contactHandler);
 
   // API Route: Get Analytics report data (GA4 with real Firestore Telemetry Fallback)
   app.get("/api/admin/analytics", requireAdminMiddleware, async (req, res) => {
@@ -1298,27 +1471,35 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
     return formatted;
   }
 
-  const TIMEZONE_GEO_MAP: Record<string, { country: string; region: string; city: string }> = {
-    "America/Sao_Paulo": { country: "Brasil", region: "São Paulo", city: "São Paulo" },
-    "America/Recife": { country: "Brasil", region: "Pernambuco", city: "Recife" },
-    "America/Fortaleza": { country: "Brasil", region: "Ceará", city: "Fortaleza" },
-    "America/Bahia": { country: "Brasil", region: "Bahia", city: "Salvador" },
-    "America/Manaus": { country: "Brasil", region: "Amazonas", city: "Manaus" },
-    "America/Belem": { country: "Brasil", region: "Pará", city: "Belém" },
-    "America/Cuiaba": { country: "Brasil", region: "Mato Grosso", city: "Cuiabá" },
-    "America/Campo_Grande": { country: "Brasil", region: "Mato Grosso do Sul", city: "Campo Grande" },
-    "America/Porto_Velho": { country: "Brasil", region: "Rondônia", city: "Porto Velho" },
-    "America/Boa_Vista": { country: "Brasil", region: "Roraima", city: "Boa Vista" },
-    "America/Rio_Branco": { country: "Brasil", region: "Acre", city: "Rio Branco" },
-    "America/Maceio": { country: "Brasil", region: "Alagoas", city: "Maceió" },
-    "America/Araguaina": { country: "Brasil", region: "Tocantins", city: "Palmas" },
-    "America/Noronha": { country: "Brasil", region: "Pernambuco", city: "Fernando de Noronha" },
-    "America/Santarem": { country: "Brasil", region: "Pará", city: "Santarém" },
-    "America/Eirunepe": { country: "Brasil", region: "Amazonas", city: "Eirunepé" }
-  };
+  // Helper: Verifica se a requisição originou de ambiente de desenvolvimento/preview ou navegador excluído
+  function isDevOrPreviewRequest(req: express.Request): boolean {
+    try {
+      const host = String(req.headers["x-forwarded-host"] || req.headers["host"] || "").toLowerCase();
+      const origin = String(req.headers["origin"] || "").toLowerCase();
+      const referer = String(req.headers["referer"] || "").toLowerCase();
 
-  // Helper: Extração de Geolocalização segura a partir de headers de infraestrutura/proxy com fallback por timezone
-  function extractGeoHeaders(req: express.Request, clientTimeZone?: string) {
+      const devKeywords = [
+        "localhost",
+        "127.0.0.1",
+        "ai.studio",
+        "aistudio",
+        "webcontainer",
+        "github.dev",
+        "stackblitz",
+        ".run.app"
+      ];
+
+      for (const kw of devKeywords) {
+        if (host.includes(kw) || origin.includes(kw) || referer.includes(kw)) {
+          return true;
+        }
+      }
+    } catch {}
+    return false;
+  }
+
+  // Helper: Extração de Geolocalização ESTRITAMENTE a partir de headers de infraestrutura de produção
+  function extractGeoHeaders(req: express.Request) {
     const rawCountry = String(
       req.headers["x-vercel-ip-country"] ||
       req.headers["cf-ipcountry"] ||
@@ -1357,18 +1538,6 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
       } catch {}
     }
 
-    // Fallback inteligente para ambiente Cloud Run / Dev quando headers de borda não estão presentes
-    if (!country && clientTimeZone && TIMEZONE_GEO_MAP[clientTimeZone]) {
-      const tzInfo = TIMEZONE_GEO_MAP[clientTimeZone];
-      country = tzInfo.country;
-      if (!rawRegion) rawRegion = tzInfo.region;
-      if (!rawCity) rawCity = tzInfo.city;
-    } else if (country === "Brasil" && !rawRegion && clientTimeZone && TIMEZONE_GEO_MAP[clientTimeZone]) {
-      const tzInfo = TIMEZONE_GEO_MAP[clientTimeZone];
-      rawRegion = tzInfo.region;
-      if (!rawCity) rawCity = tzInfo.city;
-    }
-
     return {
       country: country && country.length <= 40 ? country : "",
       region: rawRegion && rawRegion.length <= 40 ? rawRegion : "",
@@ -1388,7 +1557,7 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
         bannerTitle: rawBannerTitle,
         placement: rawPlacement,
         isNewSession,
-        timeZone: rawTimeZone,
+        isOwnerExcluded,
         clientCategory: rawClientCategory,
         trafficSource: rawTrafficSource,
         referrerDomain: rawReferrerDomain,
@@ -1399,7 +1568,14 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
       } = req.body || {};
       
       const pathStr = typeof rawPath === "string" ? rawPath.trim() : "";
+      
+      // Regra Crítica: Ignora rotas /admin e /preview
       if (pathStr.includes("/admin") || pathStr.includes("/preview")) {
+        return res.json({ success: true, ignored: true });
+      }
+
+      // Regra Crítica: Ignora tráfego de dev/preview e navegação do proprietário
+      if (isOwnerExcluded || isDevOrPreviewRequest(req)) {
         return res.json({ success: true, ignored: true });
       }
 
@@ -1424,18 +1600,24 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
 
       const updates: Record<string, any> = {
         date: todayStr,
+        schemaVersion: 2,
         updatedAt: new Date().toISOString()
       };
 
-      // Page Views
+      // 1. Page Views (Incrementa ESTRITAMENTE em page_view de páginas públicas)
       if (type === "page_view" || !type) {
         updates.pageViews = increment(1);
         if (pathStr) {
           const cleanPathKey = pathStr.replace(/[^a-zA-Z0-9_-]/g, "_") || "home";
           updates[`routes.${cleanPathKey}`] = increment(1);
         }
+      }
 
-        // Devices, OS, Browsers e Geolocalização são incrementados estritamente em PAGE_VIEW
+      // 2. Sessão Única (Incrementa ESTRITAMENTE 1x por sessão: Sessão, Dispositivo, OS, Navegador, Geo e Origem)
+      if (isNewSession) {
+        updates.sessions = increment(1);
+
+        // Dispositivos, Sistemas Operacionais e Navegadores (1x por sessão)
         if (category) {
           const deviceKey = category.replace(/[^a-zA-Z0-9_-]/g, "_");
           updates[`devices.${deviceKey}`] = increment(1);
@@ -1449,7 +1631,8 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
           updates[`browsers.${browserKey}`] = increment(1);
         }
 
-        const geo = extractGeoHeaders(req, rawTimeZone);
+        // Geolocalização de infraestrutura real (1x por sessão)
+        const geo = extractGeoHeaders(req);
         if (geo.country) {
           const cleanCountry = geo.country.replace(/[^a-zA-Z0-9_-]/g, "_");
           updates[`countries.${cleanCountry}`] = increment(1);
@@ -1462,11 +1645,8 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
             updates[`cities.${cleanCity}`] = increment(1);
           }
         }
-      }
 
-      // Sessions, Traffic Sources & UTMs são contabilizados estritamente na nova sessão
-      if (isNewSession) {
-        updates.sessions = increment(1);
+        // Origem de Tráfego e Campanhas (1x por sessão)
         if (rawTrafficSource && typeof rawTrafficSource === "string") {
           const sourceKey = rawTrafficSource.trim().replace(/[^a-zA-Z0-9_-]/g, "_") || "Direto";
           updates[`trafficSources.${sourceKey}`] = increment(1);
@@ -1483,13 +1663,13 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
         }
       }
 
-      // Tools Usage
+      // 3. Ferramentas Abertas / Utilizadas
       const toolKey = typeof rawTool === "string" ? rawTool.trim().replace(/[^a-zA-Z0-9_-]/g, "_") : "";
       if (toolKey) {
         updates[`tools.${toolKey}`] = increment(1);
       }
 
-      // Conversions
+      // 4. Conversões Reais (NUNCA incrementam geo/device/traffic)
       const isConversion = type === "conversion" || (typeof rawEvent === "string" && (
         rawEvent.includes("conversion_completed") || 
         rawEvent.includes("convert_success") || 
@@ -1506,7 +1686,7 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
         }
       }
 
-      // Downloads
+      // 5. Downloads Reais (NUNCA incrementam geo/device/traffic)
       const isDownload = type === "download" || (typeof rawEvent === "string" && rawEvent.includes("download"));
       if (isDownload) {
         const actionsCount = Number(rawDownloadActions || 1);
@@ -1521,7 +1701,7 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
         }
       }
 
-      // Banner Impressions (>= 50% visible for 1s)
+      // 6. Impressões Reais de Banners (NUNCA incrementam geo/device/traffic)
       if (type === "banner_impression" && rawBannerId) {
         const bannerKey = String(rawBannerId).trim().replace(/[^a-zA-Z0-9_-]/g, "_");
         if (bannerKey) {
@@ -1536,7 +1716,7 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
         }
       }
 
-      // Banner Clicks (Real user click only)
+      // 7. Cliques Reais em Banners (NUNCA incrementam geo/device/traffic)
       if (type === "banner_click" && rawBannerId) {
         const bannerKey = String(rawBannerId).trim().replace(/[^a-zA-Z0-9_-]/g, "_");
         if (bannerKey) {
@@ -1551,7 +1731,7 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
         }
       }
 
-      // Custom Events
+      // 8. Eventos Técnicos Customizados
       if (rawEvent && typeof rawEvent === "string") {
         const eventKey = rawEvent.trim().replace(/[^a-zA-Z0-9_-]/g, "_");
         if (eventKey) {
@@ -1576,221 +1756,148 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
       const rawPeriod = String(req.query.period || "7daysAgo").trim();
       const period = ["today", "7daysAgo", "30daysAgo", "total"].includes(rawPeriod) ? rawPeriod : "7daysAgo";
 
-      let summary = { pageViews: 0, activeUsers: 0, sessions: 0, conversions: 0, downloads: 0, conversionRate: "0%" };
-      let dailyTrend: Array<{ date: string; users: number; views: number; sessions: number; conversions: number; downloads: number }> = [];
-      let topPagesMap: Record<string, number> = {};
-      let toolsRankingMap: Record<string, { views: number; conversions: number; downloads: number }> = {};
-      let bannerStatsMap: Record<string, { impressions: number; clicks: number; name?: string; placement?: string; lastImpressionAt?: string; lastClickAt?: string }> = {};
-      let trafficSourcesMap: Record<string, number> = {};
-      let utmsMap: Record<string, number> = {};
-      let devicesMap: Record<string, number> = {};
-      let osMap: Record<string, number> = {};
-      let browsersMap: Record<string, number> = {};
-      let countriesMap: Record<string, number> = {};
-      let regionsMap: Record<string, number> = {};
-      let citiesMap: Record<string, number> = {};
-      let eventsMap: Record<string, number> = {};
+      // 1. Process Firestore Application Events & Tool Metrics
+      let firestoreConversions = 0;
+      let firestoreDownloads = 0;
+      let firestoreToolOpens = 0;
+      let firestorePageViews = 0;
+      let firestoreSessions = 0;
+      const firestoreDailyMap: Record<string, { conversions: number; downloads: number; toolOpens: number; views: number; sessions: number }> = {};
+      const toolsRankingMap: Record<string, { views: number; conversions: number; downloads: number }> = {};
+      const bannerStatsMap: Record<string, { impressions: number; clicks: number; name?: string; placement?: string; lastImpressionAt?: string; lastClickAt?: string }> = {};
+      const eventsMap: Record<string, number> = {};
 
       if (db) {
-        const metricsColl = collection(db, "site_metrics");
-        const snap = await getDocs(metricsColl);
-        
-        const allDailyDocs: Array<{ id: string; date: string; data: any }> = [];
+        try {
+          const metricsColl = collection(db, "site_metrics");
+          const snap = await getDocs(metricsColl);
+          
+          let daysBack = 7;
+          if (period === "today") daysBack = 0;
+          else if (period === "7daysAgo") daysBack = 7;
+          else if (period === "30daysAgo") daysBack = 30;
+          else if (period === "total") daysBack = 9999;
 
-        snap.forEach((d) => {
-          if (d.id.startsWith("daily_")) {
-            const dateStr = d.id.replace("daily_", "");
-            allDailyDocs.push({ id: d.id, date: dateStr, data: d.data() });
-          }
-        });
+          const cutoffDate = new Date();
+          cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+          const cutoffStr = cutoffDate.toISOString().substring(0, 10);
 
-        allDailyDocs.sort((a, b) => a.date.localeCompare(b.date));
+          snap.forEach((d) => {
+            if (d.id.startsWith("daily_")) {
+              const dateStr = d.id.replace("daily_", "");
+              if (period !== "total" && dateStr < cutoffStr) return;
 
-        let daysBack = 7;
-        if (period === "today") daysBack = 0;
-        else if (period === "7daysAgo") daysBack = 7;
-        else if (period === "30daysAgo") daysBack = 30;
-        else if (period === "total") daysBack = 9999;
+              const data = d.data();
+              const pViews = Number(data.pageViews || 0);
+              const pConv = Number(data.conversions || 0);
+              const pDown = Number(data.downloads || 0);
+              const pSess = Number(data.sessions || 0);
 
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - daysBack);
-        const cutoffStr = cutoffDate.toISOString().substring(0, 10);
+              firestorePageViews += pViews;
+              firestoreConversions += pConv;
+              firestoreDownloads += pDown;
+              firestoreSessions += pSess;
 
-        const filteredDocs = period === "total" 
-          ? allDailyDocs 
-          : allDailyDocs.filter(d => d.date >= cutoffStr);
+              // Calculate tool opens for this daily doc
+              let dailyToolOpens = 0;
+              const docTools = extractMetricsMap(data, "tools");
+              for (const [tKey, count] of Object.entries(docTools)) {
+                const c = Number(count || 0);
+                dailyToolOpens += c;
+                if (!toolsRankingMap[tKey]) {
+                  toolsRankingMap[tKey] = { views: 0, conversions: 0, downloads: 0 };
+                }
+                toolsRankingMap[tKey].views += c;
+              }
+              firestoreToolOpens += dailyToolOpens;
 
-        for (const item of filteredDocs) {
-          const d = item.data;
-          const pViews = Number(d.pageViews || 0);
-          const pConv = Number(d.conversions || 0);
-          const pDown = Number(d.downloads || 0);
-          const pSess = Number(d.sessions || 0);
+              firestoreDailyMap[dateStr] = {
+                views: pViews,
+                sessions: pSess,
+                conversions: pConv,
+                downloads: pDown,
+                toolOpens: dailyToolOpens
+              };
 
-          summary.pageViews += pViews;
-          summary.conversions += pConv;
-          summary.downloads += pDown;
-          summary.sessions += pSess;
+              const docToolConversions = extractMetricsMap(data, "toolConversions");
+              for (const [tKey, count] of Object.entries(docToolConversions)) {
+                if (!toolsRankingMap[tKey]) {
+                  toolsRankingMap[tKey] = { views: 0, conversions: 0, downloads: 0 };
+                }
+                toolsRankingMap[tKey].conversions += Number(count || 0);
+              }
 
-          const formattedDate = item.date.length === 10 ? `${item.date.substring(8, 10)}/${item.date.substring(5, 7)}` : item.date;
-          dailyTrend.push({
-            date: formattedDate,
-            users: Math.max(pViews > 0 ? 1 : 0, Math.round(pViews * 0.75)),
-            views: pViews,
-            sessions: pSess > 0 ? pSess : Math.max(pViews > 0 ? 1 : 0, Math.round(pViews * 0.85)),
-            conversions: pConv,
-            downloads: pDown
+              const docToolDownloads = extractMetricsMap(data, "toolDownloads");
+              for (const [tKey, count] of Object.entries(docToolDownloads)) {
+                if (!toolsRankingMap[tKey]) {
+                  toolsRankingMap[tKey] = { views: 0, conversions: 0, downloads: 0 };
+                }
+                toolsRankingMap[tKey].downloads += Number(count || 0);
+              }
+
+              // Banners
+              const docBannerImpressions = extractMetricsMap(data, "bannerImpressions");
+              for (const [bKey, count] of Object.entries(docBannerImpressions)) {
+                if (!bannerStatsMap[bKey]) {
+                  bannerStatsMap[bKey] = { impressions: 0, clicks: 0 };
+                }
+                bannerStatsMap[bKey].impressions += Number(count || 0);
+              }
+
+              const docBannerClicks = extractMetricsMap(data, "bannerClicks");
+              for (const [bKey, count] of Object.entries(docBannerClicks)) {
+                if (!bannerStatsMap[bKey]) {
+                  bannerStatsMap[bKey] = { impressions: 0, clicks: 0 };
+                }
+                bannerStatsMap[bKey].clicks += Number(count || 0);
+              }
+
+              const docBannerNames = extractMetricsMap(data, "bannerNames");
+              for (const [bKey, name] of Object.entries(docBannerNames)) {
+                if (!bannerStatsMap[bKey]) {
+                  bannerStatsMap[bKey] = { impressions: 0, clicks: 0 };
+                }
+                if (name) bannerStatsMap[bKey].name = String(name);
+              }
+
+              const docBannerPlacements = extractMetricsMap(data, "bannerPlacements");
+              for (const [bKey, placement] of Object.entries(docBannerPlacements)) {
+                if (!bannerStatsMap[bKey]) {
+                  bannerStatsMap[bKey] = { impressions: 0, clicks: 0 };
+                }
+                if (placement) bannerStatsMap[bKey].placement = String(placement);
+              }
+
+              const docBannerLastImpression = extractMetricsMap(data, "bannerLastImpression");
+              for (const [bKey, ts] of Object.entries(docBannerLastImpression)) {
+                if (bannerStatsMap[bKey] && ts) {
+                  if (!bannerStatsMap[bKey].lastImpressionAt || String(ts) > bannerStatsMap[bKey].lastImpressionAt!) {
+                    bannerStatsMap[bKey].lastImpressionAt = String(ts);
+                  }
+                }
+              }
+
+              const docBannerLastClick = extractMetricsMap(data, "bannerLastClick");
+              for (const [bKey, ts] of Object.entries(docBannerLastClick)) {
+                if (bannerStatsMap[bKey] && ts) {
+                  if (!bannerStatsMap[bKey].lastClickAt || String(ts) > bannerStatsMap[bKey].lastClickAt!) {
+                    bannerStatsMap[bKey].lastClickAt = String(ts);
+                  }
+                }
+              }
+
+              const docEvents = extractMetricsMap(data, "events");
+              for (const [eKey, count] of Object.entries(docEvents)) {
+                eventsMap[eKey] = (eventsMap[eKey] || 0) + Number(count || 0);
+              }
+            }
           });
-
-          // Routes / Pages
-          const docRoutes = extractMetricsMap(d, "routes");
-          for (const [rKey, count] of Object.entries(docRoutes)) {
-            let cleanPath = rKey.replace(/_/g, "/");
-            if (cleanPath === "/home" || cleanPath === "home") cleanPath = "/";
-            const actualPath = cleanPath.startsWith("/") ? cleanPath : `/${cleanPath}`;
-            topPagesMap[actualPath] = (topPagesMap[actualPath] || 0) + Number(count || 0);
-          }
-
-          // Tools
-          const docTools = extractMetricsMap(d, "tools");
-          for (const [tKey, count] of Object.entries(docTools)) {
-            if (!toolsRankingMap[tKey]) {
-              toolsRankingMap[tKey] = { views: 0, conversions: 0, downloads: 0 };
-            }
-            toolsRankingMap[tKey].views += Number(count || 0);
-          }
-
-          const docToolConversions = extractMetricsMap(d, "toolConversions");
-          for (const [tKey, count] of Object.entries(docToolConversions)) {
-            if (!toolsRankingMap[tKey]) {
-              toolsRankingMap[tKey] = { views: 0, conversions: 0, downloads: 0 };
-            }
-            toolsRankingMap[tKey].conversions += Number(count || 0);
-          }
-
-          const docToolDownloads = extractMetricsMap(d, "toolDownloads");
-          for (const [tKey, count] of Object.entries(docToolDownloads)) {
-            if (!toolsRankingMap[tKey]) {
-              toolsRankingMap[tKey] = { views: 0, conversions: 0, downloads: 0 };
-            }
-            toolsRankingMap[tKey].downloads += Number(count || 0);
-          }
-
-          // Banners (Impressions, Clicks, Names, Timestamps)
-          const docBannerImpressions = extractMetricsMap(d, "bannerImpressions");
-          for (const [bKey, count] of Object.entries(docBannerImpressions)) {
-            if (!bannerStatsMap[bKey]) {
-              bannerStatsMap[bKey] = { impressions: 0, clicks: 0 };
-            }
-            bannerStatsMap[bKey].impressions += Number(count || 0);
-          }
-
-          const docBannerClicks = extractMetricsMap(d, "bannerClicks");
-          for (const [bKey, count] of Object.entries(docBannerClicks)) {
-            if (!bannerStatsMap[bKey]) {
-              bannerStatsMap[bKey] = { impressions: 0, clicks: 0 };
-            }
-            bannerStatsMap[bKey].clicks += Number(count || 0);
-          }
-
-          const docBannerNames = extractMetricsMap(d, "bannerNames");
-          for (const [bKey, name] of Object.entries(docBannerNames)) {
-            if (!bannerStatsMap[bKey]) {
-              bannerStatsMap[bKey] = { impressions: 0, clicks: 0 };
-            }
-            if (name) bannerStatsMap[bKey].name = String(name);
-          }
-
-          const docBannerPlacements = extractMetricsMap(d, "bannerPlacements");
-          for (const [bKey, placement] of Object.entries(docBannerPlacements)) {
-            if (!bannerStatsMap[bKey]) {
-              bannerStatsMap[bKey] = { impressions: 0, clicks: 0 };
-            }
-            if (placement) bannerStatsMap[bKey].placement = String(placement);
-          }
-
-          const docBannerLastImpression = extractMetricsMap(d, "bannerLastImpression");
-          for (const [bKey, ts] of Object.entries(docBannerLastImpression)) {
-            if (bannerStatsMap[bKey] && ts) {
-              if (!bannerStatsMap[bKey].lastImpressionAt || String(ts) > bannerStatsMap[bKey].lastImpressionAt!) {
-                bannerStatsMap[bKey].lastImpressionAt = String(ts);
-              }
-            }
-          }
-
-          const docBannerLastClick = extractMetricsMap(d, "bannerLastClick");
-          for (const [bKey, ts] of Object.entries(docBannerLastClick)) {
-            if (bannerStatsMap[bKey] && ts) {
-              if (!bannerStatsMap[bKey].lastClickAt || String(ts) > bannerStatsMap[bKey].lastClickAt!) {
-                bannerStatsMap[bKey].lastClickAt = String(ts);
-              }
-            }
-          }
-
-          // Traffic sources & UTMs
-          const docTrafficSources = extractMetricsMap(d, "trafficSources");
-          for (const [sKey, count] of Object.entries(docTrafficSources)) {
-            const cleanSource = sKey.replace(/_/g, " ");
-            trafficSourcesMap[cleanSource] = (trafficSourcesMap[cleanSource] || 0) + Number(count || 0);
-          }
-
-          const docUtms = extractMetricsMap(d, "utms");
-          for (const [uKey, count] of Object.entries(docUtms)) {
-            const cleanUtm = uKey.replace(/_/g, " ");
-            utmsMap[cleanUtm] = (utmsMap[cleanUtm] || 0) + Number(count || 0);
-          }
-
-          // Devices, OS, Browsers
-          const docDevices = extractMetricsMap(d, "devices");
-          for (const [devKey, count] of Object.entries(docDevices)) {
-            devicesMap[devKey] = (devicesMap[devKey] || 0) + Number(count || 0);
-          }
-
-          const docOs = extractMetricsMap(d, "os");
-          for (const [osKey, count] of Object.entries(docOs)) {
-            osMap[osKey] = (osMap[osKey] || 0) + Number(count || 0);
-          }
-
-          const docBrowsers = extractMetricsMap(d, "browsers");
-          for (const [brKey, count] of Object.entries(docBrowsers)) {
-            browsersMap[brKey] = (browsersMap[brKey] || 0) + Number(count || 0);
-          }
-
-          // Locations
-          const docCountries = extractMetricsMap(d, "countries");
-          for (const [cKey, count] of Object.entries(docCountries)) {
-            const countryFormatted = formatCountryName(cKey);
-            countriesMap[countryFormatted] = (countriesMap[countryFormatted] || 0) + Number(count || 0);
-          }
-
-          const docRegions = extractMetricsMap(d, "regions");
-          for (const [rKey, count] of Object.entries(docRegions)) {
-            regionsMap[rKey] = (regionsMap[rKey] || 0) + Number(count || 0);
-          }
-
-          const docCities = extractMetricsMap(d, "cities");
-          for (const [ctKey, count] of Object.entries(docCities)) {
-            citiesMap[ctKey] = (citiesMap[ctKey] || 0) + Number(count || 0);
-          }
-
-          // Custom Events
-          const docEvents = extractMetricsMap(d, "events");
-          for (const [eKey, count] of Object.entries(docEvents)) {
-            eventsMap[eKey] = (eventsMap[eKey] || 0) + Number(count || 0);
-          }
-        }
-
-        summary.activeUsers = Math.max(summary.pageViews > 0 ? 1 : 0, Math.round(summary.pageViews * 0.75));
-        if (summary.sessions === 0 && summary.pageViews > 0) {
-          summary.sessions = Math.max(summary.activeUsers, Math.round(summary.pageViews * 0.85));
-        }
-
-        if (summary.pageViews > 0) {
-          summary.conversionRate = ((summary.conversions / summary.pageViews) * 100).toFixed(1) + "%";
+        } catch (e) {
+          console.warn("[SERVER-V2] Error reading Firestore site_metrics:", e);
         }
       }
 
-      // Fetch all registered banners strictly from "home_banners" collection (Source of truth da V2)
+      // 2. Fetch registered banners from "home_banners" collection
       const registeredBanners: Array<{
         id: string;
         name: string;
@@ -1821,7 +1928,6 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
         }
       }
 
-      // Combine registered banners with metrics from bannerStatsMap
       const bannersList: Array<{
         id: string;
         name: string;
@@ -1858,18 +1964,10 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
         });
       }
 
-      // Default sorting: Most impressions descending, then clicks, then by order
       bannersList.sort((a, b) => {
-        if (b.impressions !== a.impressions) {
-          return b.impressions - a.impressions;
-        }
+        if (b.impressions !== a.impressions) return b.impressions - a.impressions;
         return b.clicks - a.clicks;
       });
-
-      const topPages = Object.entries(topPagesMap)
-        .map(([path, views]) => ({ path, views, users: Math.max(views > 0 ? 1 : 0, Math.round(views * 0.75)) }))
-        .sort((a, b) => b.views - a.views)
-        .slice(0, 10);
 
       const toolsRanking = Object.entries(toolsRankingMap)
         .map(([tool, stats]) => {
@@ -1887,102 +1985,313 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
         })
         .sort((a, b) => b.totalOps - a.totalOps);
 
-      const totalTrafficSessions = Object.values(trafficSourcesMap).reduce((acc, v) => acc + v, 0) || summary.sessions || 1;
-      const trafficSources = Object.entries(trafficSourcesMap)
-        .map(([source, count]) => ({
-          source,
-          medium: source.includes("Orgânica") ? "organic" : source.includes("Campanha") ? "cpc / ref" : "direct",
-          users: Math.max(count > 0 ? 1 : 0, Math.round(count * 0.75)),
-          sessions: count,
-          percentage: `${Math.min(100, Math.round((count / totalTrafficSessions) * 100))}%`
-        }))
-        .sort((a, b) => b.sessions - a.sessions);
-
-      const utms = Object.entries(utmsMap)
-        .map(([campaign, count]) => ({ campaign, count }))
+      const eventsList = Object.entries(eventsMap)
+        .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count);
 
-      const totalDeviceCounts = Object.values(devicesMap).reduce((acc, v) => acc + v, 0) || summary.pageViews || 1;
-      const devices = Object.entries(devicesMap)
-        .map(([category, count]) => ({
-          category,
-          count,
-          percentage: `${Math.round((count / totalDeviceCounts) * 100)}%`
-        }))
-        .sort((a, b) => b.count - a.count);
+      // 3. Google Analytics 4 Official Traffic Data Integration
+      let ga4Success = false;
+      let summary = {
+        pageViews: firestorePageViews,
+        activeUsers: firestoreSessions > 0 ? firestoreSessions : 0,
+        sessions: firestoreSessions,
+        conversions: firestoreConversions,
+        downloads: firestoreDownloads,
+        toolOpens: firestoreToolOpens,
+        conversionRate: firestoreSessions > 0 ? `${((firestoreConversions / firestoreSessions) * 100).toFixed(1)}%` : "0%"
+      };
+      let dailyTrend: Array<{ date: string; users: number; views: number; sessions: number; conversions: number; downloads: number }> = [];
+      let topPages: Array<{ path: string; views: number; users: number }> = [];
+      let trafficSources: Array<{ source: string; medium: string; campaign?: string; users: number; sessions: number; percentage: string }> = [];
+      let utms: Array<{ campaign: string; count: number }> = [];
+      let devices: Array<{ category: string; count: number; users: number; sessions: number; percentage: string }> = [];
+      let browsers: Array<{ browser: string; count: number; users: number; sessions: number; percentage: string }> = [];
+      let operatingSystems: Array<{ os: string; count: number; users: number; sessions: number; percentage: string }> = [];
+      let locationsTable: Array<{ city: string; region: string; country: string; users: number; sessions: number }> = [];
+      let countriesList: Array<{ country: string; count: number; users: number; sessions: number; percentage: string }> = [];
+      let regionsList: Array<{ region: string; country: string; count: number; users: number; sessions: number; percentage: string }> = [];
+      let citiesList: Array<{ city: string; country: string; count: number; users: number; sessions: number; percentage: string }> = [];
 
-      const totalBrowserCounts = Object.values(browsersMap).reduce((acc, v) => acc + v, 0) || summary.pageViews || 1;
-      const browsers = Object.entries(browsersMap)
-        .map(([browser, count]) => ({
-          browser,
-          count,
-          percentage: `${Math.round((count / totalBrowserCounts) * 100)}%`
-        }))
-        .sort((a, b) => b.count - a.count);
+      const ga4PropertyId = (process.env.GA4_PROPERTY_ID || "").trim();
+      const ga4ClientEmail = process.env.GA4_CLIENT_EMAIL?.trim();
+      const ga4PrivateKeyRaw = process.env.GA4_PRIVATE_KEY || "";
 
-      const totalOsCounts = Object.values(osMap).reduce((acc, v) => acc + v, 0) || summary.pageViews || 1;
-      const operatingSystems = Object.entries(osMap)
-        .map(([os, count]) => ({
-          os,
-          count,
-          percentage: `${Math.round((count / totalOsCounts) * 100)}%`
-        }))
-        .sort((a, b) => b.count - a.count);
+      if (ga4PropertyId && ga4ClientEmail && ga4PrivateKeyRaw) {
+        try {
+          let startDate = "7daysAgo";
+          if (period === "today") startDate = "today";
+          else if (period === "30daysAgo") startDate = "30daysAgo";
+          else if (period === "total") startDate = "2020-01-01";
 
-      const totalCountryCounts = Object.values(countriesMap).reduce((acc, v) => acc + v, 0) || 1;
-      const countriesList = Object.entries(countriesMap)
-        .map(([country, count]) => ({
-          country,
-          count,
-          percentage: `${Math.round((count / totalCountryCounts) * 100)}%`
-        }))
-        .sort((a, b) => b.count - a.count);
+          const dateRanges = [{ startDate, endDate: "today" }];
 
-      const totalRegionCounts = Object.values(regionsMap).reduce((acc, v) => acc + v, 0) || 1;
-      const regionsList = Object.entries(regionsMap)
-        .map(([regionKey, count]) => {
-          const parts = regionKey.split("_");
-          const country = parts[0] || "Brasil";
-          const region = formatLocationName(parts.slice(1).join("_") || regionKey);
-          return {
-            region,
-            country: country === "Brasil" ? "Brasil" : country,
-            count,
-            percentage: `${Math.round((count / totalRegionCounts) * 100)}%`
+          const [
+            gaSummaryRes,
+            gaDailyRes,
+            gaPagesRes,
+            gaTrafficRes,
+            gaDevRes,
+            gaBrowserRes,
+            gaOsRes,
+            gaGeoRes
+          ] = await Promise.all([
+            runGA4ReportREST(ga4PropertyId, {
+              dateRanges,
+              metrics: [{ name: "activeUsers" }, { name: "sessions" }, { name: "screenPageViews" }]
+            }),
+            runGA4ReportREST(ga4PropertyId, {
+              dateRanges,
+              dimensions: [{ name: "date" }],
+              metrics: [{ name: "activeUsers" }, { name: "sessions" }, { name: "screenPageViews" }],
+              orderBys: [{ dimension: { dimensionName: "date" } }]
+            }),
+            runGA4ReportREST(ga4PropertyId, {
+              dateRanges,
+              dimensions: [{ name: "pagePath" }],
+              metrics: [{ name: "screenPageViews" }, { name: "activeUsers" }],
+              limit: 20
+            }),
+            runGA4ReportREST(ga4PropertyId, {
+              dateRanges,
+              dimensions: [{ name: "sessionSource" }, { name: "sessionMedium" }, { name: "sessionCampaignName" }],
+              metrics: [{ name: "sessions" }, { name: "activeUsers" }],
+              limit: 20
+            }),
+            runGA4ReportREST(ga4PropertyId, {
+              dateRanges,
+              dimensions: [{ name: "deviceCategory" }],
+              metrics: [{ name: "sessions" }, { name: "activeUsers" }]
+            }),
+            runGA4ReportREST(ga4PropertyId, {
+              dateRanges,
+              dimensions: [{ name: "browser" }],
+              metrics: [{ name: "sessions" }, { name: "activeUsers" }],
+              limit: 10
+            }),
+            runGA4ReportREST(ga4PropertyId, {
+              dateRanges,
+              dimensions: [{ name: "operatingSystem" }],
+              metrics: [{ name: "sessions" }, { name: "activeUsers" }],
+              limit: 10
+            }),
+            runGA4ReportREST(ga4PropertyId, {
+              dateRanges,
+              dimensions: [{ name: "country" }, { name: "region" }, { name: "city" }],
+              metrics: [{ name: "activeUsers" }, { name: "sessions" }],
+              limit: 50
+            })
+          ]);
+
+          // Extract GA4 Summary
+          const summaryRow = gaSummaryRes?.rows?.[0];
+          const gaUsers = Number(summaryRow?.metricValues?.[0]?.value || 0);
+          const gaSessions = Number(summaryRow?.metricValues?.[1]?.value || 0);
+          const gaPageViews = Number(summaryRow?.metricValues?.[2]?.value || 0);
+
+          summary = {
+            pageViews: gaPageViews,
+            activeUsers: gaUsers,
+            sessions: gaSessions,
+            conversions: firestoreConversions,
+            downloads: firestoreDownloads,
+            toolOpens: firestoreToolOpens,
+            conversionRate: gaSessions > 0 ? `${((firestoreConversions / gaSessions) * 100).toFixed(1)}%` : "0%"
           };
-        })
-        .sort((a, b) => b.count - a.count);
 
-      const totalCityCounts = Object.values(citiesMap).reduce((acc, v) => acc + v, 0) || 1;
-      const citiesList = Object.entries(citiesMap)
-        .map(([cityKey, count]) => {
-          const parts = cityKey.split("_");
-          const country = parts[0] || "Brasil";
-          const city = formatLocationName(parts.slice(1).join("_") || cityKey);
-          return {
-            city,
-            country: country === "Brasil" ? "Brasil" : country,
-            count,
-            percentage: `${Math.round((count / totalCityCounts) * 100)}%`
-          };
-        })
-        .sort((a, b) => b.count - a.count);
+          // Extract GA4 Daily Trend & Merge with Firestore Conversions/Downloads
+          const dailyRows = gaDailyRes?.rows || [];
+          for (const row of dailyRows) {
+            const rawDate = row.dimensionValues?.[0]?.value || "";
+            const rowUsers = Number(row.metricValues?.[0]?.value || 0);
+            const rowSessions = Number(row.metricValues?.[1]?.value || 0);
+            const rowViews = Number(row.metricValues?.[2]?.value || 0);
+
+            // Format date YYYYMMDD -> YYYY-MM-DD and DD/MM
+            let standardDate = rawDate;
+            let displayDate = rawDate;
+            if (rawDate.length === 8) {
+              const y = rawDate.substring(0, 4);
+              const m = rawDate.substring(4, 6);
+              const d = rawDate.substring(6, 8);
+              standardDate = `${y}-${m}-${d}`;
+              displayDate = `${d}/${m}`;
+            }
+
+            const firestoreDay = firestoreDailyMap[standardDate] || { conversions: 0, downloads: 0 };
+
+            dailyTrend.push({
+              date: displayDate,
+              users: rowUsers,
+              sessions: rowSessions,
+              views: rowViews,
+              conversions: firestoreDay.conversions,
+              downloads: firestoreDay.downloads
+            });
+          }
+
+          // Extract GA4 Top Pages
+          topPages = (gaPagesRes?.rows || []).map((r: any) => ({
+            path: r.dimensionValues?.[0]?.value || "/",
+            views: Number(r.metricValues?.[0]?.value || 0),
+            users: Number(r.metricValues?.[1]?.value || 0)
+          }));
+
+          // Extract GA4 Traffic Sources
+          const totalTrafficSessions = (gaTrafficRes?.rows || []).reduce((acc: number, r: any) => acc + Number(r.metricValues?.[0]?.value || 0), 0) || gaSessions || 1;
+          trafficSources = (gaTrafficRes?.rows || []).map((r: any) => {
+            const src = r.dimensionValues?.[0]?.value || "(direct)";
+            const med = r.dimensionValues?.[1]?.value || "(none)";
+            const cmp = r.dimensionValues?.[2]?.value;
+            const sess = Number(r.metricValues?.[0]?.value || 0);
+            const usr = Number(r.metricValues?.[1]?.value || 0);
+            return {
+              source: src === "(direct)" ? "Acesso Direto" : src,
+              medium: med === "(none)" ? "Direto" : med === "organic" ? "Busca Orgânica" : med === "referral" ? "Referência" : med,
+              campaign: cmp && cmp !== "(direct)" && cmp !== "(not set)" ? cmp : undefined,
+              sessions: sess,
+              users: usr,
+              percentage: `${Math.round((sess / totalTrafficSessions) * 100)}%`
+            };
+          });
+
+          // Extract GA4 Devices
+          const totalDeviceSessions = (gaDevRes?.rows || []).reduce((acc: number, r: any) => acc + Number(r.metricValues?.[0]?.value || 0), 0) || gaSessions || 1;
+          devices = (gaDevRes?.rows || []).map((r: any) => {
+            const rawCat = (r.dimensionValues?.[0]?.value || "desktop").toLowerCase();
+            const category = rawCat === "desktop" ? "Desktop" : rawCat === "mobile" ? "Mobile" : "Tablet";
+            const sess = Number(r.metricValues?.[0]?.value || 0);
+            const usr = Number(r.metricValues?.[1]?.value || 0);
+            return {
+              category,
+              count: sess,
+              sessions: sess,
+              users: usr,
+              percentage: `${Math.round((sess / totalDeviceSessions) * 100)}%`
+            };
+          });
+
+          // Extract GA4 Browsers
+          const totalBrowserSessions = (gaBrowserRes?.rows || []).reduce((acc: number, r: any) => acc + Number(r.metricValues?.[0]?.value || 0), 0) || gaSessions || 1;
+          browsers = (gaBrowserRes?.rows || []).map((r: any) => {
+            const browser = r.dimensionValues?.[0]?.value || "Outro";
+            const sess = Number(r.metricValues?.[0]?.value || 0);
+            const usr = Number(r.metricValues?.[1]?.value || 0);
+            return {
+              browser,
+              count: sess,
+              sessions: sess,
+              users: usr,
+              percentage: `${Math.round((sess / totalBrowserSessions) * 100)}%`
+            };
+          });
+
+          // Extract GA4 Operating Systems
+          const totalOsSessions = (gaOsRes?.rows || []).reduce((acc: number, r: any) => acc + Number(r.metricValues?.[0]?.value || 0), 0) || gaSessions || 1;
+          operatingSystems = (gaOsRes?.rows || []).map((r: any) => {
+            const os = r.dimensionValues?.[0]?.value || "Outro";
+            const sess = Number(r.metricValues?.[0]?.value || 0);
+            const usr = Number(r.metricValues?.[1]?.value || 0);
+            return {
+              os,
+              count: sess,
+              sessions: sess,
+              users: usr,
+              percentage: `${Math.round((sess / totalOsSessions) * 100)}%`
+            };
+          });
+
+          // Extract GA4 Geo Locations
+          const totalGeoUsers = (gaGeoRes?.rows || []).reduce((acc: number, r: any) => acc + Number(r.metricValues?.[0]?.value || 0), 0) || gaUsers || 1;
+          const countryMap: Record<string, { users: number; sessions: number }> = {};
+          const regionMap: Record<string, { country: string; users: number; sessions: number }> = {};
+          const cityMap: Record<string, { country: string; region: string; users: number; sessions: number }> = {};
+
+          for (const r of (gaGeoRes?.rows || [])) {
+            const country = formatLocationDisplay(r.dimensionValues?.[0]?.value);
+            const region = formatLocationDisplay(r.dimensionValues?.[1]?.value);
+            const city = formatLocationDisplay(r.dimensionValues?.[2]?.value);
+            const usr = Number(r.metricValues?.[0]?.value || 0);
+            const sess = Number(r.metricValues?.[1]?.value || 0);
+
+            locationsTable.push({ city, region, country, users: usr, sessions: sess });
+
+            if (!countryMap[country]) countryMap[country] = { users: 0, sessions: 0 };
+            countryMap[country].users += usr;
+            countryMap[country].sessions += sess;
+
+            const regKey = `${country}__${region}`;
+            if (!regionMap[regKey]) regionMap[regKey] = { country, users: 0, sessions: 0 };
+            regionMap[regKey].users += usr;
+            regionMap[regKey].sessions += sess;
+
+            const cityKey = `${country}__${city}`;
+            if (!cityMap[cityKey]) cityMap[cityKey] = { country, region, users: 0, sessions: 0 };
+            cityMap[cityKey].users += usr;
+            cityMap[cityKey].sessions += sess;
+          }
+
+          countriesList = Object.entries(countryMap).map(([country, stats]) => ({
+            country,
+            count: stats.users,
+            users: stats.users,
+            sessions: stats.sessions,
+            percentage: `${Math.round((stats.users / totalGeoUsers) * 100)}%`
+          })).sort((a, b) => b.users - a.users);
+
+          regionsList = Object.entries(regionMap).map(([regKey, stats]) => {
+            const regionName = regKey.split("__")[1] || regKey;
+            return {
+              region: regionName,
+              country: stats.country,
+              count: stats.users,
+              users: stats.users,
+              sessions: stats.sessions,
+              percentage: `${Math.round((stats.users / totalGeoUsers) * 100)}%`
+            };
+          }).sort((a, b) => b.users - a.users);
+
+          citiesList = Object.entries(cityMap).map(([cityKey, stats]) => {
+            const cityName = cityKey.split("__")[1] || cityKey;
+            return {
+              city: cityName,
+              country: stats.country,
+              count: stats.users,
+              users: stats.users,
+              sessions: stats.sessions,
+              percentage: `${Math.round((stats.users / totalGeoUsers) * 100)}%`
+            };
+          }).sort((a, b) => b.users - a.users);
+
+          ga4Success = true;
+        } catch (gaErr) {
+          console.error("[SERVER-V2] Error fetching from GA4 API:", gaErr);
+        }
+      }
+
+      // Calculate Usage Funnel Metrics
+      const funnel = {
+        sessions: summary.sessions,
+        toolOpens: firestoreToolOpens,
+        conversions: firestoreConversions,
+        downloads: firestoreDownloads,
+        openRate: summary.sessions > 0 ? `${Math.min(100, Math.round((firestoreToolOpens / summary.sessions) * 100))}%` : "0%",
+        conversionRate: firestoreToolOpens > 0 ? `${Math.min(100, Math.round((firestoreConversions / firestoreToolOpens) * 100))}%` : "0%",
+        downloadRate: firestoreConversions > 0 ? `${Math.min(100, Math.round((firestoreDownloads / firestoreConversions) * 100))}%` : "0%"
+      };
 
       const locations = {
         countries: countriesList,
         regions: regionsList,
         cities: citiesList,
+        table: locationsTable,
         hasCountryData: countriesList.length > 0,
-        hasRegionData: regionsList.length > 0,
-        hasCityData: citiesList.length > 0
+        hasRegionData: regionsList.some(r => r.region !== "Não disponível"),
+        hasCityData: citiesList.some(c => c.city !== "Não disponível")
       };
-
-      const eventsList = Object.entries(eventsMap)
-        .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count);
 
       return res.json({
         summary,
+        funnel,
         dailyTrend,
         topPages,
         toolsRanking,
@@ -1995,7 +2304,9 @@ app.post("/api/admin/adsense/sync-adstxt", requireAdminMiddleware, async (req, r
         browsers,
         operatingSystems,
         events: eventsList,
-        source: "firestore_realtime",
+        ga4Configured: ga4Success,
+        telemetryConfigured: true,
+        source: ga4Success ? "google_analytics_4 + firestore_telemetry" : "firestore_telemetry",
         app_version: "v2",
         fetchedAt: new Date().toISOString()
       });

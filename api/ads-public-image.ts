@@ -60,11 +60,11 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // Restrict access exclusively to approved directories ('ads/' and 'branding/')
-    if (!cleanStoragePath.startsWith("ads/") && !cleanStoragePath.startsWith("branding/")) {
+    // Restrict access exclusively to approved directories ('ads/', 'branding/', and 'support/')
+    if (!cleanStoragePath.startsWith("ads/") && !cleanStoragePath.startsWith("branding/") && !cleanStoragePath.startsWith("support/")) {
       return res.status(403).json({
         error: "FORBIDDEN_DIRECTORY",
-        message: "Acesso negado: a rota pública de imagens só aceita recursos das pastas 'ads/' e 'branding/'."
+        message: "Acesso negado: a rota pública de imagens só aceita recursos das pastas 'ads/', 'branding/' e 'support/'."
       });
     }
 
