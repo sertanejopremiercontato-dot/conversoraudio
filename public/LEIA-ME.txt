@@ -1,4 +1,18 @@
-Arquivos recriados do favicon/ícones do Conversor Audio.
+PACOTE FINAL - CONVERSOR AUDIO
 
-Substitua os arquivos da sua pasta public por estes.
-Incluídos: android-chrome-192x192.png, android-chrome-512x512.png, apple-touch-icon.png, favicon.ico, favicon-16x16.png, favicon-32x32.png, favicon-48x48.png, favicon.png e logo-icon.png.
+Substitua os arquivos correspondentes dentro da pasta public do seu projeto.
+
+Arquivos principais:
+- android-chrome-192x192.png
+- android-chrome-512x512.png
+- apple-touch-icon.png
+- favicon.ico
+- favicon.png
+- favicon-16x16.png
+- favicon-32x32.png
+- favicon-48x48.png
+- logo-icon.png
+- site.webmanifest
+
+O favicon foi preparado em formato circular, com o desenho ocupando quase toda a área para ficar visível na aba do navegador.
+Também incluí logo-conversoraudio.png e conversoraudio-icon-1024.png como arquivos extras em alta resolução.
