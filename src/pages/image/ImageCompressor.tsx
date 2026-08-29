@@ -28,8 +28,10 @@ export default function ImageCompressor({ onNavigate }: ImageCompressorProps) {
   const cancelRequestedRef = useRef(false);
 
   const [settings, setSettings] = useState<CompressorSettingsState>({
-    preset: "alta",
-    customQualityPercentage: 80
+    preset: "extrema",
+    customQualityPercentage: 80,
+    keepOriginalFormat: false,
+    autoSelectBestFormat: true
   });
 
   const currentTotalSize = items.reduce((acc, curr) => acc + curr.originalSize, 0);
@@ -133,7 +135,9 @@ export default function ImageCompressor({ onNavigate }: ImageCompressorProps) {
       try {
         const result = await compressSingleImage(currentItem, {
           preset: settings.preset,
-          customQualityPercentage: settings.customQualityPercentage
+          customQualityPercentage: settings.customQualityPercentage,
+          keepOriginalFormat: settings.keepOriginalFormat,
+          autoSelectBestFormat: settings.autoSelectBestFormat
         });
 
         succ++;
@@ -154,6 +158,10 @@ export default function ImageCompressor({ onNavigate }: ImageCompressorProps) {
                   compressedFileName: result.compressedFileName,
                   usedPreset: settings.preset,
                   usedQuality: result.usedQuality,
+                  visualQualityScore: result.visualQualityScore,
+                  visualQualityLabel: result.visualQualityLabel,
+                  outputFormat: result.outputFormat,
+                  isPhotographicPng: result.isPhotographicPng,
                   width: result.width,
                   height: result.height
                 }
@@ -212,21 +220,22 @@ export default function ImageCompressor({ onNavigate }: ImageCompressorProps) {
   };
 
   const handleDownloadSingle = (item: CompressedImageItem) => {
-    const blobToUse = (item.isLargerThanOriginal ? item.file : item.compressedBlob);
-    const urlToUse = item.compressedBlobUrl;
-    if (!urlToUse || !item.compressedFileName) return;
+    const blobToUse = item.compressedBlob || item.file;
+    if (!blobToUse || !item.compressedFileName) return;
 
     trackEvent("image_compression_download_clicked", {
       tool_name: "image_compressor",
       input_format: item.originalFormat
     });
 
+    const downloadUrl = URL.createObjectURL(blobToUse);
     const link = document.createElement("a");
-    link.href = urlToUse;
+    link.href = downloadUrl;
     link.download = item.compressedFileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(downloadUrl), 2000);
   };
 
   const handleZipDownloadTracking = () => {

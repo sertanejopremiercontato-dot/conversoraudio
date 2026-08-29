@@ -131,31 +131,72 @@ export function generateOutputName(
 
 /**
  * 1. Convert Image Format
+ * Strictly preserves native image resolution (INPUT_WIDTH === OUTPUT_WIDTH and INPUT_HEIGHT === OUTPUT_HEIGHT)
+ * Uses high-efficiency encoding (UPNG for PNG lossless/quantized, Native WebP with quality control, JPEG with clean white background)
  */
 export async function convertImage(
   item: ImageFileItem,
   format: ImageOutputFormat,
-  quality = 0.92
+  quality = 0.85
 ): Promise<ImageProcessResult> {
   const { img, width, height, cleanUp } = await loadImageFromFile(item.file);
   try {
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) throw new Error("Não foi possível criar o contexto 2D do Canvas.");
 
     const { mimeType, extension } = getMimeAndExtension(format, item.name);
+    let blob: Blob;
 
-    // If converting to JPEG, fill canvas with white background since JPEG doesn't support alpha
-    if (mimeType === "image/jpeg") {
+    if (mimeType === "image/png") {
+      // Clear canvas to preserve full alpha
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // If already PNG with identical format and user just exported PNG
+      const isInputPng = (item.format || "").toUpperCase() === "PNG" || item.name.toLowerCase().endsWith(".png");
+      
+      try {
+        const imgData = ctx.getImageData(0, 0, width, height);
+        // UPNG with cnum: 0 is 100% lossless PNG with optimal DEFLATE compression
+        // If quality < 0.85, allow high-fidelity 256 palette quantization for smaller size
+        const cnum = quality >= 0.85 ? 0 : 256;
+        const arrayBuffer = UPNG.encode([imgData.data.buffer], width, height, cnum);
+        const upngBlob = new Blob([arrayBuffer], { type: "image/png" });
+
+        if (isInputPng && upngBlob.size > item.size && quality >= 0.85) {
+          // If original PNG was already better compressed and target is PNG, preserve original blob
+          blob = item.file;
+        } else {
+          blob = upngBlob;
+        }
+      } catch (upngErr) {
+        console.warn("[UPNG Encode fallback to standard canvas]", upngErr);
+        blob = await canvasToBlob(canvas, "image/png", quality);
+      }
+    } else if (mimeType === "image/jpeg") {
+      // JPEG: Fill solid white background for alpha transparency replacement
       ctx.fillStyle = "#FFFFFF";
       ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+      blob = await canvasToBlob(canvas, "image/jpeg", quality);
+    } else {
+      // WEBP: Full alpha support, native quality control
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+      blob = await canvasToBlob(canvas, "image/webp", quality);
     }
 
-    ctx.drawImage(img, 0, 0, width, height);
+    // Safety verification: Ensure dimensions are 100% preserved
+    const verifyImg = await loadImageFromFile(blob);
+    if (verifyImg.width !== width || verifyImg.height !== height) {
+      verifyImg.cleanUp();
+      throw new Error(`Erro na conversão: resolução final (${verifyImg.width}x${verifyImg.height}) divergiu da resolução original (${width}x${height}).`);
+    }
+    verifyImg.cleanUp();
 
-    const blob = await canvasToBlob(canvas, mimeType, quality);
     const downloadUrl = URL.createObjectURL(blob);
     const outputName = generateOutputName(item.name, "convertido", extension);
 

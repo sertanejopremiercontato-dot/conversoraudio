@@ -1,80 +1,93 @@
 /**
- * Presets and helpers for Image Compression
+ * Presets and adaptive helpers for Extreme & Smart Image Compression
  */
 
-export type CompressionPreset = "maxima" | "alta" | "media" | "economica" | "personalizada";
+export type CompressionPreset = "extrema" | "maxima" | "alta" | "media" | "lossless" | "personalizada";
 
 export interface CompressionLevelConfig {
   id: CompressionPreset;
   label: string;
+  badge?: string;
   description: string;
-  jpgQuality: number;
-  webpQuality: number;
-  avifQuality: number;
-  pngLevelLabel: string;
+  targetSSIM: number;
+  webpQualityCandidates: number[];
+  jpgQualityCandidates: number[];
+  pngCnumCandidates: number[];
 }
 
 export const COMPRESSION_PRESETS: Record<CompressionPreset, CompressionLevelConfig> = {
+  extrema: {
+    id: "extrema",
+    label: "Compressão Extrema",
+    badge: "Máxima Redução",
+    description: "Reduz o arquivo ao menor peso possível (75% a 90% de economia) mantendo alta fidelidade visual.",
+    targetSSIM: 0.93,
+    webpQualityCandidates: [0.82, 0.78, 0.74, 0.70, 0.65, 0.60, 0.55],
+    jpgQualityCandidates: [0.82, 0.78, 0.74, 0.70, 0.65],
+    pngCnumCandidates: [192, 128, 96, 64]
+  },
   maxima: {
     id: "maxima",
     label: "Qualidade Máxima",
-    description: "Alteração visual imperceptível, menor redução de peso",
-    jpgQuality: 0.92,
-    webpQuality: 0.90,
-    avifQuality: 0.88,
-    pngLevelLabel: "Sem Perda Visível"
+    badge: "Recomendado",
+    description: "Compressão inteligente praticamente indistinguível ao olho humano. Mantém nitidez impecável.",
+    targetSSIM: 0.975,
+    webpQualityCandidates: [0.90, 0.86, 0.82, 0.80],
+    jpgQualityCandidates: [0.90, 0.86, 0.82],
+    pngCnumCandidates: [0, 256, 192]
   },
   alta: {
     id: "alta",
-    label: "Qualidade Alta",
-    description: "Excelente equilíbrio entre qualidade visual e peso (Recomendado)",
-    jpgQuality: 0.82,
-    webpQuality: 0.80,
-    avifQuality: 0.78,
-    pngLevelLabel: "Otimização Equilibrada"
+    label: "Alta Fidelidade",
+    description: "Excelente redução com nitidez cristalina em todos os detalhes finos.",
+    targetSSIM: 0.96,
+    webpQualityCandidates: [0.84, 0.80, 0.76],
+    jpgQualityCandidates: [0.84, 0.80, 0.76],
+    pngCnumCandidates: [256, 192, 160]
   },
   media: {
     id: "media",
-    label: "Qualidade Média",
-    description: "Boa compressão para sites e envios rápidos",
-    jpgQuality: 0.70,
-    webpQuality: 0.68,
-    avifQuality: 0.65,
-    pngLevelLabel: "Compactação Média"
+    label: "Equilibrado",
+    description: "Forte redução de peso, ideal para sites ágeis, mídias sociais e e-commerce.",
+    targetSSIM: 0.94,
+    webpQualityCandidates: [0.75, 0.70, 0.65],
+    jpgQualityCandidates: [0.75, 0.70, 0.65],
+    pngCnumCandidates: [192, 128, 96]
   },
-  economica: {
-    id: "economica",
-    label: "Econômica",
-    description: "Máxima redução de tamanho de arquivo",
-    jpgQuality: 0.55,
-    webpQuality: 0.52,
-    avifQuality: 0.50,
-    pngLevelLabel: "Maior Redução"
+  lossless: {
+    id: "lossless",
+    label: "Sem Perda (100% Lossless)",
+    description: "Preserva cada pixel idêntico ao original. Otimiza buffers e remove metadados brutos.",
+    targetSSIM: 0.999,
+    webpQualityCandidates: [1.0, 0.98],
+    jpgQualityCandidates: [0.98, 0.95],
+    pngCnumCandidates: [0]
   },
   personalizada: {
     id: "personalizada",
     label: "Qualidade Personalizada",
-    description: "Ajuste manual da porcentagem de qualidade (10% a 100%)",
-    jpgQuality: 0.80,
-    webpQuality: 0.80,
-    avifQuality: 0.80,
-    pngLevelLabel: "Personalizada"
+    description: "Controle manual da porcentagem de qualidade (10% a 100%).",
+    targetSSIM: 0.90,
+    webpQualityCandidates: [0.80],
+    jpgQualityCandidates: [0.80],
+    pngCnumCandidates: [192]
   }
 };
 
-export function getQualityValueForFormat(
+export function getQualityCandidatesForPreset(
   preset: CompressionPreset,
-  customPercentage: number, // 10 to 100
+  customPercentage: number,
   format: string
-): number {
+): number[] {
   if (preset === "personalizada") {
-    return Math.max(0.1, Math.min(1.0, customPercentage / 100));
+    const q = Math.max(0.1, Math.min(1.0, customPercentage / 100));
+    return [q, Math.max(0.1, q - 0.05), Math.max(0.1, q - 0.10)];
   }
 
   const fmt = format.toLowerCase();
-  const config = COMPRESSION_PRESETS[preset] || COMPRESSION_PRESETS.alta;
+  const config = COMPRESSION_PRESETS[preset] || COMPRESSION_PRESETS.extrema;
 
-  if (fmt === "webp") return config.webpQuality;
-  if (fmt === "avif") return config.avifQuality;
-  return config.jpgQuality;
+  if (fmt === "webp") return config.webpQualityCandidates;
+  if (fmt === "png") return config.pngCnumCandidates;
+  return config.jpgQualityCandidates;
 }

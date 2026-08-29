@@ -2,6 +2,7 @@
  * Service for encoding drawn image canvas into desired output format and quality
  */
 
+import UPNG from "upng-js";
 import { getMimeTypeFromFormat, canEncodeMimeType } from "../../utils/imageFormatSupport";
 
 export interface EncodeOptions {
@@ -24,25 +25,10 @@ export async function encodeImageCanvas(
   }
 
   // Create canvas
-  let canvas: HTMLCanvasElement | OffscreenCanvas;
-  let ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null = null;
-
-  if (typeof OffscreenCanvas !== "undefined") {
-    try {
-      canvas = new OffscreenCanvas(width, height);
-      ctx = canvas.getContext("2d");
-    } catch (e) {
-      canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      ctx = canvas.getContext("2d");
-    }
-  } else {
-    canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    ctx = canvas.getContext("2d");
-  }
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
   if (!ctx) {
     throw new Error("Não foi possível inicializar o contexto de renderização Canvas.");
@@ -54,27 +40,28 @@ export async function encodeImageCanvas(
     const bg = options.backgroundColor || "#FFFFFF";
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, width, height);
+  } else {
+    ctx.clearRect(0, 0, width, height);
   }
 
   // Draw image onto canvas
   ctx.drawImage(source, 0, 0, width, height);
 
-  // Convert canvas to Blob
-  if ("convertToBlob" in canvas && typeof (canvas as OffscreenCanvas).convertToBlob === "function") {
+  // For PNG, use UPNG for high-efficiency DEFLATE compression instead of uncompressed browser canvas bloat
+  if (options.outputFormat === "PNG") {
     try {
-      return await (canvas as OffscreenCanvas).convertToBlob({
-        type: mimeType,
-        quality: options.quality
-      });
-    } catch (err) {
-      // Fallback if convertToBlob fails for specific format
+      const imgData = ctx.getImageData(0, 0, width, height);
+      const cnum = options.quality >= 0.85 ? 0 : 256;
+      const arrayBuffer = UPNG.encode([imgData.data.buffer], width, height, cnum);
+      return new Blob([arrayBuffer], { type: "image/png" });
+    } catch (upngErr) {
+      console.warn("[UPNG Encode fallback in imageEncoder]", upngErr);
     }
   }
 
   // Fallback to HTMLCanvasElement.toBlob
-  const htmlCanvas = canvas as HTMLCanvasElement;
   return new Promise((resolve, reject) => {
-    htmlCanvas.toBlob(
+    canvas.toBlob(
       (blob) => {
         if (blob) {
           resolve(blob);

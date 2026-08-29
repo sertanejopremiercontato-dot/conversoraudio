@@ -23,7 +23,7 @@ interface ImageConverterV2Props {
 export const ImageConverterV2: React.FC<ImageConverterV2Props> = ({ onBack }) => {
   const [images, setImages] = useState<ImageFileItem[]>([]);
   const [targetFormat, setTargetFormat] = useState<ImageOutputFormat>("WEBP");
-  const [quality, setQuality] = useState<number>(0.9);
+  const [quality, setQuality] = useState<number>(0.85);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [stepText, setStepText] = useState("");
@@ -231,8 +231,8 @@ export const ImageConverterV2: React.FC<ImageConverterV2Props> = ({ onBack }) =>
               </div>
 
               {/* Quality Slider (for JPG and WEBP) */}
-              {targetFormat !== "PNG" && (
-                <div className="space-y-2">
+              {targetFormat !== "PNG" ? (
+                <div className="space-y-3">
                   <div className="flex justify-between items-center text-xs font-bold text-[#0F172A]">
                     <span className="flex items-center gap-1.5">
                       <Sliders className="w-3.5 h-3.5 text-[#0284C7]" />
@@ -240,6 +240,30 @@ export const ImageConverterV2: React.FC<ImageConverterV2Props> = ({ onBack }) =>
                     </span>
                     <span className="text-[#0284C7] font-black">{Math.round(quality * 100)}%</span>
                   </div>
+
+                  {/* Quality Presets */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: "Alta Qualidade", val: 0.85, tag: "85%" },
+                      { label: "Equilibrado", val: 0.80, tag: "80% (Recomendado)" },
+                      { label: "Arquivo Menor", val: 0.70, tag: "70%" }
+                    ].map((p) => (
+                      <button
+                        key={p.tag}
+                        type="button"
+                        onClick={() => setQuality(p.val)}
+                        className={`py-1.5 px-2 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                          Math.abs(quality - p.val) < 0.02
+                            ? "bg-[#E0F2FE] text-[#0284C7] border-[#0284C7]"
+                            : "bg-white text-[#64748B] border-[#E2E8F0] hover:border-[#CBD5E1]"
+                        }`}
+                      >
+                        <div>{p.label}</div>
+                        <div className="text-[9px] font-normal opacity-80">{p.tag}</div>
+                      </button>
+                    ))}
+                  </div>
+
                   <input
                     type="range"
                     min="0.3"
@@ -251,11 +275,26 @@ export const ImageConverterV2: React.FC<ImageConverterV2Props> = ({ onBack }) =>
                   />
                   <div className="flex justify-between text-[10px] text-[#94A3B8] font-bold">
                     <span>Menor tamanho (30%)</span>
-                    <span>Recomendado (90%)</span>
+                    <span>Recomendado (80%-85%)</span>
                     <span>Máxima qualidade (100%)</span>
                   </div>
                 </div>
+              ) : (
+                <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl p-3.5 text-xs text-[#166534] flex items-start gap-2.5">
+                  <Sparkles className="w-4 h-4 text-[#16A34A] shrink-0 mt-0.5" />
+                  <p>
+                    <strong>Formato PNG (Sem Perdas):</strong> O PNG preserva transparência e nitidez máxima sem artefatos. Para economizar espaço mantendo transparência, você também pode usar o formato <strong>WebP</strong>.
+                  </p>
+                </div>
               )}
+
+              {/* Recommendation Note */}
+              <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3 text-[11px] text-[#475569] flex items-center gap-2">
+                <span className="text-base">💡</span>
+                <span>
+                  <strong>Dica de Desempenho:</strong> Para reduzir o tamanho do arquivo mantendo ótima qualidade visual, recomendamos o formato <strong>WebP</strong>.
+                </span>
+              </div>
 
               {/* Transparency Notice */}
               {hasPngToJpg && (

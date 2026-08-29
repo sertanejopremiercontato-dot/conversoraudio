@@ -173,28 +173,41 @@ export const ImageResultV2: React.FC<ImageResultV2Props> = ({
               </div>
 
               {/* Info */}
-              <div className="flex-1 min-w-0 space-y-1">
-                <h4 className="text-xs md:text-sm font-bold text-[#0F172A] truncate">
+              <div className="flex-1 min-w-0 space-y-1.5">
+                <h4 className="text-xs md:text-sm font-bold text-[#0F172A] truncate" title={item.outputName}>
                   {item.outputName}
                 </h4>
+                
                 <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#64748B]">
-                  <span className="font-semibold">{item.width} × {item.height} px</span>
+                  <span className="font-semibold text-[#0F172A] bg-[#F1F5F9] px-2 py-0.5 rounded">
+                    {item.width} × {item.height} px
+                  </span>
                   <span>•</span>
-                  <span className="font-semibold text-[#0F172A]">
+                  <span className="font-bold text-[#0F172A]">
                     {formatFileSize(item.finalSize)}
                   </span>
                   {item.savingsPercent > 0 ? (
                     <span className="px-1.5 py-0.5 rounded bg-[#DCFCE7] text-[#166534] font-black text-[10px]">
                       -{item.savingsPercent}%
                     </span>
-                  ) : isCompression ? (
-                    <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-bold text-[10px]">
-                      Já otimizado
+                  ) : item.savingsPercent < 0 ? (
+                    <span className="px-1.5 py-0.5 rounded bg-[#FEF3C7] text-[#B45309] font-black text-[10px]">
+                      +{Math.abs(item.savingsPercent)}%
                     </span>
-                  ) : null}
+                  ) : (
+                    <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-bold text-[10px]">
+                      0%
+                    </span>
+                  )}
                 </div>
-                <div className="text-[10px] text-[#94A3B8] truncate">
-                  De: {item.originalName} ({formatFileSize(item.originalSize)})
+
+                <div className="text-[10px] text-[#64748B] flex flex-wrap items-center gap-1.5">
+                  <span>Original: {formatFileSize(item.originalSize)} ({item.width} × {item.height} px)</span>
+                  {item.savingsPercent < 0 && !isCompression && (
+                    <span className="text-[#D97706] font-semibold block sm:inline">
+                      • O formato escolhido gerou um arquivo maior.
+                    </span>
+                  )}
                 </div>
               </div>
 
